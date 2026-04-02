@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Registro de Asistencia — El Ojusthe</title>
+<title>Registro de Asistencia — INMU</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
@@ -39,13 +39,10 @@
   
   .student-list { margin-top: 10px; border: 1px solid var(--gray-100); border-radius: 8px; overflow: hidden; }
   
-  /* FILAS CLICKEABLES */
   .student-row { display: grid; grid-template-columns: 40px 2fr 1fr 1fr 1fr; gap: 10px; padding: 12px 15px; border-bottom: 1px solid var(--gray-100); align-items: center; cursor: pointer; transition: background 0.2s; }
   .student-row:hover { background-color: var(--blue-50); }
   .student-header { background-color: var(--blue-800); color: white; font-weight: bold; font-size: 12px; cursor: default; }
-  .student-header:hover { background-color: var(--blue-800); }
   
-  /* CHECKBOX MÁS GRANDE */
   .checkbox-wrapper { display: flex; justify-content: center; }
   input[type="checkbox"] { width: 22px; height: 22px; cursor: pointer; accent-color: var(--green-600); }
   
@@ -65,16 +62,13 @@
   .modal-overlay.open { display: flex; }
   .modal { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; }
 
-  /* LOGO WEB */
-  .web-logo-container { text-align: center; margin-bottom: 15px; }
+  #pdf-container { display: none; }
 
   /* PANTALLA DE MANTENIMIENTO */
   #pantalla-mantenimiento {
     display: none; position: fixed; inset: 0; background-color: rgba(250, 250, 250, 0.98); 
     z-index: 99999; flex-direction: column; justify-content: center; align-items: center; text-align: center;
   }
-
-  #pdf-container { display: none; }
 </style>
 </head>
 <body>
@@ -87,12 +81,12 @@
 
 <div class="header" id="header-principal">
   <div style="display: flex; align-items: center;">
-    <img src="logo.jpg" alt="Logo" class="header-logo" onerror="this.style.display='none'"> 
+    <img src="logo.jpg" alt="Logo INMU" class="header-logo" onerror="this.style.display='none'"> 
     <button ondblclick="toggleMantenimiento()" style="width: 30px; height: 50px; background-color: var(--blue-800); border: none; outline: none; cursor: default; margin-left: 5px;"></button>
   </div>
   <div class="header-titles">
     <h1>Sistema de Control de Asistencia</h1>
-    <p>Centro Escolar Cantón El Ojusthe - 80045</p>
+    <p>Instituto Nacional de Mercedes Umaña</p>
   </div>
   <div class="btn-group-nav">
     <button class="btn-nav" style="background:#BA7517" onclick="pedirPasswordNuevo()">➕ Nuevo Alumno</button>
@@ -110,9 +104,14 @@
           <label>Grado</label>
           <select id="grado-select" onchange="cargarAlumnos()">
             <option value="">-- Seleccionar --</option>
-            <option value="7° Grado">7° Grado</option>
-            <option value="8° Grado">8° Grado</option>
-            <option value="9° Grado">9° Grado</option>
+            <option value="1° General">1° General</option>
+            <option value="1° Adm. Contable">1° Adm. Contable</option>
+            <option value="1° S. Eléctricos">1° S. Eléctricos</option>
+            <option value="2° General">2° General</option>
+            <option value="2° Adm. Contable">2° Adm. Contable</option>
+            <option value="2° Sist. Eléctricos">2° Sist. Eléctricos</option>
+            <option value="3° Adm. Contable">3° Adm. Contable</option>
+            <option value="3° Sist. Eléctricos">3° Sist. Eléctricos</option>
           </select>
         </div>
         <div>
@@ -140,7 +139,6 @@
       </div>
     </div>
 
- 
     <div class="panel">
       <label>Nombre del Docente Responsable:</label>
       <input type="text" id="docente-nombre" placeholder="Ej. Lic. Emerson Castro" style="margin-bottom: 15px;">
@@ -155,14 +153,13 @@
       </div>
     </div>
   </div>
-
    <div class="panel" style="text-align:center;">
       <div class="web-logo-container">
         <img src="logo2.svg" alt="Logo Institucional" class="web-logo" onerror="this.src='logo2.jpg'; this.onerror=null;" style="width:300px; height:auto; display:block; margin:0 auto;">
       </div>
     </div>
 
-
+  
   <div id="view-subdireccion" class="view-section">
     <div class="panel">
       <h2 style="color: var(--blue-800); margin-bottom: 10px;">Resumen (Sub-Dirección)</h2>
@@ -180,7 +177,7 @@
       
       <div id="resumen-estadisticas"></div>
 
-      <button onclick="cargarReportesSub()" style="width:100%; margin-top:15px; padding:12px; border-radius:8px; border:1px solid var(--blue-600); color:var(--blue-600); background:white; font-weight:bold; cursor:pointer;">🔄 Actualizar Lista y Totales</button>
+      <button onclick="cargarReportesSub()" style="width:100%; margin-top:15px; padding:12px; border-radius:8px; border:1px solid var(--blue-600); color:var(--blue-600); background:white; font-weight:bold; cursor:pointer;">🔄 Actualizar Lista</button>
       
       <div style="margin-top: 25px; border-top: 2px dashed var(--gray-100); padding-top: 15px;">
         <label style="color: var(--red-600); font-size: 14px;">⚠️ Zona de Peligro: Limpiar Registros de la Nube</label>
@@ -216,7 +213,8 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw1OXGzPg4d0gQWTBxSyzDSi8_dVf8X7j3-bFcVK5EvoE0Auwj69KGUq2ZAU3r3Sofuxg/exec";
+// --- URL INMU ---
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwL2huKwIXPI2xVLo1M_Z7rEaXa3Wdgx6boUFj0CiaSVyVwtOV8HxyShrnxMtzmp0qy/exec";
 
 let baseDatosAlumnos = [];
 let alumnosFiltrados = [];
@@ -249,18 +247,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// --- SEGURIDAD Y VISTAS ---
-function pedirPasswordSub() {
-  if (prompt("Ingrese contraseña de Sub-Dirección:") === "1234") {
-    cambiarVista('subdireccion');
-  } else { alert("Contraseña incorrecta."); }
-}
-
-function pedirPasswordNuevo() { 
-  if (prompt("Ingrese contraseña de Administrador:") === "1234") {
-    document.getElementById('modal-alumno').classList.add('open');
-  } else { alert("Contraseña incorrecta."); }
-}
+function pedirPasswordSub() { if (prompt("Ingrese contraseña de Sub-Dirección:") === "1234") { cambiarVista('subdireccion'); } else { alert("Contraseña incorrecta."); } }
+function pedirPasswordNuevo() { if (prompt("Ingrese contraseña de Administrador:") === "1234") { document.getElementById('modal-alumno').classList.add('open'); } else { alert("Contraseña incorrecta."); } }
 
 function cambiarVista(vista) {
     document.querySelectorAll('.view-section').forEach(s => s.classList.remove('view-active'));
@@ -274,7 +262,6 @@ function cambiarVista(vista) {
     }
 }
 
-// --- CONEXIÓN A LA NUBE ---
 async function inicializarBaseDatos() {
   const cont = document.getElementById('tabla-alumnos');
   cont.innerHTML = '<div style="padding: 20px; text-align: center; color: #185FA5; font-weight:bold;">Sincronizando con la nube...</div>';
@@ -284,31 +271,28 @@ async function inicializarBaseDatos() {
     baseDatosAlumnos = await response.json();
     baseDatosAlumnos.sort((a, b) => a.nombre.localeCompare(b.nombre));
     cargarAlumnos();
-  } catch (error) {
-    cont.innerHTML = '<div style="padding: 20px; text-align: center; color: red;">Error de conexión.</div>';
-  }
+  } catch (error) { cont.innerHTML = '<div style="padding: 20px; text-align: center; color: red;">Error de conexión. Verifica la URL.</div>'; }
 }
 window.onload = inicializarBaseDatos;
 
-// --- VISTA SUB-DIRECCIÓN CON FILTROS Y TOTALES ---
+// --- CARGAR REPORTES Y FILTRAR ---
 async function cargarReportesSub() {
     const container = document.getElementById('sub-lista-reportes');
     const stats = document.getElementById('resumen-estadisticas');
     container.innerHTML = "Sincronizando reportes...";
     stats.innerHTML = "";
-    
+
     try {
         const response = await fetch(SCRIPT_URL + "?tipo=reportes");
         let reportes = await response.json();
         
-        // FILTRADO POR FECHA
+        // Filtro de fecha
         const fechaFiltro = document.getElementById('filtro-fecha-sub').value;
         if(fechaFiltro) {
-            // El formato del input type date es YYYY-MM-DD
             reportes = reportes.filter(r => r.fecha && r.fecha.startsWith(fechaFiltro));
         }
         
-        // ESTADÍSTICAS GLOBALES DEL CENTRO EDUCATIVO
+        // Totales globales INMU
         let totalGeneral = baseDatosAlumnos.length;
         let totalM = baseDatosAlumnos.filter(a => a.sexo === 'M').length;
         let totalF = baseDatosAlumnos.filter(a => a.sexo === 'F').length;
@@ -335,7 +319,6 @@ async function cargarReportesSub() {
                         <td style="text-align:center; font-weight:bold; color:#1D9E75;">${r.presentes || 0}</td>
                      </tr>`;
             
-            // Sumar para las estadísticas de la tabla mostrada
             sumaPres += parseInt(r.presentes) || 0;
             sumAus += parseInt(r.ausentes) || 0;
             sumM += parseInt(r.m) || 0;
@@ -344,7 +327,6 @@ async function cargarReportesSub() {
         html += `</table>`;
         container.innerHTML = html;
         
-        // PINTAR RESUMEN GENERAL AL FINAL DE LA TABLA
         stats.innerHTML = generarHTMLResumen(totalGeneral, totalM, totalF, sumaPres, sumAus, sumM, sumF);
 
     } catch (e) { container.innerHTML = "Error al cargar reportes."; }
@@ -357,13 +339,13 @@ function generarHTMLResumen(tGeneral, tM, tF, sPres, sAus, sM, sF) {
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
             <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid var(--blue-600);">
-                <p style="font-size: 12px; color: gray; font-weight: bold; margin-bottom: 5px;">ESTUDIANTES MATRICULADOS</p>
+                <p style="font-size: 12px; color: gray; font-weight: bold; margin-bottom: 5px;">ESTUDIANTES MATRICULADOS EN BD</p>
                 <p style="font-size: 20px; font-weight: bold; color: var(--blue-800);">Total: ${tGeneral}</p>
                 <p style="font-size: 14px; color: #555; margin-top: 5px;">Masculinos: <strong>${tM}</strong> | Femeninos: <strong>${tF}</strong></p>
             </div>
             
             <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid var(--green-600);">
-                <p style="font-size: 12px; color: gray; font-weight: bold; margin-bottom: 5px;">REPORTE DE ASISTENCIA FILTRADO</p>
+                <p style="font-size: 12px; color: gray; font-weight: bold; margin-bottom: 5px;">REPORTE DE ASISTENCIA (FILTRADO)</p>
                 <p style="font-size: 20px; font-weight: bold; color: var(--green-600);">Presentes: ${sPres} <span style="font-size: 16px; color: var(--red-600); margin-left: 10px;">Ausentes: ${sAus}</span></p>
                 <p style="font-size: 14px; color: #555; margin-top: 5px;">Asist. Masc: <strong>${sM}</strong> | Asist. Fem: <strong>${sF}</strong></p>
             </div>
@@ -371,12 +353,10 @@ function generarHTMLResumen(tGeneral, tM, tF, sPres, sAus, sM, sF) {
     </div>`;
 }
 
-// --- LÓGICA DE TABLA DE ALUMNOS ---
 function cargarAlumnos() {
   const grado = document.getElementById('grado-select').value;
   const seccion = document.getElementById('seccion-select').value;
   const contenedor = document.getElementById('tabla-alumnos');
-  
   if (!grado || !seccion) { contenedor.innerHTML = '<div style="padding: 20px; text-align: center; color: #5F5E5A;">Seleccione un grado y una sección.</div>'; alumnosFiltrados = []; return; }
   alumnosFiltrados = baseDatosAlumnos.filter(a => a.grado === grado && a.seccion === seccion);
   if (alumnosFiltrados.length === 0) { contenedor.innerHTML = '<div style="padding: 20px; text-align: center; color: #E24B4A;">No hay alumnos en este grado.</div>'; return; }
@@ -412,7 +392,6 @@ async function borrarReportes() {
   } catch(e) { alert("❌ Error de red al intentar borrar."); btn.disabled = false; btn.innerText = "🗑️ Ejecutar Borrado"; }
 }
 
-// --- GENERADOR DE PDF INTACTO ---
 async function generarPDF() {
   const docente = document.getElementById('docente-nombre').value.trim();
   const grado = document.getElementById('grado-select').value;
@@ -428,9 +407,8 @@ async function generarPDF() {
 
   const presentes = []; const ausentes = []; let masc = 0, fem = 0;
   alumnosFiltrados.forEach((alumno, index) => {
-    if (document.getElementById(`chk-${index}`).checked) {
-      presentes.push(alumno); alumno.sexo === 'M' ? masc++ : fem++;
-    } else { ausentes.push(alumno); }
+    if (document.getElementById(`chk-${index}`).checked) { presentes.push(alumno); alumno.sexo === 'M' ? masc++ : fem++; } 
+    else { ausentes.push(alumno); }
   });
 
   const ahora = new Date();
@@ -438,16 +416,14 @@ async function generarPDF() {
   const fechaArchivo = ahora.toLocaleDateString('es-ES').replace(/\//g, '-');
   const secLimpia = seccion.replace(/"/g, ''); 
 
-  // Notificar a la nube
   fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "asistencia", fecha: ahora, grado: grado, seccion: seccion, docente: docente, presentes: presentes.length, ausentes: ausentes.length, m: masc, f: fem }) }).catch(e => console.log("Enviado"));
 
   const pdfHtml = `
     <div style="position: relative; background: white; padding: 0;">
-      
       <div style="position: relative; z-index: 10; padding: 40px;">
         <div style="text-align: center; padding-top: 100px; padding-bottom: 200px;">
           <h1 style="color: #0C447C; font-size: 26px; margin-bottom: 10px; text-transform: uppercase;">Ministerio de Educación, Ciencia y Tecnología</h1>
-          <h2 style="color: #2C2C2A; font-size: 22px; margin-bottom: 50px; text-transform: uppercase;">Centro Escolar Cantón El Ojusthe - 80045</h2>
+          <h2 style="color: #2C2C2A; font-size: 22px; margin-bottom: 50px; text-transform: uppercase;">Instituto Nacional de Mercedes Umaña</h2>
           <div style="border: 2px solid #0C447C; padding: 40px; border-radius: 15px; background-color: transparent; width: 80%; margin: 0 auto;">
             <h3 style="font-size: 24px; color: #185FA5; margin-bottom: 30px; text-transform: uppercase; border-bottom: 2px solid #185FA5; padding-bottom: 10px;">Registro de Asistencia Diario</h3>
             <div style="text-align: left; padding-left: 20px;">
@@ -462,7 +438,7 @@ async function generarPDF() {
 
         <div style="text-align: center; border-bottom: 3px solid #0C447C; padding-bottom: 15px; margin-bottom: 20px;">
           <h2 style="font-size: 18px; color: #0C447C; margin-bottom: 5px;">MINISTERIO DE EDUCACIÓN CIENCIA Y TECNOLOGÍA</h2>
-          <h3 style="font-size: 16px; color: #2C2C2A; margin-bottom: 5px;">CENTRO ESCOLAR CANTÓN EL OJUSTHE - 80045</h3>
+          <h3 style="font-size: 16px; color: #2C2C2A; margin-bottom: 5px;">INSTITUTO NACIONAL DE MERCEDES UMAÑA</h3>
         </div>
         
         <div style="margin-bottom: 20px; display: flex; justify-content: space-between; font-size: 14px;">
@@ -483,7 +459,7 @@ async function generarPDF() {
               <td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td>
               <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td>
               <td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td>
-              <td style="border: 1px solid #ddd; padding: 6px;">${a.telefono}</td>
+              <td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td>
             </tr>
           `).join('') : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
         </table>
@@ -497,7 +473,7 @@ async function generarPDF() {
               <td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td>
               <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td>
               <td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td>
-              <td style="border: 1px solid #ddd; padding: 6px;">${a.telefono}</td>
+              <td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td>
             </tr>
           `).join('') : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
         </table>
