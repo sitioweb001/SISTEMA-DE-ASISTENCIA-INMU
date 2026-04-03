@@ -177,14 +177,70 @@
       <button onclick="cargarReportesSub()" style="width:100%; margin-top:15px; padding:12px; border-radius:8px; border:1px solid var(--blue-600); color:var(--blue-600); background:white; font-weight:bold; cursor:pointer;">🔄 Actualizar Lista y Totales</button>
       
       <div style="margin-top: 25px; border-top: 2px dashed var(--gray-100); padding-top: 15px;">
-        <label style="color: var(--red-600); font-size: 14px;">⚠️ Zona de Peligro: Limpiar Registros de la Nube</label>
-        <div style="display: flex; gap: 10px; margin-top: 10px;">
-          <select id="delete-rango" style="flex: 2; padding: 10px; border: 1.5px solid var(--red-600); color: var(--red-600); border-radius: 8px; font-weight: bold; outline: none;">
-            <option value="hoy">Borrar reportes de HOY</option>
-            <option value="all">Borrar TODO el historial</option>
-          </select>
-          <button id="btn-delete-reportes" onclick="borrarReportes()" style="flex: 1; background: var(--red-600); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">🗑️ Ejecutar Borrado</button>
-        </div>
+  <!-- BOTÓN DE ACCESO A ZONA DE PELIGRO -->
+<button
+  onclick="accederLimpieza()"
+  style="
+    width: 100%;
+    margin-top: 20px;
+    padding: 12px;
+    border-radius: 8px;
+    border: 2px solid var(--red-600);
+    background: white;
+    color: var(--red-600);
+    font-weight: bold;
+    cursor: pointer;
+  "
+>
+⚠️ Acceder a la limpieza de registros
+</button>
+
+<!-- ZONA DE PELIGRO (OCULTA) -->
+<div id="zona-peligro" style="display:none; margin-top:15px;">
+
+  <label style="color: var(--red-600); font-size: 14px;">
+    ⚠️ ZONA DE PELIGRO: LIMPIAR REGISTROS DE LA NUBE
+  </label>
+
+ <div style="display:flex; gap:10px; margin-top:10px;">
+
+  <!-- BOTÓN ROJO 35% -->
+  <button
+    id="btn-delete-reportes"
+    onclick="borrarReportes()"
+    style="
+      width:35%;
+      background:var(--red-600);
+      color:white;
+      border:none;
+      border-radius:8px;
+      font-weight:bold;
+      padding:12px;
+      cursor:pointer;
+    "
+  >
+    🗑️ Ejecutar Borrado
+  </button>
+
+  <!-- BOTÓN VERDE 65% -->
+  <button
+    onclick="regresarLugarSeguro()"
+    style="
+      width:65%;
+      background:var(--green-600);
+      color:white;
+      border:none;
+      border-radius:8px;
+      font-weight:bold;
+      padding:12px;
+      cursor:pointer;
+    "
+  >
+    ✅ Plegar el borrado / Regresar a lugar seguro
+  </button>
+
+</div>
+
       </div>
     </div>
   </div>
@@ -508,6 +564,25 @@ async function guardarAlumno() {
   b.disabled = true; b.innerText = "Subiendo...";
   try { await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(n) }); alert("Guardado exitoso en la nube."); cerrarModal(); setTimeout(inicializarBaseDatos, 1000); } catch(e) { alert("Error al guardar"); }
   b.disabled = false; b.innerText = "Guardar";
+}
+
+function regresarLugarSeguro() {
+  document.getElementById("zona-peligro").style.display = "none";
+}
+
+</script>
+
+
+<script>
+function accederLimpieza() {
+  const password = prompt("Ingrese la contraseña de administrador:");
+
+  if (password === "1234") {  // 🔑 cambia esta clave
+    document.getElementById("zona-peligro").style.display = "block";
+    alert("⚠️ Acceso concedido. Use con extrema precaución.");
+  } else {
+    alert("❌ Contraseña incorrecta.");
+  }
 }
 </script>
 </body>
