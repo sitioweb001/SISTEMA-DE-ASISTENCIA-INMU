@@ -39,13 +39,11 @@
   
   .student-list { margin-top: 10px; border: 1px solid var(--gray-100); border-radius: 8px; overflow: hidden; }
   
-  /* FILAS CLICKEABLES */
   .student-row { display: grid; grid-template-columns: 40px 2fr 1fr 1fr 1fr; gap: 10px; padding: 12px 15px; border-bottom: 1px solid var(--gray-100); align-items: center; cursor: pointer; transition: background 0.2s; }
   .student-row:hover { background-color: var(--blue-50); }
   .student-header { background-color: var(--blue-800); color: white; font-weight: bold; font-size: 12px; cursor: default; }
   .student-header:hover { background-color: var(--blue-800); }
   
-  /* CHECKBOX MÁS GRANDE */
   .checkbox-wrapper { display: flex; justify-content: center; }
   input[type="checkbox"] { width: 22px; height: 22px; cursor: pointer; accent-color: var(--green-600); }
   
@@ -145,9 +143,10 @@
       </div>
     </div>
 
+  
 
       <label>Nombre del Docente Responsable:</label>
-      <input type="text" id="docente-nombre" placeholder="Ej. Lic. " style="margin-bottom: 15px;">
+      <input type="text" id="docente-nombre" placeholder="Ej. Lic. Emerson Castro" style="margin-bottom: 15px;">
       
       <div style="background: var(--gray-50); padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--gray-100);">
         <label style="color: var(--green-600);">Diseño Automático PDF</label>
@@ -160,11 +159,10 @@
     </div>
   </div>
 
-    <div class="panel">
+  <div class="panel">
       <div class="web-logo-container">
         <img src="logo2.svg" alt="Logo Institucional" class="web-logo" onerror="this.src='logo2.jpg'; this.onerror=null;">
       </div>
-
 
   <div id="view-subdireccion" class="view-section">
     <div class="panel">
@@ -199,18 +197,16 @@
       <button onclick="cargarReportesSub()" style="width:100%; margin-top:15px; padding:12px; border-radius:8px; border:1px solid var(--blue-600); color:var(--blue-600); background:white; font-weight:bold; cursor:pointer;">🔄 Actualizar Lista y Totales</button>
       
       <div style="margin-top: 25px; border-top: 2px dashed var(--gray-100); padding-top: 15px;">
-        
         <button onclick="accederLimpieza()" style="width: 100%; margin-top: 20px; padding: 12px; border-radius: 8px; border: 2px solid var(--red-600); background: white; color: var(--red-600); font-weight: bold; cursor: pointer;">
           ⚠️ Acceder a la limpieza de registros
         </button>
 
-        <div id="zona-peligro" style="display:none; margin-top:15px; background: var(--red-50); padding: 15px; border-radius: 8px; border: 1px solid var(--red-600);">
-          
+        <div id="zona-peligro" style="display:none; margin-top:15px;">
           <label style="color: var(--red-600); font-size: 14px; font-weight: bold; margin-bottom: 10px; display: block;">
             ⚠️ ZONA DE PELIGRO: LIMPIAR REGISTROS DE LA NUBE
           </label>
-
-          <select id="delete-rango" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1.5px solid var(--red-600); color: var(--red-600); border-radius: 8px; font-weight: bold; outline: none; background: white;">
+          
+          <select id="delete-rango" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1.5px solid var(--red-600); color: var(--red-600); border-radius: 8px; font-weight: bold; outline: none;">
             <option value="hoy">Borrar reportes de HOY</option>
             <option value="all">Borrar TODO el historial</option>
           </select>
@@ -219,13 +215,11 @@
             <button id="btn-delete-reportes" onclick="borrarReportes()" style="width:35%; background:var(--red-600); color:white; border:none; border-radius:8px; font-weight:bold; padding:12px; cursor:pointer;">
               🗑️ Ejecutar Borrado
             </button>
-
             <button onclick="regresarLugarSeguro()" style="width:65%; background:var(--green-600); color:white; border:none; border-radius:8px; font-weight:bold; padding:12px; cursor:pointer;">
               ✅ Regresar a lugar seguro
             </button>
           </div>
         </div>
-
       </div>
     </div>
   </div>
@@ -246,7 +240,7 @@
 </div>
 
 <div id="pdf-container">
-  <div id="pdf-content" style="width: 800px; padding: 40px; font-family: Arial, sans-serif; color: black; background: white;">
+  <div id="pdf-content" style="padding: 40px; font-family: Arial, sans-serif; color: black; background: white; width: 100%; box-sizing: border-box; position: relative; min-height: 1000px;">
   </div>
 </div>
 
@@ -464,82 +458,88 @@ async function generarPDF() {
 
   fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "asistencia", fecha: ahora, grado: grado, seccion: seccion, docente: docente, presentes: presentes.length, ausentes: ausentes.length, m: masc, f: fem }) }).catch(e => console.log("Enviado"));
 
+  // ESTRUCTURA ORIGINAL SIN ERRORES DE CORTE
   const pdfHtml = `
-    <div style="width: 100%; height: 1000px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
-      <h1 style="color: #0C447C; font-size: 26px; margin-bottom: 10px; text-transform: uppercase;">Ministerio de Educación, Ciencia y Tecnología</h1>
-      <h2 style="color: #2C2C2A; font-size: 22px; margin-bottom: 50px; text-transform: uppercase;">Instituto Nacional de Mercedes Umaña</h2>
+    <div style="position: relative; background: white; padding: 0;">
       
-      <div style="border: 2px solid #0C447C; padding: 40px; border-radius: 15px; width: 80%; background-color: white;">
-        <h3 style="font-size: 24px; color: #185FA5; margin-bottom: 30px; text-transform: uppercase; border-bottom: 2px solid #185FA5; padding-bottom: 10px;">Registro de Asistencia Diario</h3>
-        <div style="text-align: left; padding-left: 20px;">
-          <p style="font-size: 18px; margin: 15px 0;"><strong>Grado:</strong> ${grado} &nbsp; <strong>Sección:</strong> ${seccion}</p>
-          <p style="font-size: 18px; margin: 15px 0;"><strong>Docente Responsable:</strong> ${docente}</p>
-          <p style="font-size: 18px; margin: 15px 0;"><strong>Fecha:</strong> ${fechaStr}</p>
+      <div style="position: relative; z-index: 10; padding: 40px;">
+        <div style="text-align: center; padding-top: 100px; padding-bottom: 200px;">
+          <h1 style="color: #0C447C; font-size: 26px; margin-bottom: 10px; text-transform: uppercase;">Ministerio de Educación, Ciencia y Tecnología</h1>
+          <h2 style="color: #2C2C2A; font-size: 22px; margin-bottom: 50px; text-transform: uppercase;">Instituto Nacional de Mercedes Umaña</h2>
+          <div style="border: 2px solid #0C447C; padding: 40px; border-radius: 15px; background-color: transparent; width: 80%; margin: 0 auto;">
+            <h3 style="font-size: 24px; color: #185FA5; margin-bottom: 30px; text-transform: uppercase; border-bottom: 2px solid #185FA5; padding-bottom: 10px;">Registro de Asistencia Diario</h3>
+            <div style="text-align: left; padding-left: 20px;">
+              <p style="font-size: 18px; margin: 15px 0;"><strong>Grado:</strong> ${grado} &nbsp; <strong>Sección:</strong> ${seccion}</p>
+              <p style="font-size: 18px; margin: 15px 0;"><strong>Docente Responsable:</strong> ${docente}</p>
+              <p style="font-size: 18px; margin: 15px 0;"><strong>Fecha:</strong> ${fechaStr}</p>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
 
-    <div class="html2pdf__page-break"></div>
+        <div class="html2pdf__page-break"></div>
 
-    <div style="width: 100%; padding-top: 30px;">
-      <div style="text-align: center; border-bottom: 3px solid #0C447C; padding-bottom: 15px; margin-bottom: 20px;">
-        <h2 style="font-size: 18px; color: #0C447C; margin-bottom: 5px;">MINISTERIO DE EDUCACIÓN CIENCIA Y TECNOLOGÍA</h2>
-        <h3 style="font-size: 16px; color: #2C2C2A; margin-bottom: 5px;">INSTITUTO NACIONAL DE MERCEDES UMAÑA</h3>
-      </div>
-      
-      <div style="margin-bottom: 20px; display: flex; justify-content: space-between; font-size: 14px;">
-        <p><strong>Grado:</strong> ${grado} <strong>Seccion:</strong> ${seccion}</p>
-        <p><strong>Docente:</strong> ${docente} <strong>Fecha:</strong> ${fechaStr}</p>
-      </div>
-      
-      <div style="background-color: #F0F2F5; border: 1px solid #B5D4F4; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;">
-        <p><strong>Asistencias: ${presentes.length}</strong> | M: <strong>${masc}</strong> | F: <strong>${fem}</strong> | Ausencias: ${ausentes.length}</p>
-      </div>
+        <div style="text-align: center; border-bottom: 3px solid #0C447C; padding-bottom: 15px; margin-bottom: 20px;">
+          <h2 style="font-size: 18px; color: #0C447C; margin-bottom: 5px;">MINISTERIO DE EDUCACIÓN CIENCIA Y TECNOLOGÍA</h2>
+          <h3 style="font-size: 16px; color: #2C2C2A; margin-bottom: 5px;">INSTITUTO NACIONAL DE MERCEDES UMAÑA</h3>
+        </div>
+        
+        <div style="margin-bottom: 20px; display: flex; justify-content: space-between; font-size: 14px;">
+          <p><strong>Grado:</strong> ${grado} <strong>Seccion:</strong> ${seccion}</p>
+          <p><strong>Docente:</strong> ${docente} <strong>Fecha:</strong> ${fechaStr}</p>
+        </div>
+        
+        <div style="background-color: transparent; border: 1px solid #B5D4F4; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;">
+          <p><strong>Asistencias: ${presentes.length}</strong> | M: <strong>${masc}</strong> | F: <strong>${fem}</strong> | Ausencias: ${ausentes.length}</p>
+        </div>
 
-      <h4 style="color: #1D9E75; border-bottom: 2px solid #1D9E75; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px; page-break-after: avoid;">ESTUDIANTES PRESENTES</h4>
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; page-break-inside: auto;">
-        <colgroup><col style="width: 8%;"><col style="width: 45%;"><col style="width: 10%;"><col style="width: 17%;"><col style="width: 20%;"></colgroup>
-        ${presentes.length > 0 ? presentes.map(a => `
-          <tr style="page-break-inside: avoid; page-break-after: auto;">
-            <td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #1D9E75; font-weight: bold;">✓</td>
-            <td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td>
-            <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td>
-            <td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td>
-            <td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td>
-          </tr>
-        `).join('') : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
-      </table>
+        <h4 style="color: #1D9E75; border-bottom: 2px solid #1D9E75; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px; page-break-after: avoid;">ESTUDIANTES PRESENTES</h4>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; page-break-before: auto;">
+          <colgroup><col style="width: 8%;"><col style="width: 45%;"><col style="width: 10%;"><col style="width: 17%;"><col style="width: 20%;"></colgroup>
+          ${presentes.length > 0 ? presentes.map(a => `
+            <tr style="page-break-inside: avoid;">
+              <td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #1D9E75; font-weight: bold;">✓</td>
+              <td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td>
+              <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td>
+              <td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td>
+              <td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td>
+            </tr>
+          `).join('') : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
+        </table>
 
-      <h4 style="color: #E24B4A; border-bottom: 2px solid #E24B4A; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px; page-break-after: avoid;">ESTUDIANTES AUSENTES</h4>
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px; font-size: 13px; page-break-inside: auto;">
-        <colgroup><col style="width: 8%;"><col style="width: 45%;"><col style="width: 10%;"><col style="width: 17%;"><col style="width: 20%;"></colgroup>
-        ${ausentes.length > 0 ? ausentes.map(a => `
-          <tr style="page-break-inside: avoid; page-break-after: auto;">
-            <td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #E24B4A; font-weight: bold;">✗</td>
-            <td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td>
-            <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td>
-            <td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td>
-            <td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td>
-          </tr>
-        `).join('') : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
-      </table>
+        <h4 style="color: #E24B4A; border-bottom: 2px solid #E24B4A; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px; page-break-after: avoid;">ESTUDIANTES AUSENTES</h4>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px; font-size: 13px; page-break-before: auto;">
+          <colgroup><col style="width: 8%;"><col style="width: 45%;"><col style="width: 10%;"><col style="width: 17%;"><col style="width: 20%;"></colgroup>
+          ${ausentes.length > 0 ? ausentes.map(a => `
+            <tr style="page-break-inside: avoid;">
+              <td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #E24B4A; font-weight: bold;">✗</td>
+              <td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td>
+              <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td>
+              <td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td>
+              <td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td>
+            </tr>
+          `).join('') : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
+        </table>
+      </div>
     </div>
   `;
 
-  document.getElementById('pdf-content').innerHTML = pdfHtml;
+  const container = document.getElementById('pdf-content');
+  container.innerHTML = pdfHtml;
+
+  const nombreArchivo = `Asistencia ${grado} ${secLimpia} - ${fechaArchivo} - ${docente}.pdf`;
 
   const opt = {
-    margin: [10, 10, 10, 10], 
-    filename: `Asistencia_${grado}_${fechaArchivo}.pdf`,
+    margin: 15,
+    filename: nombreArchivo,
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, letterRendering: true }, 
+    html2canvas: { scale: 2, useCORS: true },
     jsPDF: { unit: 'mm', format: 'letter', orientation: orientacion },
     pagebreak: { mode: ['css', 'legacy'] } 
   };
 
   try {
     window.scrollTo(0, 0);
-    await html2pdf().set(opt).from(document.getElementById('pdf-content')).save();
+    await html2pdf().set(opt).from(container).save();
   } catch (error) { alert("❌ Error al generar PDF."); } 
   finally { btn.disabled = false; btn.innerText = "📥 Generar PDF y Guardar Reporte"; }
 }
@@ -555,8 +555,14 @@ async function guardarAlumno() {
     telefono: document.getElementById('new-telefono').value
   };
   if(!n.nombre || !n.grado) return alert("Faltan datos");
+  
   b.disabled = true; b.innerText = "Subiendo...";
-  try { await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(n) }); alert("Guardado exitoso en la nube."); cerrarModal(); setTimeout(inicializarBaseDatos, 1000); } catch(e) { alert("Error al guardar"); }
+  try {
+    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(n) });
+    alert("Guardado exitoso en la nube.");
+    cerrarModal(); 
+    setTimeout(inicializarBaseDatos, 1000);
+  } catch(e) { alert("Error al guardar"); }
   b.disabled = false; b.innerText = "Guardar";
 }
 </script>
