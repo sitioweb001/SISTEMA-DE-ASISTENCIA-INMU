@@ -70,7 +70,7 @@
 
   /* PANTALLA DE MANTENIMIENTO */
   #pantalla-mantenimiento {
-    display: flex; position: fixed; inset: 0; background-color: rgba(250, 250, 250, 0.98); 
+    display: none; position: fixed; inset: 0; background-color: rgba(250, 250, 250, 0.98); 
     z-index: 99999; flex-direction: column; justify-content: center; align-items: center; text-align: center;
   }
 </style>
@@ -142,6 +142,7 @@
       </div>
     </div>
 
+  
 
       <label>Nombre del Docente Responsable:</label>
       <input type="text" id="docente-nombre" placeholder="Ej. Lic. Emerson Castro" style="margin-bottom: 15px;">
@@ -157,8 +158,7 @@
     </div>
   </div>
 
-
-    <div class="panel">
+  <div class="panel">
       <div class="web-logo-container">
         <img src="logo2.svg" alt="Logo Institucional" class="web-logo" onerror="this.src='logo2.jpg'; this.onerror=null;">
       </div>
@@ -249,7 +249,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwL2huKwIXPI2xVLo1M_
 let baseDatosAlumnos = [];
 let alumnosFiltrados = [];
 let estadoSeleccion = true;
-let sistemaEnMantenimiento = true; // Empieza bloqueado hasta que la nube diga lo contrario
+let sistemaEnMantenimiento = true; 
 
 // --- VERIFICACIÓN DE APAGÓN GLOBAL ---
 async function chequearMantenimientoNube() {
@@ -258,12 +258,10 @@ async function chequearMantenimientoNube() {
     const data = await res.json();
     
     if (data.mantenimiento === true) {
-      // LA NUBE ORDENÓ EL APAGÓN
       sistemaEnMantenimiento = true;
       document.getElementById("mantenimiento-titulo").innerText = "SITIO EN MANTENIMIENTO";
       document.getElementById("mantenimiento-texto").innerText = "POR FAVOR NO UTILIZAR";
     } else {
-      // LA NUBE DIO LUZ VERDE - ENCENDEMOS EL SISTEMA
       sistemaEnMantenimiento = false;
       document.getElementById('pantalla-mantenimiento').style.display = 'none';
       document.getElementById('header-principal').style.display = 'flex';
@@ -293,7 +291,7 @@ async function toggleMantenimiento() {
       body: JSON.stringify({ tipo_post: "toggle_mantenimiento", password: password })
     });
     alert("📡 Orden enviada a la Nube. El sistema se reiniciará para todos.");
-    setTimeout(() => { location.reload(); }, 1500); // Recarga para actualizar estado
+    setTimeout(() => { location.reload(); }, 1500); 
   } catch (e) {
     alert("❌ Error de red al intentar mandar orden.");
   }
@@ -465,6 +463,7 @@ async function borrarReportes() {
   } catch(e) { alert("❌ Error de red al intentar borrar."); btn.disabled = false; btn.innerText = "🗑️ Ejecutar Borrado"; }
 }
 
+// --- GENERADOR DE PDF (CÓDIGO ORIGINAL SIN DISTORSIÓN) ---
 async function generarPDF() {
   if(sistemaEnMantenimiento) return;
   const docente = document.getElementById('docente-nombre').value.trim();
@@ -479,11 +478,6 @@ async function generarPDF() {
 
   btn.disabled = true; btn.innerText = "⏳ Generando PDF...";
 
-  // AJUSTE DINÁMICO DE ANCHO PARA PDF HORIZONTAL
-  const containerHTML = document.getElementById('pdf-content');
-  if (orientacion === 'landscape') { containerHTML.style.width = '1050px'; } 
-  else { containerHTML.style.width = '800px'; }
-
   const presentes = [], ausentes = []; let masc = 0, fem = 0;
   alumnosFiltrados.forEach((alumno, index) => {
     if (document.getElementById(`chk-${index}`).checked) { presentes.push(alumno); alumno.sexo === 'M' ? masc++ : fem++; } 
@@ -497,9 +491,10 @@ async function generarPDF() {
 
   fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "asistencia", fecha: ahora, grado: grado, seccion: seccion, docente: docente, presentes: presentes.length, ausentes: ausentes.length, m: masc, f: fem }) }).catch(e => console.log("Enviado"));
 
-  // LA TABLA INVISIBLE PARA PREVENIR ERRORES DE NOMBRES LARGOS
+  // ESTRUCTURA ORIGINAL LIMPIA
   const pdfHtml = `
     <div style="position: relative; background: white; padding: 0;">
+      
       <div style="position: relative; z-index: 10; padding: 40px;">
         <div style="text-align: center; padding-top: 100px; padding-bottom: 200px;">
           <h1 style="color: #0C447C; font-size: 26px; margin-bottom: 10px; text-transform: uppercase;">Ministerio de Educación, Ciencia y Tecnología</h1>
@@ -521,13 +516,10 @@ async function generarPDF() {
           <h3 style="font-size: 16px; color: #2C2C2A; margin-bottom: 5px;">INSTITUTO NACIONAL DE MERCEDES UMAÑA</h3>
         </div>
         
-        <table style="width: 100%; font-size: 14px; margin-bottom: 20px; border: none;">
-          <tr>
-            <td style="text-align: left; width: 33%; vertical-align: top;"><strong>Grado:</strong> ${grado} &nbsp; <strong>Secc:</strong> ${seccion}</td>
-            <td style="text-align: center; width: 34%; vertical-align: top;"><strong>Docente:</strong> ${docente}</td>
-            <td style="text-align: right; width: 33%; vertical-align: top;"><strong>Fecha:</strong> ${fechaStr}</td>
-          </tr>
-        </table>
+        <div style="margin-bottom: 20px; display: flex; justify-content: space-between; font-size: 14px;">
+          <p><strong>Grado:</strong> ${grado} <strong>Seccion:</strong> ${seccion}</p>
+          <p><strong>Docente:</strong> ${docente} <strong>Fecha:</strong> ${fechaStr}</p>
+        </div>
         
         <div style="background-color: transparent; border: 1px solid #B5D4F4; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;">
           <p><strong>Asistencias: ${presentes.length}</strong> | M: <strong>${masc}</strong> | F: <strong>${fem}</strong> | Ausencias: ${ausentes.length}</p>
@@ -564,11 +556,14 @@ async function generarPDF() {
     </div>
   `;
 
-  containerHTML.innerHTML = pdfHtml;
+  const container = document.getElementById('pdf-content');
+  container.innerHTML = pdfHtml;
+
+  const nombreArchivo = `Asistencia ${grado} ${secLimpia} - ${fechaArchivo} - ${docente}.pdf`;
 
   const opt = {
     margin: 15,
-    filename: `Asistencia ${grado} ${secLimpia} - ${fechaArchivo} - ${docente}.pdf`,
+    filename: nombreArchivo,
     image: { type: 'jpeg', quality: 0.98 },
     html2canvas: { scale: 2, useCORS: true },
     jsPDF: { unit: 'mm', format: 'letter', orientation: orientacion },
@@ -577,7 +572,7 @@ async function generarPDF() {
 
   try {
     window.scrollTo(0, 0);
-    await html2pdf().set(opt).from(containerHTML).save();
+    await html2pdf().set(opt).from(container).save();
   } catch (error) { alert("❌ Error al generar PDF."); } 
   finally { btn.disabled = false; btn.innerText = "📥 Generar PDF y Guardar Reporte"; }
 }
