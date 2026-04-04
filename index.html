@@ -104,7 +104,7 @@
     <label style="text-align: left;">Contraseña</label>
     <input type="password" id="login-password" placeholder="***" style="width:100%; padding:12px; margin-bottom:10px; border:1px solid var(--gray-100); border-radius:8px;">
     
-    <p style="text-align: center; font-size: 11px; color: var(--gray-600); margin-bottom: 10px;">---------------------------------------------------------------------------------</p>
+    <p style="text-align: center; font-size: 11px; color: var(--gray-600); margin-bottom: 10px;">----------------------------------------------------------------------</p>
     
     <button onclick="handleLoginClick(event)" style="width: 100%; padding: 12px; background: var(--blue-600); color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer;">Ingresar</button>
   </div>
@@ -494,7 +494,7 @@ async function guardarNuevoDocente() {
 // BOTÓN SECRETO (Doble clic en el logo)
 async function toggleMantenimiento() {
   const password = prompt("ADVERTENCIA: ¿Deseas activar/desactivar el Apagón Global en la nube?\nIngresa clave maestra:");
-  if (password !== "12345") {
+  if (password !== "747-8") {
     alert("❌ Clave incorrecta. Acceso Denegado.");
     return;
   }
