@@ -88,21 +88,21 @@
     <h2 style="color: var(--blue-800); text-align: center; margin-bottom: 5px;">Iniciar Sesión</h2>
       <div class="panel">
       <div class="web-logo-container">
-        <img src="logo2.svg" alt="Logo Institucional" class="web-logo" ondblclick="toggleMantenimiento()" onerror="this.src='logo2.jpg'; this.onerror=null;">
+        <img src="logo2.svg" alt="Logo Institucional" class="web-logo" onerror="this.src='logo2.jpg'; this.onerror=null;">
       </div>
     <p style="text-align: center; font-size: 14px; color: var(--gray-600); margin-bottom: 20px;">Instituto Nacional de Mercedes Umaña</p>
-    
-      <div class="panel">
-      <div class="web-logo-container">
-        <img src="logo3.jpg" alt="Logo subInstitucional" class="web-logo" ondblclick="toggleMantenimiento()" onerror="this.src='logo3.jpg'; this.onerror=null;">
-      </div>
+   <img src="logo3.jpg" alt="Logo subInstitucional" 
+     class="web-logo" 
+     onerror="this.src='logo3.jpg'; this.onerror=null;" 
+     width="100" height="100">
+
     
     <label style="text-align: left;">Usuario</label>
-    <input type="text" id="login-username" placeholder="Nombre, invitado o 12" style="width:100%; padding:12px; margin-bottom:15px; border:1px solid var(--gray-100); border-radius:8px;">
+    <input type="text" id="login-username" placeholder="Ingrese su Nombre, invitado Ó 12" style="width:100%; padding:12px; margin-bottom:15px; border:1px solid var(--gray-100); border-radius:8px;">
     
     <label style="text-align: left;">Contraseña</label>
     <input type="password" id="login-password" placeholder="***" style="width:100%; padding:12px; margin-bottom:20px; border:1px solid var(--gray-100); border-radius:8px;">
-    
+        ---------   PRESIONE 2 VECES ---------  
     <button onclick="handleLoginClick(event)" style="width: 100%; padding: 12px; background: var(--blue-600); color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer;">Ingresar</button>
   </div>
 </div>
@@ -188,7 +188,7 @@
       <input type="text" id="docente-nombre" placeholder="Ej. Lic. Emerson Castro" style="margin-bottom: 15px;">
       
       <div style="background: var(--gray-50); padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--gray-100);">
-        <label style="color: var(--green-600);">Diseño Automático PDF Oficial</label>
+        <label style="color: var(--green-600);">Diseño Automático PDF</label>
         <div style="display:flex; gap:20px; margin-bottom: 15px; font-size:14px;">
           <label style="text-transform:none; font-weight:normal;"><input type="radio" name="orientacion" value="portrait" checked> Vertical</label>
           <label style="text-transform:none; font-weight:normal;"><input type="radio" name="orientacion" value="landscape"> Horizontal</label>
@@ -536,23 +536,23 @@ async function inicializarBaseDatos() {
   selDoc.innerHTML = '<option value="">Descargando lista...</option>';
   
   try {
+    // Pedir alumnos
     const responseAlu = await fetch(SCRIPT_URL);
     if(!responseAlu.ok) throw new Error("Error de Red");
     baseDatosAlumnos = await responseAlu.json();
     baseDatosAlumnos.sort((a, b) => a.nombre.localeCompare(b.nombre));
     cargarAlumnos();
     
+    // Pedir docentes
     const responseDoc = await fetch(SCRIPT_URL + "?tipo=lista_docentes");
     baseDatosDocentes = await responseDoc.json();
     
-    // Lista de docentes para el menú alternativo ("12")
     let htmlDoc = `<option value="">-- Seleccionar --</option>`;
     htmlDoc += `<option value="Invitado">👤 Entrar como Invitado</option>`;
     
     baseDatosDocentes.forEach(d => {
       htmlDoc += `<option value="${d.nombre}">${d.nombre}</option>`;
     });
-    
     selDoc.innerHTML = htmlDoc;
     
   } catch (error) { 
