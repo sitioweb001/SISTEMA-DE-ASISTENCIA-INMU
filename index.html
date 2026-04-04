@@ -91,18 +91,18 @@
         <img src="logo2.svg" alt="Logo Institucional" class="web-logo" onerror="this.src='logo2.jpg'; this.onerror=null;">
       </div>
     <p style="text-align: center; font-size: 14px; color: var(--gray-600); margin-bottom: 20px;">Instituto Nacional de Mercedes Umaña</p>
-   <img src="logo3.jpg" alt="Logo subInstitucional" 
-     class="web-logo" 
-     onerror="this.src='logo3.jpg'; this.onerror=null;" 
-     width="100" height="100">
+<div style="text-align:center;">
+  <img src="logo3.jpg" alt="Logo subInstitucional"
+       onerror="this.src='logo3.jpg'; this.onerror=null;"
+       style="width:60px; height:auto;">
+</div>
 
-    
     <label style="text-align: left;">Usuario</label>
     <input type="text" id="login-username" placeholder="Ingrese su Nombre, invitado Ó 12" style="width:100%; padding:12px; margin-bottom:15px; border:1px solid var(--gray-100); border-radius:8px;">
     
     <label style="text-align: left;">Contraseña</label>
     <input type="password" id="login-password" placeholder="***" style="width:100%; padding:12px; margin-bottom:20px; border:1px solid var(--gray-100); border-radius:8px;">
-        ---------   PRESIONE 2 VECES ---------  
+        -------------PRESIONE 2 VECES-------------  
     <button onclick="handleLoginClick(event)" style="width: 100%; padding: 12px; background: var(--blue-600); color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer;">Ingresar</button>
   </div>
 </div>
@@ -526,7 +526,9 @@ function cambiarVista(vista) {
     }
 }
 
-// --- CONEXIÓN A LA NUBE (ALUMNOS Y DOCENTES) ---
+// =====================================================================
+// OPTIMIZACIÓN: Promise.all PARA CORTAR EL DELAY A LA MITAD
+// =====================================================================
 async function inicializarBaseDatos() {
   if(sistemaEnMantenimiento) return;
   const cont = document.getElementById('tabla-alumnos');
@@ -536,15 +538,18 @@ async function inicializarBaseDatos() {
   selDoc.innerHTML = '<option value="">Descargando lista...</option>';
   
   try {
-    // Pedir alumnos
-    const responseAlu = await fetch(SCRIPT_URL);
-    if(!responseAlu.ok) throw new Error("Error de Red");
+    // Pedir alumnos y docentes AL MISMO TIEMPO (Reduce el delay a la mitad)
+    const [responseAlu, responseDoc] = await Promise.all([
+      fetch(SCRIPT_URL),
+      fetch(SCRIPT_URL + "?tipo=lista_docentes")
+    ]);
+
+    if(!responseAlu.ok || !responseDoc.ok) throw new Error("Error de Red");
+
     baseDatosAlumnos = await responseAlu.json();
     baseDatosAlumnos.sort((a, b) => a.nombre.localeCompare(b.nombre));
     cargarAlumnos();
     
-    // Pedir docentes
-    const responseDoc = await fetch(SCRIPT_URL + "?tipo=lista_docentes");
     baseDatosDocentes = await responseDoc.json();
     
     let htmlDoc = `<option value="">-- Seleccionar --</option>`;
@@ -731,7 +736,6 @@ async function generarPDF() {
 
   fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "asistencia", fecha: ahora, grado: grado, seccion: seccion, docente: docente, presentes: presentes.length, ausentes: ausentes.length, m: masc, f: fem }) }).catch(e => console.log("Enviado"));
 
-  // ESTRUCTURA ORIGINAL SIN ERRORES DE CORTE EN ENCABEZADO
   const pdfHtml = `
     <div style="position: relative; background: white; padding: 0;">
       
