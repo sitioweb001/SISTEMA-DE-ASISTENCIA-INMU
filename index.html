@@ -83,7 +83,47 @@
   <p style="color: #2C2C2A; font-size: 24px; font-weight: bold; margin-top: 10px;" id="mantenimiento-texto">POR FAVOR NO UTILIZAR</p>
 </div>
 
-<div class="header" id="header-principal">
+<div class="modal-overlay" id="modal-inicio-login">
+  <div class="modal">
+    <h2 style="color: var(--blue-800); text-align: center; margin-bottom: 5px;">Iniciar Sesión</h2>
+      <div class="panel">
+      <div class="web-logo-container">
+        <img src="logo2.svg" alt="Logo Institucional" class="web-logo" ondblclick="toggleMantenimiento()" onerror="this.src='logo2.jpg'; this.onerror=null;">
+      </div>
+    <p style="text-align: center; font-size: 14px; color: var(--gray-600); margin-bottom: 20px;">Instituto Nacional de Mercedes Umaña</p>
+    
+      <div class="panel">
+      <div class="web-logo-container">
+        <img src="logo3.jpg" alt="Logo subInstitucional" class="web-logo" ondblclick="toggleMantenimiento()" onerror="this.src='logo3.jpg'; this.onerror=null;">
+      </div>
+    
+    <label style="text-align: left;">Usuario</label>
+    <input type="text" id="login-username" placeholder="Nombre, invitado o 12" style="width:100%; padding:12px; margin-bottom:15px; border:1px solid var(--gray-100); border-radius:8px;">
+    
+    <label style="text-align: left;">Contraseña</label>
+    <input type="password" id="login-password" placeholder="***" style="width:100%; padding:12px; margin-bottom:20px; border:1px solid var(--gray-100); border-radius:8px;">
+    
+    <button onclick="handleLoginClick(event)" style="width: 100%; padding: 12px; background: var(--blue-600); color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer;">Ingresar</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-inicio-dropdown">
+  <div class="modal">
+    <h2 style="color: var(--blue-800); text-align: center; margin-bottom: 5px;">Seleccione Docente</h2>
+    <p style="text-align: center; font-size: 14px; color: var(--gray-600); margin-bottom: 20px;">Menú Alternativo</p>
+    
+    <select id="select-docente-inicio" style="width:100%; padding:12px; margin-bottom:20px; border-radius:8px; border:1px solid var(--gray-100);">
+      <option value="">Cargando docentes...</option>
+    </select>
+    
+    <div style="display:flex; gap:10px;">
+      <button onclick="document.getElementById('modal-inicio-dropdown').classList.remove('open'); document.getElementById('modal-inicio-login').classList.add('open');" style="flex:1; padding: 12px; background: var(--gray-600); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Volver</button>
+      <button onclick="entrarComoDocenteDropdown()" style="flex:1; padding: 12px; background: var(--blue-600); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Ingresar</button>
+    </div>
+  </div>
+</div>
+
+<div class="header" id="header-principal" style="display: none;">
   <div style="display: flex; align-items: center;">
     <img src="logo.jpg" alt="Logo INMU" class="header-logo" ondblclick="toggleMantenimiento()" title="Doble clic para administrar sistema" onerror="this.style.display='none'"> 
   </div>
@@ -92,13 +132,14 @@
     <p>Instituto Nacional de Mercedes Umaña</p>
   </div>
   <div class="btn-group-nav">
+    <button class="btn-nav" style="background:#5F5E5A" onclick="pedirPasswordDocente()">👨‍🏫 Añadir Docente</button>
     <button class="btn-nav" style="background:#BA7517" onclick="pedirPasswordNuevo()">➕ Nuevo Alumno</button>
     <button class="btn-nav" style="background:var(--green-600)" onclick="pedirPasswordSub()">📊 Sub-Dirección</button>
     <button class="btn-nav" style="background:var(--blue-600); display:none;" id="btn-volver-asist" onclick="cambiarVista('docente')">✍️ Pasar Lista</button>
   </div>
 </div>
 
-<div class="container" id="container-principal">
+<div class="container" id="container-principal" style="display: none;">
   
   <div id="view-docente" class="view-section view-active">
     <div class="panel">
@@ -147,7 +188,7 @@
       <input type="text" id="docente-nombre" placeholder="Ej. Lic. Emerson Castro" style="margin-bottom: 15px;">
       
       <div style="background: var(--gray-50); padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--gray-100);">
-        <label style="color: var(--green-600);">Diseño Automático PDF</label>
+        <label style="color: var(--green-600);">Diseño Automático PDF Oficial</label>
         <div style="display:flex; gap:20px; margin-bottom: 15px; font-size:14px;">
           <label style="text-transform:none; font-weight:normal;"><input type="radio" name="orientacion" value="portrait" checked> Vertical</label>
           <label style="text-transform:none; font-weight:normal;"><input type="radio" name="orientacion" value="landscape"> Horizontal</label>
@@ -231,8 +272,39 @@
     <input type="text" id="new-nie" placeholder="NIE" style="width:100%; padding:10px; margin-bottom:10px;">
     <input type="text" id="new-telefono" placeholder="Teléfono" style="width:100%; padding:10px; margin-bottom:15px;">
     <div style="display:flex; gap:10px;">
-      <button onclick="cerrarModal()" style="flex:1; padding:10px;">Cancelar</button>
+      <button onclick="cerrarModal('modal-alumno')" style="flex:1; padding:10px;">Cancelar</button>
       <button onclick="guardarAlumno()" id="btn-save-cloud" style="flex:1; padding:10px; background:var(--blue-600); color:white; border:none; border-radius:6px;">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-docente">
+  <div class="modal">
+    <h3 style="color: var(--blue-800); margin-bottom: 15px;">Registrar Nuevo Docente</h3>
+    <input type="text" id="new-docente-nombre" placeholder="Nombre completo del docente" style="width:100%; padding:10px; margin-bottom:10px;">
+    
+    <select id="new-docente-grado" style="width:100%; padding:10px; margin-bottom:10px;">
+      <option value="">-- Grado Asignado --</option>
+      <option value="1° General">1° General</option>
+      <option value="1° Adm. Contable">1° Adm. Contable</option>
+      <option value="1° S. Eléctricos">1° S. Eléctricos</option>
+      <option value="2° General">2° General</option>
+      <option value="2° Adm. Contable">2° Adm. Contable</option>
+      <option value="2° Sist. Eléctricos">2° Sist. Eléctricos</option>
+      <option value="3° Adm. Contable">3° Adm. Contable</option>
+      <option value="3° Sist. Eléctricos">3° Sist. Eléctricos</option>
+    </select>
+    
+    <select id="new-docente-seccion" style="width:100%; padding:10px; margin-bottom:15px;">
+      <option value="">-- Sección Asignada --</option>
+      <option value='"A"'>"A"</option>
+      <option value='"B"'>"B"</option>
+      <option value="Única">Única</option>
+    </select>
+
+    <div style="display:flex; gap:10px;">
+      <button onclick="cerrarModal('modal-docente')" style="flex:1; padding:10px;">Cancelar</button>
+      <button onclick="guardarNuevoDocente()" id="btn-save-doc" style="flex:1; padding:10px; background:#5F5E5A; color:white; border:none; border-radius:6px;">Guardar</button>
     </div>
   </div>
 </div>
@@ -246,6 +318,7 @@
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwL2huKwIXPI2xVLo1M_Z7rEaXa3Wdgx6boUFj0CiaSVyVwtOV8HxyShrnxMtzmp0qy/exec";
 
 let baseDatosAlumnos = [];
+let baseDatosDocentes = [];
 let alumnosFiltrados = [];
 let estadoSeleccion = true;
 let sistemaEnMantenimiento = true;
@@ -263,26 +336,149 @@ async function chequearMantenimientoNube() {
       document.getElementById("pantalla-mantenimiento").style.display = 'flex';
       document.getElementById("header-principal").style.display = 'none';
       document.getElementById("container-principal").style.display = 'none';
+      document.getElementById("modal-inicio-login").classList.remove('open');
+      document.getElementById("modal-inicio-dropdown").classList.remove('open');
       document.getElementById("mantenimiento-titulo").innerText = "SITIO EN MANTENIMIENTO";
       document.getElementById("mantenimiento-texto").innerText = "SISTEMA BLOQUEADO. POR FAVOR NO UTILIZAR.";
     } else {
       sistemaEnMantenimiento = false;
       document.getElementById('pantalla-mantenimiento').style.display = 'none';
-      document.getElementById('header-principal').style.display = 'flex';
-      document.getElementById('container-principal').style.display = 'block';
+      document.getElementById("modal-inicio-login").classList.add('open');
       inicializarBaseDatos();
     }
   } catch (error) {
     document.getElementById("mantenimiento-titulo").innerText = "ERROR DE CONEXIÓN";
     document.getElementById("mantenimiento-texto").innerText = "Revise su internet o enlace de base de datos.";
     document.getElementById('pantalla-mantenimiento').style.display = 'flex';
-    document.getElementById('header-principal').style.display = 'none';
-    document.getElementById('container-principal').style.display = 'none';
   }
 }
 
-// Reemplazamos la llamada inicial para que primero chequee si está bloqueado
 window.onload = chequearMantenimientoNube;
+
+// --- LÓGICA DE LOGIN Y MULTI-CLIC ---
+let loginClicks = 0;
+let loginTimer;
+
+function handleLoginClick(e) {
+  if(e) e.preventDefault();
+  loginClicks++;
+  clearTimeout(loginTimer);
+  
+  if (loginClicks >= 4) {
+    loginClicks = 0;
+    let pass = prompt("🔐 Acceso Administrador Sub-Dirección:");
+    if (pass === "1234") {
+      document.getElementById("modal-inicio-login").classList.remove('open');
+      document.getElementById('header-principal').style.display = 'flex';
+      document.getElementById('container-principal').style.display = 'block';
+      cambiarVista('subdireccion');
+    } else {
+      if(pass !== null) alert("❌ Contraseña incorrecta.");
+    }
+    return;
+  }
+  
+  loginTimer = setTimeout(() => {
+    if (loginClicks > 0 && loginClicks < 4) {
+      loginClicks = 0;
+      ejecutarLogin();
+    }
+  }, 300); 
+}
+
+function ejecutarLogin() {
+  const userStr = document.getElementById("login-username").value.trim().toLowerCase();
+  
+  if (userStr === "") {
+    alert("⚠️ Por favor ingrese un usuario.");
+    return;
+  }
+  
+  if (userStr === "12") {
+    document.getElementById("modal-inicio-login").classList.remove('open');
+    document.getElementById("modal-inicio-dropdown").classList.add('open');
+    return;
+  }
+  
+  if (userStr === "invitado") {
+    document.getElementById("docente-nombre").value = "";
+    desbloquearInterfazMain();
+    return;
+  }
+  
+  const docenteEncontrado = baseDatosDocentes.find(d => d.nombre.toLowerCase().includes(userStr));
+  
+  if (docenteEncontrado) {
+    document.getElementById("docente-nombre").value = docenteEncontrado.nombre;
+    
+    if(docenteEncontrado.grado && docenteEncontrado.seccion) {
+      document.getElementById("grado-select").value = docenteEncontrado.grado;
+      document.getElementById("seccion-select").value = docenteEncontrado.seccion;
+      cargarAlumnos();
+    }
+    desbloquearInterfazMain();
+  } else {
+    alert("❌ Usuario no encontrado. Intente con un nombre válido, o escriba 'invitado'.");
+  }
+}
+
+function entrarComoDocenteDropdown() {
+  const sel = document.getElementById("select-docente-inicio").value;
+  if (!sel) {
+    alert("Por favor, seleccione una opción.");
+    return;
+  }
+  
+  if (sel !== "Invitado") {
+    document.getElementById("docente-nombre").value = sel;
+    const docenteEncontrado = baseDatosDocentes.find(d => d.nombre === sel);
+    if(docenteEncontrado && docenteEncontrado.grado && docenteEncontrado.seccion) {
+      document.getElementById("grado-select").value = docenteEncontrado.grado;
+      document.getElementById("seccion-select").value = docenteEncontrado.seccion;
+      cargarAlumnos(); 
+    }
+  } else {
+    document.getElementById("docente-nombre").value = "";
+  }
+  
+  document.getElementById("modal-inicio-dropdown").classList.remove('open');
+  desbloquearInterfazMain();
+}
+
+function desbloquearInterfazMain() {
+  document.getElementById("modal-inicio-login").classList.remove('open');
+  document.getElementById("modal-inicio-dropdown").classList.remove('open');
+  document.getElementById('header-principal').style.display = 'flex';
+  document.getElementById('container-principal').style.display = 'block';
+}
+
+function pedirPasswordDocente() {
+  if(sistemaEnMantenimiento) return;
+  if (prompt("Ingrese contraseña de Administrador:") === "1234") { 
+    document.getElementById('modal-docente').classList.add('open'); 
+  } else { alert("Contraseña incorrecta."); } 
+}
+
+async function guardarNuevoDocente() {
+  if(sistemaEnMantenimiento) return;
+  const btn = document.getElementById('btn-save-doc');
+  const nom = document.getElementById('new-docente-nombre').value.trim();
+  const gra = document.getElementById('new-docente-grado').value;
+  const sec = document.getElementById('new-docente-seccion').value;
+  
+  if(!nom || !gra || !sec) return alert("Por favor complete todos los datos del docente.");
+  btn.disabled = true; btn.innerText = "Guardando...";
+  
+  try {
+    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "nuevo_docente", nombre: nom, grado: gra, seccion: sec }) });
+    alert("Docente registrado en la nube exitosamente.");
+    cerrarModal('modal-docente'); 
+    setTimeout(() => { location.reload(); }, 1000);
+  } catch(e) { 
+    alert("Error al guardar."); 
+  }
+  btn.disabled = false; btn.innerText = "Guardar";
+}
 
 // BOTÓN SECRETO (Doble clic en el logo)
 async function toggleMantenimiento() {
@@ -330,18 +526,39 @@ function cambiarVista(vista) {
     }
 }
 
-// --- CONEXIÓN A LA NUBE ---
+// --- CONEXIÓN A LA NUBE (ALUMNOS Y DOCENTES) ---
 async function inicializarBaseDatos() {
   if(sistemaEnMantenimiento) return;
   const cont = document.getElementById('tabla-alumnos');
+  const selDoc = document.getElementById('select-docente-inicio');
+  
   cont.innerHTML = '<div style="padding: 20px; text-align: center; color: #185FA5; font-weight:bold;">Sincronizando con la nube...</div>';
+  selDoc.innerHTML = '<option value="">Descargando lista...</option>';
+  
   try {
-    const response = await fetch(SCRIPT_URL);
-    if(!response.ok) throw new Error("Error de Red");
-    baseDatosAlumnos = await response.json();
+    const responseAlu = await fetch(SCRIPT_URL);
+    if(!responseAlu.ok) throw new Error("Error de Red");
+    baseDatosAlumnos = await responseAlu.json();
     baseDatosAlumnos.sort((a, b) => a.nombre.localeCompare(b.nombre));
     cargarAlumnos();
-  } catch (error) { cont.innerHTML = '<div style="padding: 20px; text-align: center; color: red;">Error de conexión. Verifica la URL de Google Script.</div>'; }
+    
+    const responseDoc = await fetch(SCRIPT_URL + "?tipo=lista_docentes");
+    baseDatosDocentes = await responseDoc.json();
+    
+    // Lista de docentes para el menú alternativo ("12")
+    let htmlDoc = `<option value="">-- Seleccionar --</option>`;
+    htmlDoc += `<option value="Invitado">👤 Entrar como Invitado</option>`;
+    
+    baseDatosDocentes.forEach(d => {
+      htmlDoc += `<option value="${d.nombre}">${d.nombre}</option>`;
+    });
+    
+    selDoc.innerHTML = htmlDoc;
+    
+  } catch (error) { 
+    cont.innerHTML = '<div style="padding: 20px; text-align: center; color: red;">Error de conexión. Verifica la URL de Google Script.</div>'; 
+    selDoc.innerHTML = '<option value="Invitado">Error de red - Entrar como Invitado</option>';
+  }
 }
 
 // --- VISTA SUB-DIRECCIÓN Y TOTALES ---
@@ -433,7 +650,7 @@ function cargarAlumnos() {
         <div style="font-weight: 500; font-size:13px;">${alumno.nombre}</div>
         <div><span class="badge ${alumno.sexo.toLowerCase()}">${alumno.sexo}</span></div>
         <div style="font-size: 13px;">${alumno.nie}</div>
-        <div style="font-size: 13px;">${alumno.telefono}</div>
+        <div style="font-size: 13px;">${alumno.telefono || 'N/A'}</div>
       </div>`;
   });
   contenedor.innerHTML = html;
@@ -604,7 +821,7 @@ async function generarPDF() {
   }
 }
 
-function cerrarModal() { document.getElementById('modal-alumno').classList.remove('open'); }
+function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
 
 async function guardarAlumno() {
   if(sistemaEnMantenimiento) return;
@@ -621,7 +838,7 @@ async function guardarAlumno() {
   try {
     await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(n) });
     alert("Guardado exitoso en la nube.");
-    cerrarModal(); 
+    cerrarModal('modal-alumno'); 
     setTimeout(inicializarBaseDatos, 1000);
   } catch(e) { alert("Error al guardar"); }
   b.disabled = false; b.innerText = "Guardar";
