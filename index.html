@@ -742,7 +742,7 @@ async function borrarReportes() {
   } catch(e) { btn.disabled = false; btn.innerText = "🗑️ Ejecutar Borrado"; }
 }
 
-// === CÓDIGO DE PDF ===
+// === CÓDIGO DE PDF CORREGIDO ===
 async function generarPDF() {
   if(sistemaEnMantenimiento) return;
   const docente = document.getElementById('docente-nombre').value.trim();
@@ -760,14 +760,20 @@ async function generarPDF() {
     else { ausentes.push(alumno); }
   });
 
-  const ahora = new Date(); const fechaStr = ahora.toLocaleDateString('es-ES'); const fechaArchivo = ahora.toLocaleDateString('es-ES').replace(/\//g, '-');
-  fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "asistencia", fecha: ahora, grado: grado, seccion: seccion, docente: docente, presentes: presentes.length, ausentes: ausentes.length, m: masc, f: fem }) });
+  const ahora = new Date(); 
+  const fechaStr = ahora.toLocaleDateString('es-ES'); 
+  const fechaArchivo = ahora.toLocaleDateString('es-ES').replace(/\//g, '-');
+  const secLimpia = seccion.replace(/"/g, '');
+
+  fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "asistencia", fecha: ahora, grado: grado, seccion: seccion, docente: docente, presentes: presentes.length, ausentes: ausentes.length, m: masc, f: fem }) }).catch(e => console.log(e));
 
   const pdfHtml = `
-    <div style="position: relative; background: white; padding: 0; overflow: hidden;">
-      <div style="position: absolute; top: 150px; left: 50%; transform: translateX(-50%); z-index: 1; opacity: 0.15;">
+    <div style="position: relative; background: white; padding: 0;">
+      
+      <div style="position: absolute; top: 150px; left: 0; width: 100%; text-align: center; z-index: 1; opacity: 0.15;">
         <img src="logo3.jpg" style="width: 400px; height: auto;" onerror="this.style.display='none';">
       </div>
+
       <div style="position: relative; z-index: 10; padding: 40px;">
         <div style="text-align: center; padding-top: 100px; padding-bottom: 200px;">
           <h1 style="color: #0C447C; font-size: 26px; margin-bottom: 10px; text-transform: uppercase;">Ministerio de Educación, Ciencia y Tecnología</h1>
@@ -781,40 +787,67 @@ async function generarPDF() {
             </div>
           </div>
         </div>
+        
         <div class="html2pdf__page-break"></div>
+        
         <div style="position: relative;">
           <div style="text-align: center; border-bottom: 3px solid #0C447C; padding-bottom: 15px; margin-bottom: 20px; position: relative; z-index: 5;">
             <h2 style="font-size: 18px; color: #0C447C; margin-bottom: 5px;">MINISTERIO DE EDUCACIÓN CIENCIA Y TECNOLOGÍA</h2>
             <h3 style="font-size: 16px; color: #2C2C2A; margin-bottom: 5px;">INSTITUTO NACIONAL DE MERCEDES UMAÑA</h3>
           </div>
+          
           <table style="width: 100%; font-size: 14px; margin-bottom: 20px; border: none; position: relative; z-index: 5;">
             <tr><td style="text-align: left; width: 33%; vertical-align: top;"><strong>Grado:</strong> ${grado} &nbsp; <strong>Secc:</strong> ${seccion}</td><td style="text-align: center; width: 34%; vertical-align: top;"><strong>Docente:</strong> ${docente}</td><td style="text-align: right; width: 33%; vertical-align: top;"><strong>Fecha:</strong> ${fechaStr}</td></tr>
           </table>
+          
           <div style="background-color: rgba(255,255,255,0.8); border: 1px solid #B5D4F4; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; position: relative; z-index: 5;">
             <p><strong>Asistencias: ${presentes.length}</strong> | M: <strong>${masc}</strong> | F: <strong>${fem}</strong> | Ausencias: ${ausentes.length}</p>
           </div>
+          
           <h4 style="color: #1D9E75; border-bottom: 2px solid #1D9E75; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px; page-break-after: avoid; position: relative; z-index: 5;">ESTUDIANTES PRESENTES</h4>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; page-break-before: auto; position: relative; z-index: 5; background-color: rgba(255,255,255,0.75);">
             <colgroup><col style="width: 8%;"><col style="width: 45%;"><col style="width: 10%;"><col style="width: 17%;"><col style="width: 20%;"></colgroup>
             ${presentes.length > 0 ? presentes.map(a => `<tr style="page-break-inside: avoid;"><td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #1D9E75; font-weight: bold;">✓</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td><td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td></tr>`).join('') : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
           </table>
+          
           <h4 style="color: #E24B4A; border-bottom: 2px solid #E24B4A; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px; page-break-after: avoid; position: relative; z-index: 5;">ESTUDIANTES AUSENTES</h4>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px; font-size: 13px; page-break-before: auto; position: relative; z-index: 5; background-color: rgba(255,255,255,0.75);">
             <colgroup><col style="width: 8%;"><col style="width: 45%;"><col style="width: 10%;"><col style="width: 17%;"><col style="width: 20%;"></colgroup>
             ${ausentes.length > 0 ? ausentes.map(a => `<tr style="page-break-inside: avoid;"><td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #E24B4A; font-weight: bold;">✗</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td><td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td></tr>`).join('') : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
           </table>
+          
           <div style="text-align: center; margin-top: 50px; padding-top: 40px; border-top: 2px dashed #ddd; page-break-inside: avoid; position: relative; z-index: 10;">
             <img src="logo5.jpg" style="width: 400px; height: auto;" onerror="this.style.display='none';">
           </div>
-        </div> </div>
+          
+        </div> 
+      </div>
     </div>`;
 
-  const containerHTML = document.getElementById('pdf-content'); containerHTML.innerHTML = pdfHtml;
+  const containerHTML = document.getElementById('pdf-content'); 
+  containerHTML.innerHTML = pdfHtml;
+  
   await new Promise(resolve => setTimeout(resolve, 1000));
-  const opt = { margin: 15, filename: `Asistencia ${grado} ${secLimpia} - ${fechaArchivo} - ${docente}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'letter', orientation: orientacion }, pagebreak: { mode: ['css', 'legacy'] } };
-  try { window.scrollTo(0, 0); await html2pdf().set(opt).from(containerHTML).save(); } catch (error) { alert("❌ Error al generar PDF."); } finally { btn.disabled = false; btn.innerText = "📥 Generar PDF y Guardar Reporte"; }
+  
+  const opt = { 
+    margin: 15, 
+    filename: `Asistencia ${grado} ${secLimpia} - ${fechaArchivo} - ${docente}.pdf`, 
+    image: { type: 'jpeg', quality: 0.98 }, 
+    html2canvas: { scale: 2, useCORS: true }, 
+    jsPDF: { unit: 'mm', format: 'letter', orientation: orientacion }, 
+    pagebreak: { mode: ['css', 'legacy'] } 
+  };
+  
+  try { 
+    window.scrollTo(0, 0); 
+    await html2pdf().set(opt).from(containerHTML).save(); 
+  } catch (error) { 
+    alert("❌ Error al generar PDF."); 
+  } finally { 
+    btn.disabled = false; 
+    btn.innerText = "📥 Generar PDF y Guardar Reporte"; 
+  }
 }
-
 function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
 async function guardarAlumno() {
   const n = { tipo_post: "alumno", grado: document.getElementById('grado-select').value, seccion: document.getElementById('seccion-select').value, nombre: document.getElementById('new-nombre').value, sexo: document.getElementById('new-sexo').value, nie: document.getElementById('new-nie').value, telefono: document.getElementById('new-telefono').value };
