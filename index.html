@@ -77,13 +77,6 @@
     display: none; position: fixed; inset: 0; background-color: rgba(250, 250, 250, 0.98); 
     z-index: 99999; flex-direction: column; justify-content: center; align-items: center; text-align: center;
   }
-
-  /* ESTILO PARA EL CAPTCHA VISUAL */
-  .captcha-box {
-    display: flex; align-items: center; justify-content: space-between; 
-    border: 1px solid var(--gray-100); border-radius: 4px; padding: 12px 15px; 
-    margin-bottom: 15px; background: #fafafa;
-  }
 </style>
 </head>
 <body>
@@ -116,7 +109,7 @@
     <label style="text-align: left;">Contraseña</label>
     <input type="password" id="login-password" placeholder="" style="width:100%; padding:12px; margin-bottom:15px; border:1px solid var(--gray-100); border-radius:8px;">
     
-    <div class="captcha-box">
+    <div style="display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--gray-100); border-radius: 4px; padding: 12px 15px; margin-bottom: 15px; background: #fafafa;">
       <div style="display: flex; align-items: center; gap: 10px;">
         <input type="checkbox" id="login-robot-check" style="width: 24px; height: 24px; cursor: pointer; accent-color: var(--green-600);">
         <label style="margin: 0; font-size: 14px; color: var(--gray-900); font-weight: 500; cursor: pointer; text-transform: none;" for="login-robot-check">No soy un robot</label>
@@ -124,7 +117,7 @@
       <div style="font-size: 22px;">🤖</div>
     </div>
     
-    <p style="text-align: center; font-size: 11px; color: var(--gray-600); margin-bottom: 10px;">--------- ------------------ ---------</p>
+    <p style="text-align: center; font-size: 11px; color: var(--gray-600); margin-bottom: 10px;">--------- PRESIONE 2 VECES PARA MENÚ ---------</p>
     
     <button id="btn-ingresar-login" onclick="handleLoginClick(event)" style="width: 100%; padding: 12px; background: var(--blue-600); color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer;">Ingresar</button>
   </div>
@@ -140,7 +133,7 @@
     </select>
     
     <div style="display:flex; gap:10px;">
-      <button onclick="document.getElementById('modal-inicio-dropdown').classList.remove('open'); document.getElementById('modal-inicio-login').classList.add('open');" style="flex:1; padding: 12px; background: var(--gray-600); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Volver</button>
+      <button onclick="verificarVueltaAlLogin()" style="flex:1; padding: 12px; background: var(--gray-600); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Volver</button>
       <button onclick="entrarComoDocenteDropdown()" style="flex:1; padding: 12px; background: var(--blue-600); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Ingresar</button>
     </div>
   </div>
@@ -228,27 +221,26 @@
 
   <div id="view-subdireccion" class="view-section">
     <div class="panel">
-      <h2 style="color: var(--blue-800); margin-bottom: 10px;">
+      <h2 style="color: var(--blue-800); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
         <button onclick="window.open('https://docs.google.com/spreadsheets/d/1kjzjLTs4YViqJMPVPvYZjwj9pf-q0h_PNNfCTlA7aWE/edit?usp=sharing', '_blank')" class="btn-resumen">
           Resumen (Sub-Dirección)
         </button>
-
-        <style>
-          .btn-resumen {
-            font-size: 20px;
-            padding: 14px 28px;
-            cursor: pointer;
-            background-color: #1a73e8;
-            color: #ffffff;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            transition: background-color 0.2s ease, transform 0.1s ease;
-          }
-          .btn-resumen:hover { background-color: #1558b0; }
-          .btn-resumen:active { transform: scale(0.97); }
-        </style>
       </h2>
+
+      <style>
+        .btn-resumen { font-size: 20px; padding: 14px 28px; cursor: pointer; background-color: #1a73e8; color: #ffffff; border: none; border-radius: 8px; font-weight: 600; transition: background-color 0.2s ease, transform 0.1s ease; }
+        .btn-resumen:hover { background-color: #1558b0; }
+        .btn-resumen:active { transform: scale(0.97); }
+      </style>
+      
+      <div style="background: var(--gray-50); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--gray-100);">
+        <label style="color: var(--blue-800); margin-bottom: 10px; font-size: 14px;">📅 Filtrar Asistencia por Fecha</label>
+        <div style="display: flex; gap: 10px;">
+          <input type="date" id="filtro-fecha-sub" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--gray-100); outline: none;">
+          <button onclick="filtrarReportesSub()" style="padding: 10px 15px; border-radius: 8px; background: var(--blue-600); color: white; font-weight: bold; border: none; cursor: pointer;">🔍 Filtrar</button>
+          <button onclick="limpiarFiltroSub()" style="padding: 10px 15px; border-radius: 8px; background: var(--gray-600); color: white; font-weight: bold; border: none; cursor: pointer;">📋 Ver Todo</button>
+        </div>
+      </div>
       
       <div id="sub-lista-reportes">
         <div style="padding: 20px; text-align: center;">Cargando reportes...</div>
@@ -256,10 +248,20 @@
       
       <div id="resumen-estadisticas"></div>
 
-      <button onclick="cargarReportesSub()" style="width:100%; margin-top:15px; padding:12px; border-radius:8px; border:1px solid var(--blue-600); color:var(--blue-600); background:white; font-weight:bold; cursor:pointer;">🔄 Actualizar Lista y Totales</button>
+      <button onclick="cargarReportesSub(true)" style="width:100%; margin-top:15px; padding:12px; border-radius:8px; border:1px solid var(--blue-600); color:var(--blue-600); background:white; font-weight:bold; cursor:pointer;">🔄 Refrescar Nube</button>
       
       <div style="margin-top: 25px; border-top: 2px dashed var(--gray-100); padding-top: 15px;">
-        <button onclick="accederLimpieza()" style="width: 100%; margin-top: 20px; padding: 12px; border-radius: 8px; border: 2px solid var(--red-600); background: white; color: var(--red-600); font-weight: bold; cursor: pointer;">
+        <h3 style="color: var(--blue-800); font-size: 16px; margin-bottom: 15px;">⚙️ Configuración del Sistema</h3>
+        
+        <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <label style="color: var(--gray-900); margin-bottom: 5px; font-size: 14px; text-transform: none;">🔐 Pantalla de Inicio de Sesión</label>
+            <p style="font-size: 12px; color: var(--gray-600); margin: 0;">Si se apaga, todos entran directo al menú de docentes.</p>
+          </div>
+          <button id="btn-toggle-login" onclick="cambiarEstadoLogin()" style="padding: 10px 15px; border-radius: 8px; background: var(--gray-400); color: white; font-weight: bold; border: none; cursor: pointer;">⏳</button>
+        </div>
+
+        <button onclick="accederLimpieza()" style="width: 100%; margin-top: 10px; padding: 12px; border-radius: 8px; border: 2px solid var(--red-600); background: white; color: var(--red-600); font-weight: bold; cursor: pointer;">
           ⚠️ Acceder a la limpieza de registros
         </button>
 
@@ -267,19 +269,13 @@
           <label style="color: var(--red-600); font-size: 14px; font-weight: bold; margin-bottom: 10px; display: block;">
             ⚠️ ZONA DE PELIGRO: LIMPIAR REGISTROS DE LA NUBE
           </label>
-          
           <select id="delete-rango" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1.5px solid var(--red-600); color: var(--red-600); border-radius: 8px; font-weight: bold; outline: none;">
             <option value="hoy">Borrar reportes de HOY</option>
             <option value="all">Borrar TODO el historial</option>
           </select>
-
           <div style="display:flex; gap:10px;">
-            <button id="btn-delete-reportes" onclick="borrarReportes()" style="width:35%; background:var(--red-600); color:white; border:none; border-radius:8px; font-weight:bold; padding:12px; cursor:pointer;">
-              🗑️ Ejecutar Borrado
-            </button>
-            <button onclick="regresarLugarSeguro()" style="width:65%; background:var(--green-600); color:white; border:none; border-radius:8px; font-weight:bold; padding:12px; cursor:pointer;">
-              ✅ Regresar a lugar seguro
-            </button>
+            <button id="btn-delete-reportes" onclick="borrarReportes()" style="width:35%; background:var(--red-600); color:white; border:none; border-radius:8px; font-weight:bold; padding:12px; cursor:pointer;">🗑️ Borrar</button>
+            <button onclick="regresarLugarSeguro()" style="width:65%; background:var(--green-600); color:white; border:none; border-radius:8px; font-weight:bold; padding:12px; cursor:pointer;">✅ Regresar</button>
           </div>
         </div>
       </div>
@@ -354,9 +350,11 @@ let baseDatosDocentes = [];
 let alumnosFiltrados = [];
 let estadoSeleccion = true;
 let sistemaEnMantenimiento = true;
+let todosLosReportes = []; 
+let loginRequerido = true; // NUEVA VARIABLE PARA EL INTERRUPTOR
 
 // =========================================================================
-// NUEVO CÓDIGO: VERIFICAR Y ACTIVAR APAGÓN GLOBAL CONECTADO A LA NUBE
+// NUEVO CÓDIGO: VERIFICAR ESTADOS CONECTADO A LA NUBE
 // =========================================================================
 async function chequearMantenimientoNube() {
   try {
@@ -375,7 +373,25 @@ async function chequearMantenimientoNube() {
     } else {
       sistemaEnMantenimiento = false;
       document.getElementById('pantalla-mantenimiento').style.display = 'none';
-      document.getElementById("modal-inicio-login").classList.add('open');
+      
+      // ESTABLECER SI EL LOGIN ESTÁ ENCENDIDO O APAGADO
+      loginRequerido = data.login_habilitado;
+      
+      if (loginRequerido) {
+        document.getElementById("modal-inicio-login").classList.add('open');
+      } else {
+        // SI ESTÁ APAGADO, SALTA DIRECTO AL MENÚ ALTERNATIVO
+        document.getElementById("modal-inicio-login").classList.remove('open');
+        document.getElementById("modal-inicio-dropdown").classList.add('open');
+      }
+      
+      // Actualizar visualmente el botón en el panel de administrador
+      const btnToggle = document.getElementById("btn-toggle-login");
+      if (btnToggle) {
+        btnToggle.innerText = loginRequerido ? "Desactivar Login" : "Activar Login";
+        btnToggle.style.background = loginRequerido ? "var(--red-600)" : "var(--green-600)";
+      }
+
       inicializarBaseDatos();
     }
   } catch (error) {
@@ -424,20 +440,13 @@ function handleLoginClick(e) {
     loginClicks = 0; 
     
     if (clicsRegistrados === 2) {
-      // SOLO VALIDA EL CAPTCHA (Checkbox)
       const isRobotChecked = document.getElementById("login-robot-check").checked;
+      if (!isRobotChecked) return alert("🤖 Por favor, confirme que no es un robot marcando la casilla.");
       
-      if (!isRobotChecked) {
-        alert("🤖 Por favor, confirme que no es un robot marcando la casilla.");
-        return;
-      }
-      
-      // AL DAR 2 CLICS Y TENER EL CAPTCHA MARCADO: Pasa directo sin pedir contraseña
       document.getElementById("modal-inicio-login").classList.remove('open');
       document.getElementById("modal-inicio-dropdown").classList.add('open');
     } 
     else if (clicsRegistrados === 1 || clicsRegistrados === 3) {
-      // Al dar 1 clic normal, SÍ evalúa todo (usuario, captcha y contraseña 89)
       ejecutarLogin();
     }
   }, 300); 
@@ -448,27 +457,15 @@ function ejecutarLogin() {
   const passStr = document.getElementById("login-password").value;
   const isRobotChecked = document.getElementById("login-robot-check").checked;
   
-  if (userStr === "") {
-    alert("⚠️ Por favor ingrese un usuario.");
-    return;
-  }
-  
-  if (!isRobotChecked) {
-    alert("🤖 Por favor, confirme que no es un robot marcando la casilla.");
-    return;
-  }
-
-  if (passStr !== PASS_LOGIN) {
-    alert("❌ Contraseña de acceso incorrecta.");
-    return;
-  }
+  if (userStr === "") return alert("⚠️ Por favor ingrese un usuario.");
+  if (!isRobotChecked) return alert("🤖 Por favor, confirme que no es un robot marcando la casilla.");
+  if (passStr !== PASS_LOGIN) return alert("❌ Contraseña de acceso incorrecta.");
   
   if (userStr === "12") {
     document.getElementById("modal-inicio-login").classList.remove('open');
     document.getElementById("modal-inicio-dropdown").classList.add('open');
     return;
   }
-  
   if (userStr === "invitado") {
     document.getElementById("docente-nombre").value = "";
     desbloquearInterfazMain();
@@ -476,10 +473,8 @@ function ejecutarLogin() {
   }
   
   const docenteEncontrado = baseDatosDocentes.find(d => d.nombre.toLowerCase().includes(userStr));
-  
   if (docenteEncontrado) {
     document.getElementById("docente-nombre").value = docenteEncontrado.nombre;
-    
     if(docenteEncontrado.grado && docenteEncontrado.seccion) {
       document.getElementById("grado-select").value = docenteEncontrado.grado;
       document.getElementById("seccion-select").value = docenteEncontrado.seccion;
@@ -491,12 +486,21 @@ function ejecutarLogin() {
   }
 }
 
+// NUEVO: CONTROLAR EL BOTÓN "VOLVER" DEL DROPDOWN SEGÚN SI EL LOGIN ESTÁ ACTIVO O NO
+function verificarVueltaAlLogin() {
+  document.getElementById('modal-inicio-dropdown').classList.remove('open');
+  if (loginRequerido) {
+    document.getElementById('modal-inicio-login').classList.add('open');
+  } else {
+    // Si el login está desactivado, no tiene sentido "volver", lo ideal es recargar o mantenerlo ahí
+    document.getElementById('modal-inicio-dropdown').classList.add('open');
+    alert("ℹ️ La pantalla de inicio de sesión está desactivada por el administrador.");
+  }
+}
+
 function entrarComoDocenteDropdown() {
   const sel = document.getElementById("select-docente-inicio").value;
-  if (!sel) {
-    alert("Por favor, seleccione una opción.");
-    return;
-  }
+  if (!sel) return alert("Por favor, seleccione una opción.");
   
   if (sel !== "Invitado") {
     document.getElementById("docente-nombre").value = sel;
@@ -540,46 +544,50 @@ async function guardarNuevoDocente() {
   
   try {
     await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "nuevo_docente", nombre: nom, grado: gra, seccion: sec }) });
-    alert("Docente registrado en la nube exitosamente.");
-    cerrarModal('modal-docente'); 
-    setTimeout(() => { location.reload(); }, 1000);
-  } catch(e) { 
-    alert("Error al guardar."); 
-  }
+    alert("Docente registrado exitosamente.");
+    cerrarModal('modal-docente'); setTimeout(() => { location.reload(); }, 1000);
+  } catch(e) { alert("Error al guardar."); }
   btn.disabled = false; btn.innerText = "Guardar";
 }
 
-// BOTÓN SECRETO (Doble clic en el logo)
 async function toggleMantenimiento() {
-  const password = prompt("ADVERTENCIA: ¿Deseas activar/desactivar el Apagón Global en la nube?\nIngresa clave maestra:");
-  if (password !== PASS_ADMIN) {
-    alert("❌ Clave incorrecta. Acceso Denegado.");
-    return;
-  }
-
+  const password = prompt("ADVERTENCIA: ¿Deseas activar/desactivar el Apagón Global?\nIngresa clave maestra:");
+  if (password !== PASS_ADMIN) return alert("❌ Clave incorrecta. Acceso Denegado.");
   document.body.style.cursor = "wait";
   try {
-    await fetch(SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: JSON.stringify({ tipo_post: "toggle_mantenimiento", password: password })
-    });
-    alert("📡 Orden enviada a la Nube. El sistema se reiniciará para todos.");
-    setTimeout(() => { location.reload(); }, 1500); 
-  } catch (e) {
-    alert("❌ Error de red al intentar mandar orden.");
-  }
+    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "toggle_mantenimiento", password: password }) });
+    alert("📡 Orden enviada a la Nube."); setTimeout(() => { location.reload(); }, 1500); 
+  } catch (e) { alert("❌ Error de red."); }
   document.body.style.cursor = "default";
 }
 
-// --- SEGURIDAD Y VISTAS ---
+// --- NUEVA FUNCIÓN: CAMBIAR ESTADO DEL LOGIN EN LA NUBE ---
+async function cambiarEstadoLogin() {
+  if(sistemaEnMantenimiento) return;
+  const password = prompt("Seguridad: Ingrese la contraseña de administrador para cambiar esta configuración:");
+  if (password !== PASS_ADMIN) return alert("❌ Contraseña incorrecta.");
+
+  const btn = document.getElementById("btn-toggle-login");
+  btn.disabled = true; btn.innerText = "⏳...";
+
+  try {
+    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "toggle_login", password: password }) });
+    alert("✅ Configuración de inicio de sesión actualizada para todos los dispositivos.");
+    setTimeout(() => { location.reload(); }, 1000); 
+  } catch (e) {
+    alert("❌ Error de red.");
+    btn.disabled = false;
+    btn.innerText = loginRequerido ? "Desactivar Login" : "Activar Login";
+  }
+}
+
 function pedirPasswordSub() { 
   if(sistemaEnMantenimiento) return;
-  if (prompt("Ingrese contraseña de Sub-Dirección:") === PASS_ADMIN) { cambiarVista('subdireccion'); } else { alert("Contraseña incorrecta."); } 
+  if (prompt("Contraseña:") === PASS_ADMIN) cambiarVista('subdireccion'); else alert("Incorrecta."); 
 }
 function pedirPasswordNuevo() { 
   if(sistemaEnMantenimiento) return;
-  if (prompt("Ingrese contraseña de Administrador:") === PASS_ADMIN) { document.getElementById('modal-alumno').classList.add('open'); } else { alert("Contraseña incorrecta."); } 
+  if (prompt("Contraseña:") === PASS_ADMIN) document.getElementById('modal-alumno').classList.add('open'); else alert("Incorrecta."); 
 }
 
 function cambiarVista(vista) {
@@ -588,16 +596,13 @@ function cambiarVista(vista) {
     if(vista === 'subdireccion') {
         document.getElementById('view-subdireccion').classList.add('view-active');
         document.getElementById('btn-volver-asist').style.display = 'block';
-        cargarReportesSub();
+        cargarReportesSub(false);
     } else {
         document.getElementById('view-docente').classList.add('view-active');
         document.getElementById('btn-volver-asist').style.display = 'none';
     }
 }
 
-// =====================================================================
-// OPTIMIZACIÓN: Promise.all PARA CORTAR EL DELAY A LA MITAD
-// =====================================================================
 async function inicializarBaseDatos() {
   if(sistemaEnMantenimiento) return;
   const cont = document.getElementById('tabla-alumnos');
@@ -607,98 +612,99 @@ async function inicializarBaseDatos() {
   selDoc.innerHTML = '<option value="">Descargando lista...</option>';
   
   try {
-    const [responseAlu, responseDoc] = await Promise.all([
-      fetch(SCRIPT_URL),
-      fetch(SCRIPT_URL + "?tipo=lista_docentes")
-    ]);
-
-    if(!responseAlu.ok || !responseDoc.ok) throw new Error("Error de Red");
+    const [responseAlu, responseDoc] = await Promise.all([ fetch(SCRIPT_URL), fetch(SCRIPT_URL + "?tipo=lista_docentes") ]);
+    if(!responseAlu.ok || !responseDoc.ok) throw new Error("Error");
 
     baseDatosAlumnos = await responseAlu.json();
     baseDatosAlumnos.sort((a, b) => a.nombre.localeCompare(b.nombre));
     cargarAlumnos();
     
     baseDatosDocentes = await responseDoc.json();
-    
-    let htmlDoc = `<option value="">-- Seleccionar --</option>`;
-    htmlDoc += `<option value="Invitado">👤 Entrar como Invitado</option>`;
-    
-    baseDatosDocentes.forEach(d => {
-      htmlDoc += `<option value="${d.nombre}">${d.nombre}</option>`;
-    });
+    let htmlDoc = `<option value="">-- Seleccionar --</option><option value="Invitado">👤 Entrar como Invitado</option>`;
+    baseDatosDocentes.forEach(d => { htmlDoc += `<option value="${d.nombre}">${d.nombre}</option>`; });
     selDoc.innerHTML = htmlDoc;
     
   } catch (error) { 
-    cont.innerHTML = '<div style="padding: 20px; text-align: center; color: red;">Error de conexión. Verifica la URL de Google Script.</div>'; 
-    selDoc.innerHTML = '<option value="Invitado">Error de red - Entrar como Invitado</option>';
+    cont.innerHTML = '<div style="padding: 20px; text-align: center; color: red;">Error de conexión.</div>'; 
+    selDoc.innerHTML = '<option value="Invitado">Error de red - Invitado</option>';
   }
 }
 
-// --- VISTA SUB-DIRECCIÓN Y TOTALES ---
-async function cargarReportesSub() {
+async function cargarReportesSub(fuerzarRefresco = false) {
     if(sistemaEnMantenimiento) return;
     const container = document.getElementById('sub-lista-reportes');
     const stats = document.getElementById('resumen-estadisticas');
-    container.innerHTML = "Sincronizando reportes...";
-    stats.innerHTML = "";
+    
+    if(todosLosReportes.length > 0 && !fuerzarRefresco) { filtrarReportesSub(); return; }
+
+    container.innerHTML = "Sincronizando reportes desde la nube..."; stats.innerHTML = "";
 
     try {
         const response = await fetch(SCRIPT_URL + "?tipo=reportes");
-        let reportes = await response.json();
+        todosLosReportes = await response.json();
         
-        let totalGeneral = baseDatosAlumnos.length;
-        let totalM = baseDatosAlumnos.filter(a => a.sexo === 'M').length;
-        let totalF = baseDatosAlumnos.filter(a => a.sexo === 'F').length;
+        const hoy = new Date();
+        const fechaLocal = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
+        document.getElementById('filtro-fecha-sub').value = fechaLocal;
 
-        if(!reportes || reportes.length === 0) { 
-            container.innerHTML = "<div style='color:red; text-align:center;'>No hay registros.</div>"; 
-            stats.innerHTML = generarHTMLResumen(totalGeneral, totalM, totalF, 0, 0, 0, 0);
-            return; 
-        }
-        
-        let html = `<table class="sub-table">
-                      <tr style="background-color: var(--blue-800); color: white;">
-                        <th>Fecha</th><th>Grado/Secc</th><th>Docente</th><th style="text-align:center;">M</th><th style="text-align:center;">F</th><th style="text-align:center;">Ausentes</th><th style="text-align:center;">Total Asist.</th>
-                      </tr>`;
-                      
-        let sumaPres = 0, sumAus = 0, sumM = 0, sumF = 0;
-
-        reportes.reverse().slice(0, 50).forEach(r => {
-            const fechaFormateada = new Date(r.fecha).toLocaleDateString('es-ES');
-            html += `<tr>
-                        <td>${fechaFormateada}</td><td>${r.grado} ${r.seccion}</td><td style="font-size: 11px;">${r.docente}</td>
-                        <td style="text-align:center;">${r.m || 0}</td><td style="text-align:center;">${r.f || 0}</td>
-                        <td style="text-align:center; font-weight:bold; color:#E24B4A;">${r.ausentes || 0}</td>
-                        <td style="text-align:center; font-weight:bold; color:#1D9E75;">${r.presentes || 0}</td>
-                     </tr>`;
-            
-            sumaPres += parseInt(r.presentes) || 0;
-            sumAus += parseInt(r.ausentes) || 0;
-            sumM += parseInt(r.m) || 0;
-            sumF += parseInt(r.f) || 0;
-        });
-        html += `</table>`;
-        container.innerHTML = html;
-        
-        stats.innerHTML = generarHTMLResumen(totalGeneral, totalM, totalF, sumaPres, sumAus, sumM, sumF);
-
+        filtrarReportesSub();
     } catch (e) { container.innerHTML = "Error al cargar reportes."; }
+}
+
+function limpiarFiltroSub() {
+    document.getElementById('filtro-fecha-sub').value = '';
+    filtrarReportesSub();
+}
+
+function filtrarReportesSub() {
+    const fechaFiltro = document.getElementById('filtro-fecha-sub').value;
+    let reportesAMostrar = todosLosReportes;
+
+    if (fechaFiltro) {
+        const [fYear, fMonth, fDay] = fechaFiltro.split('-');
+        reportesAMostrar = todosLosReportes.filter(r => {
+            const rDate = new Date(r.fecha);
+            return rDate.getFullYear() == fYear && String(rDate.getMonth() + 1).padStart(2, '0') == fMonth && String(rDate.getDate()).padStart(2, '0') == fDay;
+        });
+    }
+    renderizarReportesSub(reportesAMostrar);
+}
+
+function renderizarReportesSub(reportes) {
+    const container = document.getElementById('sub-lista-reportes');
+    const stats = document.getElementById('resumen-estadisticas');
+
+    let tGeneral = baseDatosAlumnos.length, tM = baseDatosAlumnos.filter(a => a.sexo === 'M').length, tF = baseDatosAlumnos.filter(a => a.sexo === 'F').length;
+
+    if(!reportes || reportes.length === 0) { 
+        container.innerHTML = "<div style='color:var(--red-600); text-align:center; padding:20px; font-weight:bold;'>No hay reportes de asistencia para esta fecha.</div>"; 
+        stats.innerHTML = generarHTMLResumen(tGeneral, tM, tF, 0, 0, 0, 0); return; 
+    }
+    
+    let html = `<table class="sub-table"><tr style="background-color: var(--blue-800); color: white;"><th>Fecha</th><th>Grado/Secc</th><th>Docente</th><th style="text-align:center;">M</th><th style="text-align:center;">F</th><th style="text-align:center;">Ausentes</th><th style="text-align:center;">Total Asist.</th></tr>`;
+    let sumaPres = 0, sumAus = 0, sumM = 0, sumF = 0;
+
+    [...reportes].reverse().slice(0, 100).forEach(r => {
+        const fechaFormateada = new Date(r.fecha).toLocaleDateString('es-ES');
+        html += `<tr><td>${fechaFormateada}</td><td>${r.grado} ${r.seccion}</td><td style="font-size: 11px;">${r.docente}</td><td style="text-align:center;">${r.m || 0}</td><td style="text-align:center;">${r.f || 0}</td><td style="text-align:center; font-weight:bold; color:#E24B4A;">${r.ausentes || 0}</td><td style="text-align:center; font-weight:bold; color:#1D9E75;">${r.presentes || 0}</td></tr>`;
+        sumaPres += parseInt(r.presentes) || 0; sumAus += parseInt(r.ausentes) || 0; sumM += parseInt(r.m) || 0; sumF += parseInt(r.f) || 0;
+    });
+    container.innerHTML = html + `</table>`;
+    stats.innerHTML = generarHTMLResumen(tGeneral, tM, tF, sumaPres, sumAus, sumM, sumF);
 }
 
 function generarHTMLResumen(tGeneral, tM, tF, sPres, sAus, sM, sF) {
     return `
     <div style="margin-top: 25px; padding: 20px; background: var(--blue-50); border: 2px solid var(--blue-600); border-radius: 10px;">
         <h3 style="color: var(--blue-800); font-size: 16px; margin-bottom: 15px; text-transform: uppercase; text-align: center;">📊 Cuadro Resumen de Estadísticas</h3>
-        
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
             <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid var(--blue-600);">
                 <p style="font-size: 12px; color: gray; font-weight: bold; margin-bottom: 5px;">TOTAL DE MATRÍCULA 2026</p>
                 <p style="font-size: 20px; font-weight: bold; color: var(--blue-800);">Total: ${tGeneral}</p>
                 <p style="font-size: 14px; color: #555; margin-top: 5px;">M: <strong>${tM}</strong> | F: <strong>${tF}</strong></p>
             </div>
-            
             <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid var(--green-600);">
-                <p style="font-size: 12px; color: gray; font-weight: bold; margin-bottom: 5px;">REPORTE DE ASISTENCIA (TABLA)</p>
+                <p style="font-size: 12px; color: gray; font-weight: bold; margin-bottom: 5px;">REPORTE DE ASISTENCIA (DE LA TABLA)</p>
                 <p style="font-size: 20px; font-weight: bold; color: var(--green-600);">Presentes: ${sPres} <span style="font-size: 16px; color: var(--red-600); margin-left: 10px;">Ausentes: ${sAus}</span></p>
                 <p style="font-size: 14px; color: #555; margin-top: 5px;">Asist. M: <strong>${sM}</strong> | Asist. F: <strong>${sF}</strong></p>
             </div>
@@ -707,7 +713,6 @@ function generarHTMLResumen(tGeneral, tM, tF, sPres, sAus, sM, sF) {
 }
 
 function cargarAlumnos() {
-  if(sistemaEnMantenimiento) return;
   const grado = document.getElementById('grado-select').value;
   const seccion = document.getElementById('seccion-select').value;
   const contenedor = document.getElementById('tabla-alumnos');
@@ -717,66 +722,27 @@ function cargarAlumnos() {
 
   let html = `<div class="student-row student-header"><div class="checkbox-wrapper">✓</div><div>Nombre del Estudiante</div><div>Sexo</div><div>NIE</div><div>Teléfono</div></div>`;
   alumnosFiltrados.forEach((alumno, index) => {
-    html += `
-      <div class="student-row" onclick="toggleFila(event, ${index})">
-        <div class="checkbox-wrapper"><input type="checkbox" id="chk-${index}" value="${index}" checked></div>
-        <div style="font-weight: 500; font-size:13px;">${alumno.nombre}</div>
-        <div><span class="badge ${alumno.sexo.toLowerCase()}">${alumno.sexo}</span></div>
-        <div style="font-size: 13px;">${alumno.nie}</div>
-        <div style="font-size: 13px;">${alumno.telefono || 'N/A'}</div>
-      </div>`;
+    html += `<div class="student-row" onclick="toggleFila(event, ${index})"><div class="checkbox-wrapper"><input type="checkbox" id="chk-${index}" value="${index}" checked></div><div style="font-weight: 500; font-size:13px;">${alumno.nombre}</div><div><span class="badge ${alumno.sexo.toLowerCase()}">${alumno.sexo}</span></div><div style="font-size: 13px;">${alumno.nie}</div><div style="font-size: 13px;">${alumno.telefono || 'N/A'}</div></div>`;
   });
-  contenedor.innerHTML = html;
-  estadoSeleccion = true; 
+  contenedor.innerHTML = html; estadoSeleccion = true; 
 }
 
-function toggleFila(event, index) { 
-  if(event.target.tagName.toLowerCase() === 'input' || sistemaEnMantenimiento) return; 
-  document.getElementById(`chk-${index}`).checked = !document.getElementById(`chk-${index}`).checked; 
-}
+function toggleFila(event, index) { if(event.target.tagName.toLowerCase() !== 'input') document.getElementById(`chk-${index}`).checked = !document.getElementById(`chk-${index}`).checked; }
+function toggleTodos() { estadoSeleccion = !estadoSeleccion; alumnosFiltrados.forEach((a, i) => document.getElementById(`chk-${i}`).checked = estadoSeleccion); }
 
-function toggleTodos() { 
-  if(sistemaEnMantenimiento) return;
-  estadoSeleccion = !estadoSeleccion; 
-  alumnosFiltrados.forEach((a, i) => document.getElementById(`chk-${i}`).checked = estadoSeleccion); 
-}
-
-function accederLimpieza() {
-  if(sistemaEnMantenimiento) return;
-  const password = prompt("Ingrese la contraseña de administrador:");
-  if (password === PASS_ADMIN) {
-    document.getElementById("zona-peligro").style.display = "block";
-    alert("⚠️ Acceso concedido. Use con extrema precaución.");
-  } else {
-    alert("❌ Contraseña incorrecta.");
-  }
-}
-
-function regresarLugarSeguro() {
-  document.getElementById("zona-peligro").style.display = "none";
-}
+function accederLimpieza() { if (prompt("Contraseña:") === PASS_ADMIN) document.getElementById("zona-peligro").style.display = "block"; }
+function regresarLugarSeguro() { document.getElementById("zona-peligro").style.display = "none"; }
 
 async function borrarReportes() {
-  if(sistemaEnMantenimiento) return;
-  const rango = document.getElementById('delete-rango').value;
-  let mensaje = rango === "hoy" ? "¿Estás seguro que deseas borrar todos los reportes generados HOY?" : "⚠️ PELIGRO EXTREMO: ¿Estás seguro que deseas borrar TODO EL HISTORIAL de reportes?";
-  
-  if(!confirm(mensaje + "\nEsta acción borrará los datos de tu Google Sheets y no se puede deshacer.")) return;
-  
-  const btn = document.getElementById('btn-delete-reportes');
-  btn.disabled = true; btn.innerText = "⏳ Borrando...";
-  const fechaHoy = new Date().toLocaleDateString('es-ES');
-  
+  if(!confirm("¿Borrar historial?")) return;
+  const btn = document.getElementById('btn-delete-reportes'); btn.disabled = true; btn.innerText = "⏳...";
   try {
-    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "delete_reportes", rango: rango, fecha: fechaHoy }) });
-    setTimeout(() => { alert("✅ Orden de borrado enviada a la nube."); cargarReportesSub(); btn.disabled = false; btn.innerText = "🗑️ Ejecutar Borrado"; document.getElementById("zona-peligro").style.display = "none"; }, 1500);
-  } catch(e) { 
-    alert("❌ Error de red al intentar borrar."); 
-    btn.disabled = false; btn.innerText = "🗑️ Ejecutar Borrado"; 
-  }
+    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "delete_reportes", rango: document.getElementById('delete-rango').value, fecha: new Date().toLocaleDateString('es-ES') }) });
+    setTimeout(() => { alert("Borrado enviado."); cargarReportesSub(true); btn.disabled = false; btn.innerText = "🗑️ Ejecutar Borrado"; document.getElementById("zona-peligro").style.display = "none"; }, 1500);
+  } catch(e) { btn.disabled = false; btn.innerText = "🗑️ Ejecutar Borrado"; }
 }
 
-// === CÓDIGO DE PDF CON MARCAS Y LOGOS ===
+// === CÓDIGO DE PDF ===
 async function generarPDF() {
   if(sistemaEnMantenimiento) return;
   const docente = document.getElementById('docente-nombre').value.trim();
@@ -785,10 +751,7 @@ async function generarPDF() {
   const orientacion = document.querySelector('input[name="orientacion"]:checked').value;
   const btn = document.getElementById('btn-pdf-generate');
 
-  if (!grado || !seccion) { alert("Seleccione un Grado y Sección."); return; }
-  if (alumnosFiltrados.length === 0) { alert("No hay alumnos."); return; }
-  if (!docente) { alert("Introduzca el nombre del DOCENTE."); document.getElementById('docente-nombre').focus(); return; }
-
+  if (!grado || !seccion || !docente) return alert("Faltan datos.");
   btn.disabled = true; btn.innerText = "⏳ Generando PDF...";
 
   const presentes = [], ausentes = []; let masc = 0, fem = 0;
@@ -797,21 +760,14 @@ async function generarPDF() {
     else { ausentes.push(alumno); }
   });
 
-  const ahora = new Date();
-  const fechaStr = ahora.toLocaleDateString('es-ES');
-  const fechaArchivo = ahora.toLocaleDateString('es-ES').replace(/\//g, '-');
-  const secLimpia = seccion.replace(/"/g, ''); 
+  const ahora = new Date(); const fechaStr = ahora.toLocaleDateString('es-ES'); const fechaArchivo = ahora.toLocaleDateString('es-ES').replace(/\//g, '-');
+  fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "asistencia", fecha: ahora, grado: grado, seccion: seccion, docente: docente, presentes: presentes.length, ausentes: ausentes.length, m: masc, f: fem }) });
 
-  fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "asistencia", fecha: ahora, grado: grado, seccion: seccion, docente: docente, presentes: presentes.length, ausentes: ausentes.length, m: masc, f: fem }) }).catch(e => console.log("Enviado"));
-
-  // SE QUITARON LAS REGLAS OVERFLOW Y TRANSFORM QUE CAUSABAN EL ERROR
   const pdfHtml = `
-    <div style="position: relative; background: white; padding: 0;">
-      
-      <div style="position: absolute; top: 150px; left: 0; width: 100%; text-align: center; z-index: 1; opacity: 0.15;">
+    <div style="position: relative; background: white; padding: 0; overflow: hidden;">
+      <div style="position: absolute; top: 150px; left: 50%; transform: translateX(-50%); z-index: 1; opacity: 0.15;">
         <img src="logo3.jpg" style="width: 400px; height: auto;" onerror="this.style.display='none';">
       </div>
-
       <div style="position: relative; z-index: 10; padding: 40px;">
         <div style="text-align: center; padding-top: 100px; padding-bottom: 200px;">
           <h1 style="color: #0C447C; font-size: 26px; margin-bottom: 10px; text-transform: uppercase;">Ministerio de Educación, Ciencia y Tecnología</h1>
@@ -825,152 +781,64 @@ async function generarPDF() {
             </div>
           </div>
         </div>
-
         <div class="html2pdf__page-break"></div>
-
         <div style="position: relative;">
-          
           <div style="text-align: center; border-bottom: 3px solid #0C447C; padding-bottom: 15px; margin-bottom: 20px; position: relative; z-index: 5;">
             <h2 style="font-size: 18px; color: #0C447C; margin-bottom: 5px;">MINISTERIO DE EDUCACIÓN CIENCIA Y TECNOLOGÍA</h2>
             <h3 style="font-size: 16px; color: #2C2C2A; margin-bottom: 5px;">INSTITUTO NACIONAL DE MERCEDES UMAÑA</h3>
           </div>
-          
           <table style="width: 100%; font-size: 14px; margin-bottom: 20px; border: none; position: relative; z-index: 5;">
-            <tr>
-              <td style="text-align: left; width: 33%; vertical-align: top;"><strong>Grado:</strong> ${grado} &nbsp; <strong>Secc:</strong> ${seccion}</td>
-              <td style="text-align: center; width: 34%; vertical-align: top;"><strong>Docente:</strong> ${docente}</td>
-              <td style="text-align: right; width: 33%; vertical-align: top;"><strong>Fecha:</strong> ${fechaStr}</td>
-            </tr>
+            <tr><td style="text-align: left; width: 33%; vertical-align: top;"><strong>Grado:</strong> ${grado} &nbsp; <strong>Secc:</strong> ${seccion}</td><td style="text-align: center; width: 34%; vertical-align: top;"><strong>Docente:</strong> ${docente}</td><td style="text-align: right; width: 33%; vertical-align: top;"><strong>Fecha:</strong> ${fechaStr}</td></tr>
           </table>
-          
           <div style="background-color: rgba(255,255,255,0.8); border: 1px solid #B5D4F4; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; position: relative; z-index: 5;">
             <p><strong>Asistencias: ${presentes.length}</strong> | M: <strong>${masc}</strong> | F: <strong>${fem}</strong> | Ausencias: ${ausentes.length}</p>
           </div>
-
           <h4 style="color: #1D9E75; border-bottom: 2px solid #1D9E75; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px; page-break-after: avoid; position: relative; z-index: 5;">ESTUDIANTES PRESENTES</h4>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; page-break-before: auto; position: relative; z-index: 5; background-color: rgba(255,255,255,0.75);">
             <colgroup><col style="width: 8%;"><col style="width: 45%;"><col style="width: 10%;"><col style="width: 17%;"><col style="width: 20%;"></colgroup>
-            ${presentes.length > 0 ? presentes.map(a => `
-              <tr style="page-break-inside: avoid;">
-                <td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #1D9E75; font-weight: bold;">✓</td>
-                <td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td>
-                <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td>
-                <td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td>
-                <td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td>
-              </tr>
-            `).join('') : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
+            ${presentes.length > 0 ? presentes.map(a => `<tr style="page-break-inside: avoid;"><td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #1D9E75; font-weight: bold;">✓</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td><td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td></tr>`).join('') : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
           </table>
-
           <h4 style="color: #E24B4A; border-bottom: 2px solid #E24B4A; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px; page-break-after: avoid; position: relative; z-index: 5;">ESTUDIANTES AUSENTES</h4>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px; font-size: 13px; page-break-before: auto; position: relative; z-index: 5; background-color: rgba(255,255,255,0.75);">
             <colgroup><col style="width: 8%;"><col style="width: 45%;"><col style="width: 10%;"><col style="width: 17%;"><col style="width: 20%;"></colgroup>
-            ${ausentes.length > 0 ? ausentes.map(a => `
-              <tr style="page-break-inside: avoid;">
-                <td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #E24B4A; font-weight: bold;">✗</td>
-                <td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td>
-                <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td>
-                <td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td>
-                <td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td>
-              </tr>
-            `).join('') : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
+            ${ausentes.length > 0 ? ausentes.map(a => `<tr style="page-break-inside: avoid;"><td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #E24B4A; font-weight: bold;">✗</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td><td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td></tr>`).join('') : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
           </table>
-          
           <div style="text-align: center; margin-top: 50px; padding-top: 40px; border-top: 2px dashed #ddd; page-break-inside: avoid; position: relative; z-index: 10;">
             <img src="logo5.jpg" style="width: 400px; height: auto;" onerror="this.style.display='none';">
           </div>
-
         </div> </div>
-    </div>
-  `;
+    </div>`;
 
-  const containerHTML = document.getElementById('pdf-content');
-  containerHTML.innerHTML = pdfHtml;
-
-  // Pausa un poco más larga para asegurar la carga
+  const containerHTML = document.getElementById('pdf-content'); containerHTML.innerHTML = pdfHtml;
   await new Promise(resolve => setTimeout(resolve, 1000));
-
-  const opt = {
-    margin: 15,
-    filename: `Asistencia ${grado} ${secLimpia} - ${fechaArchivo} - ${docente}.pdf`,
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true },
-    jsPDF: { unit: 'mm', format: 'letter', orientation: orientacion },
-    pagebreak: { mode: ['css', 'legacy'] } 
-  };
-
-  try {
-    window.scrollTo(0, 0);
-    await html2pdf().set(opt).from(containerHTML).save();
-  } catch (error) { 
-    alert("❌ Error al generar PDF."); 
-  } finally { 
-    btn.disabled = false; btn.innerText = "📥 Generar PDF y Guardar Reporte"; 
-  }
+  const opt = { margin: 15, filename: `Asistencia ${grado} ${secLimpia} - ${fechaArchivo} - ${docente}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'letter', orientation: orientacion }, pagebreak: { mode: ['css', 'legacy'] } };
+  try { window.scrollTo(0, 0); await html2pdf().set(opt).from(containerHTML).save(); } catch (error) { alert("❌ Error al generar PDF."); } finally { btn.disabled = false; btn.innerText = "📥 Generar PDF y Guardar Reporte"; }
 }
-function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
 
+function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
 async function guardarAlumno() {
-  if(sistemaEnMantenimiento) return;
-  const b = document.getElementById('btn-save-cloud');
-  const n = { 
-    tipo_post: "alumno", grado: document.getElementById('grado-select').value,
-    seccion: document.getElementById('seccion-select').value, nombre: document.getElementById('new-nombre').value,
-    sexo: document.getElementById('new-sexo').value, nie: document.getElementById('new-nie').value,
-    telefono: document.getElementById('new-telefono').value
-  };
+  const n = { tipo_post: "alumno", grado: document.getElementById('grado-select').value, seccion: document.getElementById('seccion-select').value, nombre: document.getElementById('new-nombre').value, sexo: document.getElementById('new-sexo').value, nie: document.getElementById('new-nie').value, telefono: document.getElementById('new-telefono').value };
   if(!n.nombre || !n.grado) return alert("Faltan datos");
-  
-  b.disabled = true; b.innerText = "Subiendo...";
-  try {
-    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(n) });
-    alert("Guardado exitoso en la nube.");
-    cerrarModal('modal-alumno'); 
-    setTimeout(inicializarBaseDatos, 1000);
-  } catch(e) { alert("Error al guardar"); }
-  b.disabled = false; b.innerText = "Guardar";
+  await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(n) });
+  cerrarModal('modal-alumno'); setTimeout(inicializarBaseDatos, 1000);
 }
 
 function cerrarSesion() {
-  if (confirm("¿Estás seguro que deseas cerrar sesión?")) {
-    document.getElementById("login-username").value = "";
-    document.getElementById("login-password").value = "";
-    document.getElementById("docente-nombre").value = "";
-    document.getElementById("login-robot-check").checked = false;
-    
-    document.getElementById("grado-select").value = "";
-    document.getElementById("seccion-select").value = "";
-    
+  if (confirm("¿Cerrar sesión?")) {
+    document.getElementById("login-username").value = ""; document.getElementById("login-password").value = ""; document.getElementById("docente-nombre").value = ""; document.getElementById("login-robot-check").checked = false;
+    document.getElementById("grado-select").value = ""; document.getElementById("seccion-select").value = "";
     document.getElementById("tabla-alumnos").innerHTML = '<div style="padding: 20px; text-align: center; color: #5F5E5A;">Seleccione un grado y una sección.</div>';
-    
-    document.getElementById("header-principal").style.display = "none";
-    document.getElementById("container-principal").style.display = "none";
-    document.getElementById("modal-inicio-login").classList.add("open");
-    
-    cambiarVista('docente');
-    window.scrollTo(0, 0);
+    document.getElementById("header-principal").style.display = "none"; document.getElementById("container-principal").style.display = "none";
+    if (loginRequerido) { document.getElementById("modal-inicio-login").classList.add("open"); } else { document.getElementById("modal-inicio-dropdown").classList.add("open"); }
+    cambiarVista('docente'); window.scrollTo(0, 0);
   }
 }
-
-// Hacer que Enter funcione en toda la página para el botón principal visible
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') {
-    const modalLogin = document.getElementById('modal-inicio-login');
-    const modalDropdown = document.getElementById('modal-inicio-dropdown');
-    const modalAlumno = document.getElementById('modal-alumno');
-    const modalDocente = document.getElementById('modal-docente');
-
-    if (modalLogin.classList.contains('open')) {
-      ejecutarLogin();
-    } else if (modalDropdown.classList.contains('open')) {
-      entrarComoDocenteDropdown();
-    } else if (modalAlumno.classList.contains('open')) {
-      guardarAlumno();
-    } else if (modalDocente.classList.contains('open')) {
-      guardarNuevoDocente();
-    }
+    if (document.getElementById('modal-inicio-login').classList.contains('open')) ejecutarLogin();
+    else if (document.getElementById('modal-inicio-dropdown').classList.contains('open')) entrarComoDocenteDropdown();
   }
 });
-
 </script>
 </body>
 </html>
