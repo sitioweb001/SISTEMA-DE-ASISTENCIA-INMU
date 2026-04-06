@@ -1157,7 +1157,10 @@
   // =========================================================================
   // MEMORIA DE SESIÓN
   // =========================================================================
+  let sesionActual = { usuario: '', grado: '', seccion: '', docente: '' };
+
   function guardarSesion(usuario, grado, seccion, docente) {
+      sesionActual = { usuario, grado, seccion, docente };
       try {
           if (typeof AndroidStorage !== 'undefined') {
               AndroidStorage.set('sesion_usuario', usuario);
@@ -1168,7 +1171,12 @@
       } catch (e) { }
   }
 
+  function obtenerSesion() {
+      return sesionActual;
+  }
+
   function borrarSesion() {
+      sesionActual = { usuario: '', grado: '', seccion: '', docente: '' };
       try {
           if (typeof AndroidStorage !== 'undefined') {
               AndroidStorage.remove('sesion_usuario');
@@ -2046,12 +2054,12 @@
       cerrarModal('modal-alumno'); setTimeout(inicializarBaseDatos, 1000);
   }
 
-  function cerrarSesion() {
+  async function cerrarSesion() {
       if (confirm("¿Cerrar sesión?")) {
           // Marcar como offline
           const usuario = obtenerSesion().usuario;
           if (usuario && usuario !== "invitado") {
-              actualizarStatusDocente(usuario, "offline");
+              await actualizarStatusDocente(usuario, "offline");
           }
           borrarSesion();
           document.getElementById("login-username").value = "";
