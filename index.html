@@ -1,133 +1,643 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Registro de Asistencia — INMU</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registro de Asistencia — INMU</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
-<style>
-  :root {
-    --blue-800: #0C447C; --blue-600: #185FA5; --blue-50: #E6F1FB;
-    --green-600: #1D9E75; --green-50: #EAF3DE;
-    --red-600: #E24B4A; --red-50: #FCEBEB;
-    --gray-900: #2C2C2A; --gray-600: #5F5E5A; --gray-100: #D3D1C7; --gray-50: #F0F2F5;
-    --amber-600: #BA7517;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
-  body { background-color: var(--gray-50); color: var(--gray-900); padding-bottom: 50px; }
+  <style>
+    :root {
+        --blue-800: #0C447C;
+        --blue-600: #185FA5;
+        --blue-50: #E6F1FB;
+        --green-600: #1D9E75;
+        --green-50: #EAF3DE;
+        --red-600: #E24B4A;
+        --red-50: #FCEBEB;
+        --gray-900: #2C2C2A;
+        --gray-600: #5F5E5A;
+        --gray-100: #D3D1C7;
+        --gray-50: #F0F2F5;
+        --amber-600: #BA7517;
+    }
 
-  /* HEADER */
-  .header { background-color: var(--blue-800); color: white; padding: 15px 20px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
-  .header-logo { width: 70px; height: 70px; object-fit: contain; background: white; border-radius: 50%; padding: 5px; cursor: pointer; }
-  .header-titles { flex: 1; text-align: center; }
-  .header h1 { font-size: 18px; margin-bottom: 2px; }
-  
-  .btn-group-nav { display: flex; gap: 8px; flex-direction: column; }
-  .btn-nav { color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; text-transform: uppercase; }
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+    }
 
-  .container { max-width: 900px; margin: 20px auto; padding: 0 20px; }
-  .panel { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-  
-  .view-section { display: none; }
-  .view-active { display: block; }
+    body {
+        background-color: var(--gray-50);
+        color: var(--gray-900);
+        padding-bottom: 50px;
+    }
 
-  /* FORMULARIOS Y TABLAS */
-  .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-  label { font-weight: bold; font-size: 12px; color: var(--gray-600); display: block; margin-bottom: 5px; text-transform: uppercase; }
-  select, input[type="text"] { width: 100%; padding: 10px; border: 1.5px solid var(--gray-100); border-radius: 8px; font-size: 14px; outline: none; }
-  
-  .student-list { margin-top: 10px; border: 1px solid var(--gray-100); border-radius: 8px; overflow: hidden; }
-  
-  .student-row { display: grid; grid-template-columns: 40px 2fr 1fr 1fr 1fr; gap: 10px; padding: 12px 15px; border-bottom: 1px solid var(--gray-100); align-items: center; cursor: pointer; transition: background 0.2s; }
-  .student-row:hover { background-color: var(--blue-50); }
-  .student-header { background-color: var(--blue-800); color: white; font-weight: bold; font-size: 12px; cursor: default; }
-  .student-header:hover { background-color: var(--blue-800); }
-  
-  .checkbox-wrapper { display: flex; justify-content: center; }
-  input[type="checkbox"] { width: 22px; height: 22px; cursor: pointer; accent-color: var(--green-600); }
-  
-  .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-align: center; }
-  .badge.m { background-color: var(--blue-50); color: var(--blue-800); }
-  .badge.f { background-color: #FDE8EF; color: #9D234C; }
+    /* HEADER */
+    .header {
+        background-color: var(--blue-800);
+        color: white;
+        padding: 15px 20px;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
-  .btn-action { font-size: 12px; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; border: 1px solid var(--gray-100); background: white; }
-  
-  .btn-generate { background-color: var(--green-600); color: white; border: none; padding: 15px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.3s; text-transform: uppercase; margin-bottom: 10px;}
-  .btn-generate:disabled { background-color: var(--gray-400); cursor: not-allowed; }
+    .header-logo {
+        width: 70px;
+        height: 70px;
+        object-fit: contain;
+        background: white;
+        border-radius: 50%;
+        padding: 5px;
+        cursor: pointer;
+    }
 
-  .sub-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-  .sub-table th, .sub-table td { padding: 10px; border: 1px solid var(--gray-100); text-align: left; }
+    .header-titles {
+        flex: 1;
+        text-align: center;
+    }
 
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; }
-  .modal-overlay.open { display: flex; }
-  .modal { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; }
+    .header h1 {
+        font-size: 18px;
+        margin-bottom: 2px;
+    }
 
-  .web-logo-container { text-align: center; margin: 20px 0; }
-  .web-logo { width: 250px; height: auto; display: inline-block; cursor: pointer; }
+    .btn-group-nav {
+        display: flex;
+        gap: 8px;
+        flex-direction: column;
+    }
 
-  /* BOTÓN CERRAR SESIÓN */
-  .btn-logout { background-color: var(--red-600); color: white; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.3s; font-size: 14px; text-transform: uppercase; margin-bottom: 20px; }
-  .btn-logout:hover { background-color: #b53a3a; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .btn-nav {
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 11px;
+        text-transform: uppercase;
+    }
 
-  #pdf-container { display: none; }
+    .container {
+        max-width: 900px;
+        margin: 20px auto;
+        padding: 0 20px;
+    }
 
-  /* PANTALLA DE MANTENIMIENTO */
-  #pantalla-mantenimiento {
-    display: none; position: fixed; inset: 0; background-color: rgba(250, 250, 250, 0.98); 
-    z-index: 99999; flex-direction: column; justify-content: center; align-items: center; text-align: center;
-  }
-</style>
+    .panel {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    .view-section {
+        display: none;
+    }
+
+    .view-active {
+        display: block;
+    }
+
+    /* FORMULARIOS Y TABLAS */
+    .filters {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    label {
+        font-weight: bold;
+        font-size: 12px;
+        color: var(--gray-600);
+        display: block;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+    }
+
+    select,
+    input[type="text"] {
+        width: 100%;
+        padding: 10px;
+        border: 1.5px solid var(--gray-100);
+        border-radius: 8px;
+        font-size: 14px;
+        outline: none;
+    }
+
+    .student-list {
+        margin-top: 10px;
+        border: 1px solid var(--gray-100);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .student-row {
+        display: grid;
+        grid-template-columns: 40px 2fr 1fr 1fr 1fr;
+        gap: 10px;
+        padding: 12px 15px;
+        border-bottom: 1px solid var(--gray-100);
+        align-items: center;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .student-row:hover {
+        background-color: var(--blue-50);
+    }
+
+    .student-header {
+        background-color: var(--blue-800);
+        color: white;
+        font-weight: bold;
+        font-size: 12px;
+        cursor: default;
+    }
+
+    .student-header:hover {
+        background-color: var(--blue-800);
+    }
+
+    .checkbox-wrapper {
+        display: flex;
+        justify-content: center;
+    }
+
+    input[type="checkbox"] {
+        width: 22px;
+        height: 22px;
+        cursor: pointer;
+        accent-color: var(--green-600);
+    }
+
+    .badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: bold;
+        text-align: center;
+    }
+
+    .badge.m {
+        background-color: var(--blue-50);
+        color: var(--blue-800);
+    }
+
+    .badge.f {
+        background-color: #FDE8EF;
+        color: #9D234C;
+    }
+
+    .btn-action {
+        font-size: 12px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        border: 1px solid var(--gray-100);
+        background: white;
+    }
+
+    .btn-generate {
+        background-color: var(--green-600);
+        color: white;
+        border: none;
+        padding: 15px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        width: 100%;
+        transition: 0.3s;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+    }
+
+    .btn-generate:disabled {
+        background-color: #aaa;
+        cursor: not-allowed;
+    }
+
+    .sub-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        font-size: 12px;
+    }
+
+    .sub-table th,
+    .sub-table td {
+        padding: 10px;
+        border: 1px solid var(--gray-100);
+        text-align: left;
+    }
+
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay.open {
+        display: flex;
+    }
+
+    .modal {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 400px;
+    }
+
+    .web-logo-container {
+        text-align: center;
+        margin: 20px 0;
+    }
+
+    .web-logo {
+        width: 250px;
+        height: auto;
+        display: inline-block;
+        cursor: pointer;
+    }
+
+    /* BOTÓN CERRAR SESIÓN */
+    .btn-logout {
+        background-color: var(--red-600);
+        color: white;
+        border: none;
+        padding: 14px;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        width: 100%;
+        transition: 0.3s;
+        font-size: 14px;
+        text-transform: uppercase;
+        margin-bottom: 20px;
+    }
+
+    .btn-logout:hover {
+        background-color: #b53a3a;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    #pdf-container {
+        display: none;
+    }
+
+    /* PANTALLA DE MANTENIMIENTO */
+    #pantalla-mantenimiento {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background-color: rgba(250, 250, 250, 0.98);
+        z-index: 99999;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+   VISOR DE REPORTES PDF
+═══════════════════════════════════════════════════════════════ */
+    #view-pdf-reportes {
+        display: none;
+    }
+
+    #view-pdf-reportes.view-active {
+        display: block;
+    }
+
+    .btn-ver-reportes {
+        background-color: var(--blue-600);
+        color: white;
+        border: none;
+        padding: 15px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        width: 100%;
+        transition: 0.3s;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+    }
+
+    .btn-ver-reportes:hover {
+        background-color: var(--blue-800);
+    }
+
+    .pdf-search-bar {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+    }
+
+    .pdf-search-bar input[type="text"],
+    .pdf-search-bar input[type="date"],
+    .pdf-search-bar select {
+        flex: 1;
+        min-width: 120px;
+        padding: 9px 12px;
+        border: 1.5px solid var(--gray-100);
+        border-radius: 8px;
+        font-size: 13px;
+        outline: none;
+    }
+
+    .pdf-search-bar button {
+        padding: 9px 14px;
+        border-radius: 8px;
+        border: none;
+        background: var(--gray-600);
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 13px;
+    }
+
+    .pdf-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 15px;
+        border: 1px solid var(--gray-100);
+        border-radius: 8px;
+        margin-bottom: 8px;
+        background: white;
+        cursor: pointer;
+        transition: box-shadow 0.2s, background 0.2s;
+    }
+
+    .pdf-item:hover {
+        background: var(--blue-50);
+        box-shadow: 0 2px 8px rgba(12, 68, 124, 0.09);
+    }
+
+    .pdf-item-info {
+        flex: 1;
+    }
+
+    .pdf-item-nombre {
+        font-weight: bold;
+        font-size: 13px;
+        color: var(--blue-800);
+        margin-bottom: 3px;
+        word-break: break-word;
+    }
+
+    .pdf-item-meta {
+        font-size: 11px;
+        color: var(--gray-600);
+    }
+
+    .pdf-item-fecha {
+        font-size: 11px;
+        color: var(--amber-600);
+        font-weight: bold;
+        margin-left: 10px;
+        white-space: nowrap;
+    }
+
+    .pdf-item-icon {
+        font-size: 28px;
+        margin-right: 12px;
+    }
+
+    .pdf-empty {
+        text-align: center;
+        padding: 30px;
+        color: var(--gray-600);
+        font-style: italic;
+    }
+
+    /* VISOR INTERNO PDF */
+    .pdf-viewer-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.92);
+        z-index: 5000;
+        flex-direction: column;
+    }
+
+    .pdf-viewer-overlay.open {
+        display: flex;
+    }
+
+    .pdf-viewer-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #1a1a1a;
+        padding: 10px 16px;
+        color: white;
+        flex-shrink: 0;
+    }
+
+    .pdf-viewer-titulo {
+        font-size: 13px;
+        font-weight: bold;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        margin: 0 12px;
+    }
+
+    .pdf-viewer-btn {
+        background: rgba(255, 255, 255, 0.12);
+        border: none;
+        color: white;
+        padding: 8px 14px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: bold;
+    }
+
+    .pdf-viewer-btn:hover {
+        background: rgba(255, 255, 255, 0.25);
+    }
+
+    .pdf-viewer-btn.rojo {
+        background: var(--red-600);
+    }
+
+    .pdf-viewer-btn.rojo:hover {
+        background: #b53a3a;
+    }
+
+    .pdf-viewer-content {
+        flex: 1;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 16px 8px;
+        gap: 12px;
+    }
+
+    .pdf-viewer-content canvas {
+        max-width: 100%;
+        height: auto;
+        cursor: grab;
+        touch-action: none;
+    }
+
+    .pdf-viewer-nav {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: #1a1a1a;
+        padding: 10px 16px;
+        color: white;
+        flex-shrink: 0;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .pdf-viewer-nav button {
+        background: rgba(255, 255, 255, 0.12);
+        border: none;
+        color: white;
+        padding: 8px 18px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+    .pdf-viewer-nav button:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+
+    .pdf-viewer-nav span {
+        font-size: 13px;
+        color: #ccc;
+    }
+
+    .pdf-loading {
+        color: white;
+        text-align: center;
+        padding: 40px;
+        font-size: 16px;
+    }
+
+    .pdf-zoom-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .pdf-zoom-controls button {
+        background: rgba(255, 255, 255, 0.12);
+        border: none;
+        color: white;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 18px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .pdf-zoom-controls span {
+        font-size: 12px;
+        color: #ccc;
+        min-width: 45px;
+        text-align: center;
+    }
+  </style>
 </head>
+
 <body>
 
 <div id="pantalla-mantenimiento">
-  <span style="font-size: 100px; cursor: pointer; user-select: none;" ondblclick="toggleMantenimiento()" title="Doble clic para desbloquear">⚠️</span>
-  <h1 style="color: #E24B4A; font-size: 45px; margin-top: 20px; font-family: 'Arial Black', sans-serif;" id="mantenimiento-titulo">SITIO EN MANTENIMIENTO</h1>
-  <p style="color: #2C2C2A; font-size: 24px; font-weight: bold; margin-top: 10px;" id="mantenimiento-texto">POR FAVOR NO UTILIZAR</p>
+        <span style="font-size: 100px; cursor: pointer; user-select: none;" ondblclick="toggleMantenimiento()"
+              title="Doble clic para desbloquear">⚠️</span>
+  <h1 style="color: #E24B4A; font-size: 45px; margin-top: 20px; font-family: 'Arial Black', sans-serif;"
+      id="mantenimiento-titulo">SITIO EN MANTENIMIENTO</h1>
+  <p style="color: #2C2C2A; font-size: 24px; font-weight: bold; margin-top: 10px;" id="mantenimiento-texto">POR
+    FAVOR NO UTILIZAR</p>
 </div>
 
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- MODAL LOGIN -->
+<!-- ═══════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-inicio-login">
   <div class="modal">
     <h2 style="color: var(--blue-800); text-align: center; margin-bottom: 5px;">Iniciar Sesión</h2>
-    
+
     <div class="web-logo-container">
-      <img src="logo2.svg" alt="Logo Institucional" class="web-logo" onerror="this.src='logo2.jpg'; this.onerror=null;">
+      <img src="logo2.svg" alt="Logo Institucional" class="web-logo"
+           onerror="this.src='logo2.jpg'; this.onerror=null;">
     </div>
-    <p style="text-align: center; font-size: 14px; color: var(--gray-600); margin-bottom: 10px;">Instituto Nacional de Mercedes Umaña</p>
-    
+    <p style="text-align: center; font-size: 14px; color: var(--gray-600); margin-bottom: 10px;">Instituto
+      Nacional de Mercedes Umaña</p>
+
     <div style="text-align:center; margin-bottom: 20px;">
-      <img src="logo3.jpg" alt="Logo subInstitucional"
-           ondblclick="toggleMantenimiento()"
-           onerror="this.src='logo3.jpg'; this.onerror=null;"
-           style="width:60px; height:auto;">
+      <img src="logo3.jpg" alt="Logo subInstitucional" ondblclick="toggleMantenimiento()"
+           onerror="this.src='logo3.jpg'; this.onerror=null;" style="width:60px; height:auto;">
     </div>
-    
+
     <label style="text-align: left;">Usuario</label>
-    <input type="text" id="login-username" placeholder="Ingrese su Nombre, invitado Ó 12" style="width:100%; padding:12px; margin-bottom:15px; border:1px solid var(--gray-100); border-radius:8px;">
-    
+    <input type="text" id="login-username" placeholder="Ingrese su Nombre, invitado Ó 12"
+           style="width:100%; padding:12px; margin-bottom:15px; border:1px solid var(--gray-100); border-radius:8px;">
+
     <label style="text-align: left;">Contraseña</label>
-    <input type="password" id="login-password" placeholder="" style="width:100%; padding:12px; margin-bottom:15px; border:1px solid var(--gray-100); border-radius:8px;">
-    
-    <div style="display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--gray-100); border-radius: 4px; padding: 12px 15px; margin-bottom: 15px; background: #fafafa;">
+    <input type="password" id="login-password" placeholder=""
+           style="width:100%; padding:12px; margin-bottom:15px; border:1px solid var(--gray-100); border-radius:8px;">
+
+    <div
+            style="display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--gray-100); border-radius: 4px; padding: 12px 15px; margin-bottom: 15px; background: #fafafa;">
       <div style="display: flex; align-items: center; gap: 10px;">
-        <input type="checkbox" id="login-robot-check" style="width: 24px; height: 24px; cursor: pointer; accent-color: var(--green-600);">
-        <label style="margin: 0; font-size: 14px; color: var(--gray-900); font-weight: 500; cursor: pointer; text-transform: none;" for="login-robot-check">No soy un robot</label>
+        <input type="checkbox" id="login-robot-check"
+               style="width: 24px; height: 24px; cursor: pointer; accent-color: var(--green-600);">
+        <label
+                style="margin: 0; font-size: 14px; color: var(--gray-900); font-weight: 500; cursor: pointer; text-transform: none;"
+                for="login-robot-check">No soy un robot</label>
       </div>
       <div style="font-size: 22px;">🤖</div>
     </div>
-    
-    <p style="text-align: center; font-size: 11px; color: var(--gray-600); margin-bottom: 10px;">--------- PRESIONE 2 VECES PARA MENÚ ---------</p>
-    
-    <button id="btn-ingresar-login" onclick="handleLoginClick(event)" style="width: 100%; padding: 12px; background: var(--blue-600); color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer;">Ingresar</button>
+
+    <p style="text-align: center; font-size: 11px; color: var(--gray-600); margin-bottom: 10px;">---------
+      PRESIONE 2 VECES PARA MENÚ ---------</p>
+
+    <button id="btn-ingresar-login" onclick="handleLoginClick(event)"
+            style="width: 100%; padding: 12px; background: var(--blue-600); color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer;">Ingresar</button>
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- MODAL MENÚ ALTERNATIVO -->
+<!-- ═══════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-inicio-dropdown">
   <div class="modal">
     <h2 style="color: var(--blue-800); text-align: center; margin-bottom: 5px;">Seleccione Docente</h2>
 
-    <!-- ▼ LOGOS OFICIALES (igual que en el login) ▼ -->
     <div class="web-logo-container">
       <img src="logo2.svg" alt="Logo Institucional" class="web-logo"
            onerror="this.src='logo2.jpg'; this.onerror=null;">
@@ -136,46 +646,52 @@
       Instituto Nacional de Mercedes Umaña
     </p>
     <div style="text-align:center; margin-bottom: 20px;">
-      <img src="logo3.jpg" alt="Logo subInstitucional"
-           ondblclick="toggleMantenimiento()"
-           onerror="this.src='logo3.jpg'; this.onerror=null;"
-           style="width:60px; height:auto;">
+      <img src="logo3.jpg" alt="Logo subInstitucional" ondblclick="toggleMantenimiento()"
+           onerror="this.src='logo3.jpg'; this.onerror=null;" style="width:60px; height:auto;">
     </div>
-    <!-- ▲ FIN LOGOS ▲ -->
 
-    <p style="text-align: center; font-size: 12px; color: var(--gray-600); margin-bottom: 15px; font-style: italic;">
+    <p
+            style="text-align: center; font-size: 12px; color: var(--gray-600); margin-bottom: 15px; font-style: italic;">
       Menú Alternativo
     </p>
 
-    <select id="select-docente-inicio" ...> style="width:100%; padding:12px; margin-bottom:20px; border-radius:8px; border:1px solid var(--gray-100);">
+    <select id="select-docente-inicio"
+            style="width:100%; padding:12px; margin-bottom:20px; border-radius:8px; border:1px solid var(--gray-100);">
       <option value="">Cargando docentes...</option>
     </select>
-    
+
     <div style="display:flex; gap:10px;">
-      <button onclick="verificarVueltaAlLogin()" style="flex:1; padding: 12px; background: var(--gray-600); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Volver</button>
-      <button onclick="entrarComoDocenteDropdown()" style="flex:1; padding: 12px; background: var(--blue-600); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Ingresar</button>
+      <button onclick="verificarVueltaAlLogin()"
+              style="flex:1; padding: 12px; background: var(--gray-600); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Volver</button>
+      <button onclick="entrarComoDocenteDropdown()"
+              style="flex:1; padding: 12px; background: var(--blue-600); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Ingresar</button>
     </div>
   </div>
 </div>
 
 <div class="header" id="header-principal" style="display: none;">
   <div style="display: flex; align-items: center;">
-    <img src="logo.jpg" alt="Logo INMU" class="header-logo" ondblclick="toggleMantenimiento()" title="Doble clic para administrar sistema" onerror="this.style.display='none'"> 
+    <img src="logo.jpg" alt="Logo INMU" class="header-logo" ondblclick="toggleMantenimiento()"
+         title="Doble clic para administrar sistema" onerror="this.style.display='none'">
   </div>
   <div class="header-titles">
     <h1>Sistema de Control de Asistencia</h1>
     <p>Instituto Nacional de Mercedes Umaña</p>
   </div>
   <div class="btn-group-nav">
-    <button class="btn-nav" style="background:#5F5E5A" onclick="pedirPasswordDocente()">👨‍🏫 Añadir Docente</button>
+    <button class="btn-nav" style="background:#5F5E5A" onclick="pedirPasswordDocente()">👨‍🏫 Añadir
+      Docente</button>
     <button class="btn-nav" style="background:#BA7517" onclick="pedirPasswordNuevo()">➕ Nuevo Alumno</button>
-    <button class="btn-nav" style="background:var(--green-600)" onclick="pedirPasswordSub()">📊 Sub-Dirección</button>
-    <button class="btn-nav" style="background:var(--blue-600); display:none;" id="btn-volver-asist" onclick="cambiarVista('docente')">✍️ Pasar Lista</button>
+    <button class="btn-nav" style="background:var(--green-600)" onclick="pedirPasswordSub()">📊
+      Sub-Dirección</button>
+    <button class="btn-nav" style="background:black; color:white;" onclick="mostrarResumenDelDia()">Ver resumen del día</button>
+    <button class="btn-nav" style="background:var(--blue-600); display:none;" id="btn-volver-asist"
+            onclick="cambiarVista('docente')">✍️ Pasar Lista</button>
   </div>
 </div>
 
 <div class="container" id="container-principal" style="display: none;">
-  
+
   <div id="view-docente" class="view-section view-active">
     <div class="panel">
       <div class="filters">
@@ -210,687 +726,1778 @@
         <label style="color: var(--blue-800); margin:0; font-size:16px;">Lista de Estudiantes</label>
         <div>
           <button class="btn-action" onclick="toggleTodos()">☑️ Marcar/Desmarcar Todos</button>
-          <button onclick="inicializarBaseDatos()" style="background:none; border:none; color:var(--blue-600); cursor:pointer; font-size:12px; font-weight:bold; margin-left: 10px;">🔄 Nube</button>
+          <button onclick="inicializarBaseDatos()"
+                  style="background:none; border:none; color:var(--blue-600); cursor:pointer; font-size:12px; font-weight:bold; margin-left: 10px;">🔄
+            Nube</button>
         </div>
       </div>
       <div class="student-list" id="tabla-alumnos">
-        <div style="padding: 20px; text-align: center; color: var(--gray-600);">⏳ Conectando a la base de datos...</div>
+        <div style="padding: 20px; text-align: center; color: var(--gray-600);">⏳ Conectando a la base de
+          datos...</div>
       </div>
     </div>
 
     <div class="panel">
       <label>Nombre del Docente Responsable:</label>
       <input type="text" id="docente-nombre" placeholder="Ej. Lic." style="margin-bottom: 15px;">
-      
-      <div style="background: var(--gray-50); padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--gray-100);">
+
+      <div
+              style="background: var(--gray-50); padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--gray-100);">
         <label style="color: var(--green-600);">Diseño Automático PDF Oficial</label>
-        <div style="display:flex; gap:20px; margin-bottom: 15px; font-size:14px;">
-          <label style="text-transform:none; font-weight:normal;"><input type="radio" name="orientacion" value="portrait" checked> Vertical</label>
-          <label style="text-transform:none; font-weight:normal;"><input type="radio" name="orientacion" value="landscape"> Horizontal</label>
+        <div
+                style="display:flex; gap:20px; margin-bottom: 15px; font-size:14px; align-items:center; flex-wrap:wrap;">
+          <label style="text-transform:none; font-weight:normal;"><input type="radio" name="orientacion"
+                                                                         value="portrait" checked> Vertical</label>
+          <label style="text-transform:none; font-weight:normal;"><input type="radio" name="orientacion"
+                                                                         value="landscape"> Horizontal</label>
+          <button id="btn-seleccionar-carpeta-pdf" onclick="seleccionarCarpetaPDF()"
+                  style="padding:6px 12px; background:var(--blue-600); color:white; border:none; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">📁
+            Examinar</button>
+          <span id="carpeta-seleccionada"
+                style="font-size:11px; color:var(--gray-600); font-style:italic;">Carpeta: Descargas (por
+                            defecto)</span>
         </div>
-        <button class="btn-generate" id="btn-pdf-generate" onclick="generarPDF()">📥 Generar PDF y Guardar Reporte</button>
+        <button class="btn-generate" id="btn-pdf-generate" onclick="generarPDF()">📥 Generar PDF y Guardar
+          Reporte</button>
+
+          
+        <!-- ══ NUEVO BOTÓN VER REPORTES PDF ══ -->
+        <button id="btn-ver-reportes" class="btn-ver-reportes" onclick="abrirVisorReportes()">📂 Ver Reportes PDF</button>
+      </div>
+    </div>
+
+        <button onclick="cerrarSesion()" class="btn-logout">
+          🚪 Cerrar Sesión Segura
+        </button>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+ VISTA: VISOR DE REPORTES PDF
+══════════════════════════════════════════════════════ -->
+  <div id="view-pdf-reportes" class="view-section">
+    <div class="panel">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:15px;">
+        <h2 style="color:var(--blue-800); font-size:16px; margin:0;">📂 Reportes PDF Guardados</h2>
+        <button onclick="cambiarVista('docente')"
+                style="padding:8px 14px; background:var(--blue-600); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:13px;">←
+          Volver</button>
+      </div>
+
+      <!-- BUSCADOR Y FILTROS -->
+      <div class="pdf-search-bar">
+        <input type="text" id="pdf-buscar" placeholder="🔍 Buscar por nombre..."
+               oninput="filtrarListaPDFs()">
+        <input type="date" id="pdf-filtro-fecha" onchange="filtrarListaPDFs()" title="Filtrar por fecha">
+        <select id="pdf-filtro-grado" onchange="filtrarListaPDFs()">
+          <option value="">🗂 Todos los grados</option>
+          <option value="1° General">1° General</option>
+          <option value="1° Adm. Contable">1° Adm. Contable</option>
+          <option value="1° S. Eléctricos">1° S. Eléctricos</option>
+          <option value="2° General">2° General</option>
+          <option value="2° Adm. Contable">2° Adm. Contable</option>
+          <option value="2° Sist. Eléctricos">2° Sist. Eléctricos</option>
+          <option value="3° Adm. Contable">3° Adm. Contable</option>
+          <option value="3° Sist. Eléctricos">3° Sist. Eléctricos</option>
+        </select>
+        <button onclick="limpiarFiltrosPDF()" title="Limpiar filtros">✕</button>
+      </div>
+
+      <div id="pdf-lista-container">
+        <div class="pdf-empty">Cargando reportes...</div>
       </div>
     </div>
   </div>
 
   <div class="panel">
-      <div class="web-logo-container">
-        <img src="logo2.svg" alt="Logo Institucional" class="web-logo" ondblclick="toggleMantenimiento()" onerror="this.src='logo2.jpg'; this.onerror=null;">
-      </div>
+    <div class="web-logo-container">
+      <img src="logo2.svg" alt="Logo Institucional" class="web-logo" ondblclick="toggleMantenimiento()"
+           onerror="this.src='logo2.jpg'; this.onerror=null;">
+    </div>
 
-  <div id="view-subdireccion" class="view-section">
-    <div class="panel">
-      <h2 style="color: var(--blue-800); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-        <button onclick="window.open('https://docs.google.com/spreadsheets/d/1kjzjLTs4YViqJMPVPvYZjwj9pf-q0h_PNNfCTlA7aWE/edit?usp=sharing', '_blank')" class="btn-resumen">
-          Resumen (Sub-Dirección)
-        </button>
-      </h2>
+    <div id="view-subdireccion" class="view-section">
+      <div class="panel">
+        <h2
+                style="color: var(--blue-800); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+          <button
+                  onclick="window.open('https://docs.google.com/spreadsheets/d/1kjzjLTs4YViqJMPVPvYZjwj9pf-q0h_PNNfCTlA7aWE/edit?usp=sharing', '_blank')"
+                  class="btn-resumen">
+            Resumen (Sub-Dirección)
+          </button>
+          <button onclick="verDocentesEnLinea()" class="btn-docentes-linea">
+            Ver Alumnos que asistieron hoy
+          </button>
+        </h2>
 
-      <style>
-        .btn-resumen { font-size: 20px; padding: 14px 28px; cursor: pointer; background-color: #1a73e8; color: #ffffff; border: none; border-radius: 8px; font-weight: 600; transition: background-color 0.2s ease, transform 0.1s ease; }
-        .btn-resumen:hover { background-color: #1558b0; }
-        .btn-resumen:active { transform: scale(0.97); }
-      </style>
-      
-      <div style="background: var(--gray-50); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--gray-100);">
-        <label style="color: var(--blue-800); margin-bottom: 10px; font-size: 14px;">📅 Filtrar Asistencia por Fecha</label>
-        <div style="display: flex; gap: 10px;">
-          <input type="date" id="filtro-fecha-sub" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--gray-100); outline: none;">
-          <button onclick="filtrarReportesSub()" style="padding: 10px 15px; border-radius: 8px; background: var(--blue-600); color: white; font-weight: bold; border: none; cursor: pointer;">🔍 Filtrar</button>
-          <button onclick="limpiarFiltroSub()" style="padding: 10px 15px; border-radius: 8px; background: var(--gray-600); color: white; font-weight: bold; border: none; cursor: pointer;">📋 Ver Todo</button>
-        </div>
-      </div>
-      
-      <div id="sub-lista-reportes">
-        <div style="padding: 20px; text-align: center;">Cargando reportes...</div>
-      </div>
-      
-      <div id="resumen-estadisticas"></div>
+        <style>
+          .btn-resumen {
+              font-size: 20px;
+              padding: 14px 28px;
+              cursor: pointer;
+              background-color: #1a73e8;
+              color: #ffffff;
+              border: none;
+              border-radius: 8px;
+              font-weight: 600;
+              transition: background-color 0.2s ease, transform 0.1s ease;
+          }
 
-      <button onclick="cargarReportesSub(true)" style="width:100%; margin-top:15px; padding:12px; border-radius:8px; border:1px solid var(--blue-600); color:var(--blue-600); background:white; font-weight:bold; cursor:pointer;">🔄 Refrescar Nube</button>
-      
-      <div style="margin-top: 25px; border-top: 2px dashed var(--gray-100); padding-top: 15px;">
-        <h3 style="color: var(--blue-800); font-size: 16px; margin-bottom: 15px;">⚙️ Configuración del Sistema</h3>
-        
-        <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <label style="color: var(--gray-900); margin-bottom: 5px; font-size: 14px; text-transform: none;">🔐 Pantalla de Inicio de Sesión</label>
-            <p style="font-size: 12px; color: var(--gray-600); margin: 0;">Si se apaga, todos entran directo al menú de docentes.</p>
+          .btn-resumen:hover {
+              background-color: #1558b0;
+          }
+
+          .btn-resumen:active {
+              transform: scale(0.97);
+          }
+
+          .btn-docentes-linea {
+              font-size: 16px;
+              padding: 12px 20px;
+              cursor: pointer;
+              background-color: var(--green-600);
+              color: #ffffff;
+              border: none;
+              border-radius: 8px;
+              font-weight: 600;
+              transition: background-color 0.2s ease, transform 0.1s ease;
+          }
+
+          .btn-docentes-linea:hover {
+              background-color: var(--green-800);
+          }
+
+          .btn-docentes-linea:active {
+              transform: scale(0.97);
+          }
+        </style>
+
+        <div
+                style="background: var(--gray-50); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--gray-100);">
+          <label style="color: var(--blue-800); margin-bottom: 10px; font-size: 14px;">📅 Filtrar
+            Asistencia por Fecha</label>
+          <div style="display: flex; gap: 10px;">
+            <input type="date" id="filtro-fecha-sub"
+                   style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--gray-100); outline: none;">
+            <button onclick="filtrarReportesSub()"
+                    style="padding: 10px 15px; border-radius: 8px; background: var(--blue-600); color: white; font-weight: bold; border: none; cursor: pointer;">🔍
+              Filtrar</button>
+            <button onclick="limpiarFiltroSub()"
+                    style="padding: 10px 15px; border-radius: 8px; background: var(--gray-600); color: white; font-weight: bold; border: none; cursor: pointer;">📋
+              Ver Todo</button>
+            <button onclick="mostrarDocentesEnLinea()"
+                    style="padding: 10px 15px; border-radius: 8px; background: var(--amber-600); color: white; font-weight: bold; border: none; cursor: pointer;">👨‍🏫 Docentes en Línea</button>
           </div>
-          <button id="btn-toggle-login" onclick="cambiarEstadoLogin()" style="padding: 10px 15px; border-radius: 8px; background: var(--gray-400); color: white; font-weight: bold; border: none; cursor: pointer;">⏳</button>
         </div>
 
-        <button onclick="accederLimpieza()" style="width: 100%; margin-top: 10px; padding: 12px; border-radius: 8px; border: 2px solid var(--red-600); background: white; color: var(--red-600); font-weight: bold; cursor: pointer;">
-          ⚠️ Acceder a la limpieza de registros
-        </button>
+        <div id="sub-lista-reportes">
+          <div style="padding: 20px; text-align: center;">Cargando reportes...</div>
+        </div>
 
-        <div id="zona-peligro" style="display:none; margin-top:15px;">
-          <label style="color: var(--red-600); font-size: 14px; font-weight: bold; margin-bottom: 10px; display: block;">
-            ⚠️ ZONA DE PELIGRO: LIMPIAR REGISTROS DE LA NUBE
-          </label>
-          <select id="delete-rango" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1.5px solid var(--red-600); color: var(--red-600); border-radius: 8px; font-weight: bold; outline: none;">
-            <option value="hoy">Borrar reportes de HOY</option>
-            <option value="all">Borrar TODO el historial</option>
-          </select>
-          <div style="display:flex; gap:10px;">
-            <button id="btn-delete-reportes" onclick="borrarReportes()" style="width:35%; background:var(--red-600); color:white; border:none; border-radius:8px; font-weight:bold; padding:12px; cursor:pointer;">🗑️ Borrar</button>
-            <button onclick="regresarLugarSeguro()" style="width:65%; background:var(--green-600); color:white; border:none; border-radius:8px; font-weight:bold; padding:12px; cursor:pointer;">✅ Regresar</button>
+        <div id="resumen-estadisticas"></div>
+
+        <button onclick="cargarReportesSub(true)"
+                style="width:100%; margin-top:15px; padding:12px; border-radius:8px; border:1px solid var(--blue-600); color:var(--blue-600); background:white; font-weight:bold; cursor:pointer;">🔄
+          Refrescar Nube</button>
+
+        <div style="margin-top: 25px; border-top: 2px dashed var(--gray-100); padding-top: 15px;">
+          <h3 style="color: var(--blue-800); font-size: 16px; margin-bottom: 15px;">⚙️ Configuración del
+            Sistema</h3>
+
+          <div
+                  style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <label
+                      style="color: var(--gray-900); margin-bottom: 5px; font-size: 14px; text-transform: none;">🔐
+                Pantalla de Inicio de Sesión</label>
+              <p style="font-size: 12px; color: var(--gray-600); margin: 0;">Si se apaga, todos entran
+                directo al menú de docentes.</p>
+            </div>
+            <button id="btn-toggle-login" onclick="cambiarEstadoLogin()"
+                    style="padding: 10px 15px; border-radius: 8px; background: var(--gray-100); color: white; font-weight: bold; border: none; cursor: pointer;">⏳</button>
+          </div>
+
+          <button onclick="accederLimpieza()"
+                  style="width: 100%; margin-top: 10px; padding: 12px; border-radius: 8px; border: 2px solid var(--red-600); background: white; color: var(--red-600); font-weight: bold; cursor: pointer;">
+            ⚠️ Acceder a la limpieza de registros
+          </button>
+
+          <div id="zona-peligro" style="display:none; margin-top:15px;">
+            <label
+                    style="color: var(--red-600); font-size: 14px; font-weight: bold; margin-bottom: 10px; display: block;">
+              ⚠️ ZONA DE PELIGRO: LIMPIAR REGISTROS DE LA NUBE
+            </label>
+            <select id="delete-rango"
+                    style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1.5px solid var(--red-600); color: var(--red-600); border-radius: 8px; font-weight: bold; outline: none;">
+              <option value="hoy">Borrar reportes de HOY</option>
+              <option value="all">Borrar TODO el historial</option>
+            </select>
+            <div style="display:flex; gap:10px;">
+              <button id="btn-delete-reportes" onclick="borrarReportes()"
+                      style="width:35%; background:var(--red-600); color:white; border:none; border-radius:8px; font-weight:bold; padding:12px; cursor:pointer;">🗑️
+                Borrar</button>
+              <button onclick="regresarLugarSeguro()"
+                      style="width:65%; background:var(--green-600); color:white; border:none; border-radius:8px; font-weight:bold; padding:12px; cursor:pointer;">✅
+                Regresar</button>
+            </div>
           </div>
         </div>
+      </div>
+
+      <div style="margin-top: 20px; padding: 0 20px;">
+        <button onclick="cerrarSesion()" class="btn-logout">
+          🚪 Cerrar Sesión Segura
+        </button>
       </div>
     </div>
   </div>
 
-  <div style="margin-top: 20px; padding: 0 20px;">
-    <button onclick="cerrarSesion()" class="btn-logout">
-      🚪 Cerrar Sesión Segura
-    </button>
-  </div>
-
-</div>
-
-<div class="modal-overlay" id="modal-alumno">
-  <div class="modal">
-    <h3>Nuevo Estudiante</h3>
-    <input type="text" id="new-nombre" placeholder="Apellidos, Nombres" style="width:100%; padding:10px; margin-bottom:10px;">
-    <select id="new-sexo" style="width:100%; padding:10px; margin-bottom:10px;"><option value="M">Masculino (M)</option><option value="F">Femenino (F)</option></select>
-    <input type="text" id="new-nie" placeholder="NIE" style="width:100%; padding:10px; margin-bottom:10px;">
-    <input type="text" id="new-telefono" placeholder="Teléfono" style="width:100%; padding:10px; margin-bottom:15px;">
-    <div style="display:flex; gap:10px;">
-      <button onclick="cerrarModal('modal-alumno')" style="flex:1; padding:10px;">Cancelar</button>
-      <button onclick="guardarAlumno()" id="btn-save-cloud" style="flex:1; padding:10px; background:var(--blue-600); color:white; border:none; border-radius:6px;">Guardar</button>
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- MODALES DE FORMULARIOS -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-alumno">
+    <div class="modal">
+      <h3>Nuevo Estudiante</h3>
+      <input type="text" id="new-nombre" placeholder="Apellidos, Nombres"
+             style="width:100%; padding:10px; margin-bottom:10px;">
+      <select id="new-sexo" style="width:100%; padding:10px; margin-bottom:10px;">
+        <option value="M">Masculino (M)</option>
+        <option value="F">Femenino (F)</option>
+      </select>
+      <input type="text" id="new-nie" placeholder="NIE" style="width:100%; padding:10px; margin-bottom:10px;">
+      <input type="text" id="new-telefono" placeholder="Teléfono"
+             style="width:100%; padding:10px; margin-bottom:15px;">
+      <div style="display:flex; gap:10px;">
+        <button onclick="cerrarModal('modal-alumno')" style="flex:1; padding:10px;">Cancelar</button>
+        <button onclick="guardarAlumno()" id="btn-save-cloud"
+                style="flex:1; padding:10px; background:var(--blue-600); color:white; border:none; border-radius:6px;">Guardar</button>
+      </div>
     </div>
   </div>
-</div>
 
-<div class="modal-overlay" id="modal-docente">
-  <div class="modal">
-    <h3 style="color: var(--blue-800); margin-bottom: 15px;">Registrar Nuevo Docente</h3>
-    <input type="text" id="new-docente-nombre" placeholder="Nombre completo del docente" style="width:100%; padding:10px; margin-bottom:10px;">
-    
-    <select id="new-docente-grado" style="width:100%; padding:10px; margin-bottom:10px;">
-      <option value="">-- Grado Asignado --</option>
-      <option value="1° General">1° General</option>
-      <option value="1° Adm. Contable">1° Adm. Contable</option>
-      <option value="1° S. Eléctricos">1° S. Eléctricos</option>
-      <option value="2° General">2° General</option>
-      <option value="2° Adm. Contable">2° Adm. Contable</option>
-      <option value="2° Sist. Eléctricos">2° Sist. Eléctricos</option>
-      <option value="3° Adm. Contable">3° Adm. Contable</option>
-      <option value="3° Sist. Eléctricos">3° Sist. Eléctricos</option>
-    </select>
-    
-    <select id="new-docente-seccion" style="width:100%; padding:10px; margin-bottom:15px;">
-      <option value="">-- Sección Asignada --</option>
-      <option value='"A"'>"A"</option>
-      <option value='"B"'>"B"</option>
-      <option value="Única">Única</option>
-    </select>
+  <div class="modal-overlay" id="modal-docente">
+    <div class="modal">
+      <h3 style="color: var(--blue-800); margin-bottom: 15px;">Registrar Nuevo Docente</h3>
+      <input type="text" id="new-docente-nombre" placeholder="Nombre completo del docente"
+             style="width:100%; padding:10px; margin-bottom:10px;">
 
-    <div style="display:flex; gap:10px;">
-      <button onclick="cerrarModal('modal-docente')" style="flex:1; padding:10px;">Cancelar</button>
-      <button onclick="guardarNuevoDocente()" id="btn-save-doc" style="flex:1; padding:10px; background:#5F5E5A; color:white; border:none; border-radius:6px;">Guardar</button>
+      <select id="new-docente-grado" style="width:100%; padding:10px; margin-bottom:10px;">
+        <option value="">-- Grado Asignado --</option>
+        <option value="1° General">1° General</option>
+        <option value="1° Adm. Contable">1° Adm. Contable</option>
+        <option value="1° S. Eléctricos">1° S. Eléctricos</option>
+        <option value="2° General">2° General</option>
+        <option value="2° Adm. Contable">2° Adm. Contable</option>
+        <option value="2° Sist. Eléctricos">2° Sist. Eléctricos</option>
+        <option value="3° Adm. Contable">3° Adm. Contable</option>
+        <option value="3° Sist. Eléctricos">3° Sist. Eléctricos</option>
+      </select>
+
+      <select id="new-docente-seccion" style="width:100%; padding:10px; margin-bottom:15px;">
+        <option value="">-- Sección Asignada --</option>
+        <option value='"A"'>"A"</option>
+        <option value='"B"'>"B"</option>
+        <option value="Única">Única</option>
+      </select>
+
+      <div style="display:flex; gap:10px;">
+        <button onclick="cerrarModal('modal-docente')" style="flex:1; padding:10px;">Cancelar</button>
+        <button onclick="guardarNuevoDocente()" id="btn-save-doc"
+                style="flex:1; padding:10px; background:#5F5E5A; color:white; border:none; border-radius:6px;">Guardar</button>
+      </div>
     </div>
   </div>
+
+  <div id="pdf-container">
+    <div id="pdf-content"
+         style="padding: 40px; font-family: Arial, sans-serif; color: black; background: white; width: 100%; box-sizing: border-box; position: relative; min-height: 1000px;">
+    </div>
+  </div>
+  <div class="modal-overlay" id="modal-docentes-linea">
+    <div class="modal">
+      <h3 style="color: var(--blue-800); margin-bottom: 15px; text-align: center;">👨‍🏫 Docentes Registrados / En Línea</h3>
+      <div id="lista-docentes-linea" style="max-height: 250px; overflow-y: auto; margin-bottom: 15px;">
+        <p style="text-align:center; color: var(--gray-600);">Cargando...</p>
+      </div>
+      <button onclick="cerrarModal('modal-docentes-linea')" style="width:100%; padding: 12px; background: var(--gray-600); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Cerrar</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-detalle-estudiantes">
+    <div class="modal" style="max-width: 500px;">
+      <h3 style="color: var(--blue-800); margin-bottom: 10px; text-align: center;" id="titulo-detalle-estudiantes">Lista de Estudiantes</h3>
+      <p id="subtitulo-detalle-estudiantes" style="text-align: center; font-size: 13px; color: var(--gray-600); margin-bottom: 15px;"></p>
+
+      <div id="lista-detalle-estudiantes" style="max-height: 300px; overflow-y: auto; margin-bottom: 15px; border: 1px solid var(--gray-100); border-radius: 6px; padding: 10px; font-size: 13px;">
+        <p style="text-align:center; color: var(--gray-600);">Cargando...</p>
+      </div>
+
+      <button onclick="cerrarModal('modal-detalle-estudiantes')" style="width:100%; padding: 12px; background: var(--gray-600); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Cerrar</button>
+    </div>
+  </div>
+
 </div>
 
-<div id="pdf-container">
-  <div id="pdf-content" style="padding: 40px; font-family: Arial, sans-serif; color: black; background: white; width: 100%; box-sizing: border-box; position: relative; min-height: 1000px;">
+<!-- ═══════════════════════════════════════════════════════════════
+ VISOR INTERNO DE PDF (modal de pantalla completa)
+═══════════════════════════════════════════════════════════════ -->
+<div class="pdf-viewer-overlay" id="pdf-viewer-overlay">
+  <div class="pdf-viewer-toolbar">
+    <button class="pdf-viewer-btn roj" onclick="cerrarVisorPDF()" style="background:var(--red-600);">✕ CERRAR</button>
+    <div class="pdf-viewer-titulo" id="pdf-viewer-nombre">—</div>
+    <div class="pdf-zoom-controls">
+      <button onclick="cambiarZoom(-0.2)" title="Alejar">−</button>
+      <span id="pdf-zoom-label">100%</span>
+      <button onclick="cambiarZoom(0.2)" title="Acercar">+</button>
+    </div>
+  </div>
+  <div class="pdf-viewer-content" id="pdf-viewer-content" style="touch-action: pan-x pan-y;">
+    <div class="pdf-loading" id="pdf-viewer-loading">⏳ Cargando PDF...</div>
+  </div>
+  <div class="pdf-viewer-nav" id="pdf-viewer-nav" style="display:none;">
+    <button id="pdf-btn-prev" onclick="cambiarPaginaPDF(-1)">◀ Anterior</button>
+    <span id="pdf-page-info">Página 1 de 1</span>
+    <button id="pdf-btn-next" onclick="cambiarPaginaPDF(1)">Siguiente ▶</button>
   </div>
 </div>
+
+<!-- PDF.js CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwL2huKwIXPI2xVLo1M_Z7rEaXa3Wdgx6boUFj0CiaSVyVwtOV8HxyShrnxMtzmp0qy/exec";
-const PASS_LOGIN = "89";
-const PASS_ADMIN = "747-8";
+  // Configurar workerSrc de PDF.js
+  if (typeof pdfjsLib !== 'undefined') {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
 
-let baseDatosAlumnos = [];
-let baseDatosDocentes = [];
-let alumnosFiltrados = [];
-let estadoSeleccion = true;
-let sistemaEnMantenimiento = true;
-let todosLosReportes = []; 
-let loginRequerido = true; // NUEVA VARIABLE PARA EL INTERRUPTOR
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwL2huKwIXPI2xVLo1M_Z7rEaXa3Wdgx6boUFj0CiaSVyVwtOV8HxyShrnxMtzmp0qy/exec";
+  const PASS_LOGIN = "89";
+  const PASS_ADMIN = "747-8";
 
-// =========================================================================
-// NUEVO CÓDIGO: VERIFICAR ESTADOS CONECTADO A LA NUBE
-// =========================================================================
-async function chequearMantenimientoNube() {
-  try {
-    const res = await fetch(SCRIPT_URL + "?tipo=check_mantenimiento");
-    const data = await res.json();
-    
-    if (data.mantenimiento === true) {
-      sistemaEnMantenimiento = true;
-      document.getElementById("pantalla-mantenimiento").style.display = 'flex';
-      document.getElementById("header-principal").style.display = 'none';
-      document.getElementById("container-principal").style.display = 'none';
+  const ES_ANDROID_APP = typeof AndroidPDF !== 'undefined' && AndroidPDF && typeof AndroidPDF.leerPDFBase64 === 'function' && typeof AndroidStorage !== 'undefined' && AndroidStorage;
+
+  function esAppAndroid() {
+      return ES_ANDROID_APP;
+  }
+
+  function actualizarUISegunPlataforma() {
+      if (!esAppAndroid()) {
+          const btnExaminar = document.getElementById('btn-seleccionar-carpeta-pdf');
+          if (btnExaminar) btnExaminar.style.display = 'none';
+          const btnVerReportes = document.getElementById('btn-ver-reportes');
+          if (btnVerReportes) btnVerReportes.style.display = 'none';
+      }
+  }
+
+  let baseDatosAlumnos = []; 
+  let carpetaPDFUri = null;
+  let baseDatosDocentes = [];
+  let alumnosFiltrados = [];
+  let estadoSeleccion = true;
+  let sistemaEnMantenimiento = true;
+  let todosLosReportes = [];
+  let loginRequerido = true;
+
+  // ── Variables del visor PDF ──────────────────────────────────────
+  let pdfDoc = null;
+  let pdfPaginaActual = 1;
+  let pdfTotalPaginas = 0;
+  let pdfZoom = 1.2;
+  let listaPDFs = [];          // Array de {nombre, uri, fecha, grado}
+  let listaPDFsFiltrada = [];
+
+  // =========================================================================
+  // VERIFICAR ESTADOS DESDE LA NUBE
+  // =========================================================================
+  async function chequearMantenimientoNube() {
+      try {
+          const res = await fetch(SCRIPT_URL + "?tipo=check_mantenimiento");
+          const data = await res.json();
+
+          if (data.mantenimiento === true) {
+              sistemaEnMantenimiento = true;
+              document.getElementById("pantalla-mantenimiento").style.display = 'flex';
+              document.getElementById("header-principal").style.display = 'none';
+              document.getElementById("container-principal").style.display = 'none';
+              document.getElementById("modal-inicio-login").classList.remove('open');
+              document.getElementById("modal-inicio-dropdown").classList.remove('open');
+              document.getElementById("mantenimiento-titulo").innerText = "SITIO EN MANTENIMIENTO";
+              document.getElementById("mantenimiento-texto").innerText = "SISTEMA BLOQUEADO. POR FAVOR NO UTILIZAR.";
+          } else {
+              sistemaEnMantenimiento = false;
+              document.getElementById('pantalla-mantenimiento').style.display = 'none';
+
+              loginRequerido = data.login_habilitado;
+
+              if (loginRequerido) {
+                  document.getElementById("modal-inicio-login").classList.add('open');
+              } else {
+                  document.getElementById("modal-inicio-login").classList.remove('open');
+                  document.getElementById("modal-inicio-dropdown").classList.add('open');
+              }
+
+              const btnToggle = document.getElementById("btn-toggle-login");
+              if (btnToggle) {
+                  btnToggle.innerText = loginRequerido ? "Desactivar Login" : "Activar Login";
+                  btnToggle.style.background = loginRequerido ? "var(--red-600)" : "var(--green-600)";
+              }
+
+              inicializarBaseDatos();
+              setTimeout(restaurarSesionGuardada, 2000);
+          }
+      } catch (error) {
+          document.getElementById("mantenimiento-titulo").innerText = "ERROR DE CONEXIÓN";
+          document.getElementById("mantenimiento-texto").innerText = "Revise su internet o enlace de base de datos.";
+          document.getElementById('pantalla-mantenimiento').style.display = 'flex';
+      }
+  }
+
+  // =========================================================================
+  // MEMORIA DE SESIÓN
+  // =========================================================================
+  function guardarSesion(usuario, grado, seccion, docente) {
+      try {
+          if (typeof AndroidStorage !== 'undefined') {
+              AndroidStorage.set('sesion_usuario', usuario);
+              AndroidStorage.set('sesion_grado', grado || '');
+              AndroidStorage.set('sesion_seccion', seccion || '');
+              AndroidStorage.set('sesion_docente', docente || '');
+          }
+      } catch (e) { }
+  }
+
+  function borrarSesion() {
+      try {
+          if (typeof AndroidStorage !== 'undefined') {
+              AndroidStorage.remove('sesion_usuario');
+              AndroidStorage.remove('sesion_grado');
+              AndroidStorage.remove('sesion_seccion');
+              AndroidStorage.remove('sesion_docente');
+          }
+      } catch (e) { }
+  }
+
+  function restaurarSesionGuardada() {
+      try {
+          if (typeof AndroidStorage === 'undefined') return;
+          const usuario = AndroidStorage.get('sesion_usuario');
+          if (!usuario) return;
+
+          const grado = AndroidStorage.get('sesion_grado') || '';
+          const seccion = AndroidStorage.get('sesion_seccion') || '';
+          const docente = AndroidStorage.get('sesion_docente') || '';
+
+          const carpeta = AndroidStorage.get('carpeta_pdf_uri');
+          if (carpeta) {
+              carpetaPDFUri = carpeta;
+              document.getElementById('carpeta-seleccionada').innerText = '📁 ' + (AndroidStorage.get('carpeta_pdf_nombre') || 'Carpeta personalizada');
+          }
+
+          if (grado) document.getElementById('grado-select').value = grado;
+          if (seccion) document.getElementById('seccion-select').value = seccion;
+          if (docente) document.getElementById('docente-nombre').value = docente;
+          if (grado && seccion) cargarAlumnos();
+
+          desbloquearInterfazMain();
+      } catch (e) { }
+  }
+
+  // =========================================================================
+  // SELECCIONAR CARPETA PARA GUARDAR PDF
+  // =========================================================================
+  function seleccionarCarpetaPDF() {
+      if (typeof AndroidStorage !== 'undefined') {
+          AndroidStorage.abrirSelectorCarpeta();
+      } else {
+          alert('Esta función solo está disponible en la app Android.');
+      }
+  }
+
+  function onCarpetaSeleccionada(uri, nombre) {
+      carpetaPDFUri = uri;
+      document.getElementById('carpeta-seleccionada').innerText = '📁 ' + nombre;
+      try {
+          if (typeof AndroidStorage !== 'undefined') {
+              AndroidStorage.set('carpeta_pdf_uri', uri);
+              AndroidStorage.set('carpeta_pdf_nombre', nombre);
+          }
+      } catch (e) { }
+  }
+
+  window.onload = function() {
+      actualizarUISegunPlataforma();
+      chequearMantenimientoNube();
+  };
+
+  document.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') {
+          if (document.getElementById('modal-inicio-login').classList.contains('open')) {
+              ejecutarLogin();
+          }
+      }
+  });
+
+  // --- LÓGICA DE LOGIN Y MULTI-CLIC ---
+  let loginClicks = 0;
+  let loginTimer;
+
+  function handleLoginClick(e) {
+      if (e) e.preventDefault();
+      loginClicks++;
+      clearTimeout(loginTimer);
+
+      if (loginClicks >= 4) {
+          loginClicks = 0;
+          let pass = prompt("🔐 Acceso Administrador Sub-Dirección:");
+          if (pass === PASS_ADMIN) {
+              document.getElementById("modal-inicio-login").classList.remove('open');
+              document.getElementById('header-principal').style.display = 'flex';
+              document.getElementById('container-principal').style.display = 'block';
+              cambiarVista('subdireccion');
+          } else {
+              if (pass !== null) alert("❌ Contraseña incorrecta.");
+          }
+          return;
+      }
+
+      loginTimer = setTimeout(() => {
+          let clicsRegistrados = loginClicks;
+          loginClicks = 0;
+
+          if (clicsRegistrados === 2) {
+              const isRobotChecked = document.getElementById("login-robot-check").checked;
+              if (!isRobotChecked) return alert("🤖 Por favor, confirme que no es un robot marcando la casilla.");
+
+              document.getElementById("modal-inicio-login").classList.remove('open');
+              document.getElementById("modal-inicio-dropdown").classList.add('open');
+          }
+          else if (clicsRegistrados === 1 || clicsRegistrados === 3) {
+              ejecutarLogin();
+          }
+      }, 300);
+  }
+
+  function ejecutarLogin() {
+      const userStr = document.getElementById("login-username").value.trim().toLowerCase();
+      const passStr = document.getElementById("login-password").value;
+      const isRobotChecked = document.getElementById("login-robot-check").checked;
+
+      if (userStr === "") return alert("⚠️ Por favor ingrese un usuario.");
+      if (!isRobotChecked) return alert("🤖 Por favor, confirme que no es un robot marcando la casilla.");
+      if (passStr !== PASS_LOGIN) return alert("❌ Contraseña de acceso incorrecta.");
+
+      if (userStr === "12") {
+          document.getElementById("modal-inicio-login").classList.remove('open');
+          document.getElementById("modal-inicio-dropdown").classList.add('open');
+          return;
+      }
+      if (userStr === "invitado") {
+          document.getElementById("docente-nombre").value = "";
+          desbloquearInterfazMain("invitado");
+          return;
+      }
+
+      const docenteEncontrado = baseDatosDocentes.find(d => d.nombre.toLowerCase().includes(userStr));
+      if (docenteEncontrado) {
+          document.getElementById("docente-nombre").value = docenteEncontrado.nombre;
+          if (docenteEncontrado.grado && docenteEncontrado.seccion) {
+              document.getElementById("grado-select").value = docenteEncontrado.grado;
+              document.getElementById("seccion-select").value = docenteEncontrado.seccion;
+              cargarAlumnos();
+          }
+          desbloquearInterfazMain(docenteEncontrado.nombre);
+      } else {
+          alert("❌ Usuario no encontrado. Intente con un nombre válido, o escriba 'invitado'.");
+      }
+  }
+
+  function verificarVueltaAlLogin() {
+      document.getElementById('modal-inicio-dropdown').classList.remove('open');
+      if (loginRequerido) {
+          document.getElementById('modal-inicio-login').classList.add('open');
+      } else {
+          document.getElementById('modal-inicio-dropdown').classList.add('open');
+          alert("ℹ️ La pantalla de inicio de sesión está desactivada por el administrador.");
+      }
+  }
+
+  function entrarComoDocenteDropdown() {
+      const sel = document.getElementById("select-docente-inicio").value;
+      if (!sel) return alert("Por favor, seleccione una opción.");
+
+      if (sel !== "Invitado") {
+          document.getElementById("docente-nombre").value = sel;
+          const docenteEncontrado = baseDatosDocentes.find(d => d.nombre === sel);
+          if (docenteEncontrado && docenteEncontrado.grado && docenteEncontrado.seccion) {
+              document.getElementById("grado-select").value = docenteEncontrado.grado;
+              document.getElementById("seccion-select").value = docenteEncontrado.seccion;
+              cargarAlumnos();
+          }
+      } else {
+          document.getElementById("docente-nombre").value = "";
+      }
+
+      document.getElementById("modal-inicio-dropdown").classList.remove('open');
+      desbloquearInterfazMain(sel !== "Invitado" ? sel : "invitado");
+  }
+
+  function desbloquearInterfazMain(usuarioActual) {
       document.getElementById("modal-inicio-login").classList.remove('open');
       document.getElementById("modal-inicio-dropdown").classList.remove('open');
-      document.getElementById("mantenimiento-titulo").innerText = "SITIO EN MANTENIMIENTO";
-      document.getElementById("mantenimiento-texto").innerText = "SISTEMA BLOQUEADO. POR FAVOR NO UTILIZAR.";
-    } else {
-      sistemaEnMantenimiento = false;
-      document.getElementById('pantalla-mantenimiento').style.display = 'none';
-      
-      // ESTABLECER SI EL LOGIN ESTÁ ENCENDIDO O APAGADO
-      loginRequerido = data.login_habilitado;
-      
-      if (loginRequerido) {
-        document.getElementById("modal-inicio-login").classList.add('open');
-      } else {
-        // SI ESTÁ APAGADO, SALTA DIRECTO AL MENÚ ALTERNATIVO
-        document.getElementById("modal-inicio-login").classList.remove('open');
-        document.getElementById("modal-inicio-dropdown").classList.add('open');
-      }
-      
-      // Actualizar visualmente el botón en el panel de administrador
-      const btnToggle = document.getElementById("btn-toggle-login");
-      if (btnToggle) {
-        btnToggle.innerText = loginRequerido ? "Desactivar Login" : "Activar Login";
-        btnToggle.style.background = loginRequerido ? "var(--red-600)" : "var(--green-600)";
-      }
-
-      inicializarBaseDatos();
-    }
-  } catch (error) {
-    document.getElementById("mantenimiento-titulo").innerText = "ERROR DE CONEXIÓN";
-    document.getElementById("mantenimiento-texto").innerText = "Revise su internet o enlace de base de datos.";
-    document.getElementById('pantalla-mantenimiento').style.display = 'flex';
-  }
-}
-
-window.onload = chequearMantenimientoNube;
-
-// Detectar tecla Enter en el formulario de Login
-document.addEventListener('keydown', function(event) {
-  if (event.key === 'Enter') {
-    if (document.getElementById('modal-inicio-login').classList.contains('open')) {
-      ejecutarLogin();
-    }
-  }
-});
-
-// --- LÓGICA DE LOGIN Y MULTI-CLIC ---
-let loginClicks = 0;
-let loginTimer;
-
-function handleLoginClick(e) {
-  if(e) e.preventDefault();
-  loginClicks++;
-  clearTimeout(loginTimer);
-  
-  if (loginClicks >= 4) {
-    loginClicks = 0;
-    let pass = prompt("🔐 Acceso Administrador Sub-Dirección:");
-    if (pass === PASS_ADMIN) {
-      document.getElementById("modal-inicio-login").classList.remove('open');
       document.getElementById('header-principal').style.display = 'flex';
       document.getElementById('container-principal').style.display = 'block';
-      cambiarVista('subdireccion');
-    } else {
-      if(pass !== null) alert("❌ Contraseña incorrecta.");
-    }
-    return;
+      if (usuarioActual) {
+          const g = document.getElementById('grado-select').value;
+          const s = document.getElementById('seccion-select').value;
+          const d = document.getElementById('docente-nombre').value;
+          guardarSesion(usuarioActual, g, s, d);
+      }
   }
-  
-  loginTimer = setTimeout(() => {
-    let clicsRegistrados = loginClicks;
-    loginClicks = 0; 
-    
-    if (clicsRegistrados === 2) {
-      const isRobotChecked = document.getElementById("login-robot-check").checked;
-      if (!isRobotChecked) return alert("🤖 Por favor, confirme que no es un robot marcando la casilla.");
-      
-      document.getElementById("modal-inicio-login").classList.remove('open');
-      document.getElementById("modal-inicio-dropdown").classList.add('open');
-    } 
-    else if (clicsRegistrados === 1 || clicsRegistrados === 3) {
-      ejecutarLogin();
-    }
-  }, 300); 
-}
 
-function ejecutarLogin() {
-  const userStr = document.getElementById("login-username").value.trim().toLowerCase();
-  const passStr = document.getElementById("login-password").value;
-  const isRobotChecked = document.getElementById("login-robot-check").checked;
-  
-  if (userStr === "") return alert("⚠️ Por favor ingrese un usuario.");
-  if (!isRobotChecked) return alert("🤖 Por favor, confirme que no es un robot marcando la casilla.");
-  if (passStr !== PASS_LOGIN) return alert("❌ Contraseña de acceso incorrecta.");
-  
-  if (userStr === "12") {
-    document.getElementById("modal-inicio-login").classList.remove('open');
-    document.getElementById("modal-inicio-dropdown").classList.add('open');
-    return;
+  function pedirPasswordDocente() {
+      if (sistemaEnMantenimiento) return;
+      if (prompt("Ingrese contraseña de Administrador:") === PASS_ADMIN) {
+          document.getElementById('modal-docente').classList.add('open');
+      } else { alert("Contraseña incorrecta."); }
   }
-  if (userStr === "invitado") {
-    document.getElementById("docente-nombre").value = "";
-    desbloquearInterfazMain();
-    return;
+
+  async function guardarNuevoDocente() {
+      if (sistemaEnMantenimiento) return;
+      const btn = document.getElementById('btn-save-doc');
+      const nom = document.getElementById('new-docente-nombre').value.trim();
+      const gra = document.getElementById('new-docente-grado').value;
+      const sec = document.getElementById('new-docente-seccion').value;
+
+      if (!nom || !gra || !sec) return alert("Por favor complete todos los datos del docente.");
+      btn.disabled = true; btn.innerText = "Guardando...";
+
+      try {
+          await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "nuevo_docente", nombre: nom, grado: gra, seccion: sec }) });
+          alert("Docente registrado exitosamente.");
+          cerrarModal('modal-docente'); setTimeout(() => { location.reload(); }, 1000);
+      } catch (e) { alert("Error al guardar."); }
+      btn.disabled = false; btn.innerText = "Guardar";
   }
-  
-  const docenteEncontrado = baseDatosDocentes.find(d => d.nombre.toLowerCase().includes(userStr));
-  if (docenteEncontrado) {
-    document.getElementById("docente-nombre").value = docenteEncontrado.nombre;
-    if(docenteEncontrado.grado && docenteEncontrado.seccion) {
-      document.getElementById("grado-select").value = docenteEncontrado.grado;
-      document.getElementById("seccion-select").value = docenteEncontrado.seccion;
-      cargarAlumnos();
-    }
-    desbloquearInterfazMain();
-  } else {
-    alert("❌ Usuario no encontrado. Intente con un nombre válido, o escriba 'invitado'.");
+
+  async function toggleMantenimiento() {
+      const password = prompt("ADVERTENCIA: ¿Deseas activar/desactivar el Apagón Global?\nIngresa clave maestra:");
+      if (password !== PASS_ADMIN) return alert("❌ Clave incorrecta. Acceso Denegado.");
+      document.body.style.cursor = "wait";
+      try {
+          await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "toggle_mantenimiento", password: password }) });
+          alert("📡 Orden enviada a la Nube."); setTimeout(() => { location.reload(); }, 1500);
+      } catch (e) { alert("❌ Error de red."); }
+      document.body.style.cursor = "default";
   }
-}
 
-// NUEVO: CONTROLAR EL BOTÓN "VOLVER" DEL DROPDOWN SEGÚN SI EL LOGIN ESTÁ ACTIVO O NO
-function verificarVueltaAlLogin() {
-  document.getElementById('modal-inicio-dropdown').classList.remove('open');
-  if (loginRequerido) {
-    document.getElementById('modal-inicio-login').classList.add('open');
-  } else {
-    // Si el login está desactivado, no tiene sentido "volver", lo ideal es recargar o mantenerlo ahí
-    document.getElementById('modal-inicio-dropdown').classList.add('open');
-    alert("ℹ️ La pantalla de inicio de sesión está desactivada por el administrador.");
+  async function cambiarEstadoLogin() {
+      if (sistemaEnMantenimiento) return;
+      const password = prompt("Seguridad: Ingrese la contraseña de administrador para cambiar esta configuración:");
+      if (password !== PASS_ADMIN) return alert("❌ Contraseña incorrecta.");
+
+      const btn = document.getElementById("btn-toggle-login");
+      btn.disabled = true; btn.innerText = "⏳...";
+
+      try {
+          await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "toggle_login", password: password }) });
+          alert("✅ Configuración de inicio de sesión actualizada para todos los dispositivos.");
+          setTimeout(() => { location.reload(); }, 1000);
+      } catch (e) {
+          alert("❌ Error de red.");
+          btn.disabled = false;
+          btn.innerText = loginRequerido ? "Desactivar Login" : "Activar Login";
+      }
   }
-}
 
-function entrarComoDocenteDropdown() {
-  const sel = document.getElementById("select-docente-inicio").value;
-  if (!sel) return alert("Por favor, seleccione una opción.");
-  
-  if (sel !== "Invitado") {
-    document.getElementById("docente-nombre").value = sel;
-    const docenteEncontrado = baseDatosDocentes.find(d => d.nombre === sel);
-    if(docenteEncontrado && docenteEncontrado.grado && docenteEncontrado.seccion) {
-      document.getElementById("grado-select").value = docenteEncontrado.grado;
-      document.getElementById("seccion-select").value = docenteEncontrado.seccion;
-      cargarAlumnos(); 
-    }
-  } else {
-    document.getElementById("docente-nombre").value = "";
+  function pedirPasswordSub() {
+      if (sistemaEnMantenimiento) return;
+      if (prompt("Contraseña:") === PASS_ADMIN) cambiarVista('subdireccion'); else alert("Incorrecta.");
   }
-  
-  document.getElementById("modal-inicio-dropdown").classList.remove('open');
-  desbloquearInterfazMain();
-}
-
-function desbloquearInterfazMain() {
-  document.getElementById("modal-inicio-login").classList.remove('open');
-  document.getElementById("modal-inicio-dropdown").classList.remove('open');
-  document.getElementById('header-principal').style.display = 'flex';
-  document.getElementById('container-principal').style.display = 'block';
-}
-
-function pedirPasswordDocente() {
-  if(sistemaEnMantenimiento) return;
-  if (prompt("Ingrese contraseña de Administrador:") === PASS_ADMIN) { 
-    document.getElementById('modal-docente').classList.add('open'); 
-  } else { alert("Contraseña incorrecta."); } 
-}
-
-async function guardarNuevoDocente() {
-  if(sistemaEnMantenimiento) return;
-  const btn = document.getElementById('btn-save-doc');
-  const nom = document.getElementById('new-docente-nombre').value.trim();
-  const gra = document.getElementById('new-docente-grado').value;
-  const sec = document.getElementById('new-docente-seccion').value;
-  
-  if(!nom || !gra || !sec) return alert("Por favor complete todos los datos del docente.");
-  btn.disabled = true; btn.innerText = "Guardando...";
-  
-  try {
-    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "nuevo_docente", nombre: nom, grado: gra, seccion: sec }) });
-    alert("Docente registrado exitosamente.");
-    cerrarModal('modal-docente'); setTimeout(() => { location.reload(); }, 1000);
-  } catch(e) { alert("Error al guardar."); }
-  btn.disabled = false; btn.innerText = "Guardar";
-}
-
-async function toggleMantenimiento() {
-  const password = prompt("ADVERTENCIA: ¿Deseas activar/desactivar el Apagón Global?\nIngresa clave maestra:");
-  if (password !== PASS_ADMIN) return alert("❌ Clave incorrecta. Acceso Denegado.");
-  document.body.style.cursor = "wait";
-  try {
-    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "toggle_mantenimiento", password: password }) });
-    alert("📡 Orden enviada a la Nube."); setTimeout(() => { location.reload(); }, 1500); 
-  } catch (e) { alert("❌ Error de red."); }
-  document.body.style.cursor = "default";
-}
-
-// --- NUEVA FUNCIÓN: CAMBIAR ESTADO DEL LOGIN EN LA NUBE ---
-async function cambiarEstadoLogin() {
-  if(sistemaEnMantenimiento) return;
-  const password = prompt("Seguridad: Ingrese la contraseña de administrador para cambiar esta configuración:");
-  if (password !== PASS_ADMIN) return alert("❌ Contraseña incorrecta.");
-
-  const btn = document.getElementById("btn-toggle-login");
-  btn.disabled = true; btn.innerText = "⏳...";
-
-  try {
-    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "toggle_login", password: password }) });
-    alert("✅ Configuración de inicio de sesión actualizada para todos los dispositivos.");
-    setTimeout(() => { location.reload(); }, 1000); 
-  } catch (e) {
-    alert("❌ Error de red.");
-    btn.disabled = false;
-    btn.innerText = loginRequerido ? "Desactivar Login" : "Activar Login";
+  function pedirPasswordNuevo() {
+      if (sistemaEnMantenimiento) return;
+      if (prompt("Contraseña:") === PASS_ADMIN) document.getElementById('modal-alumno').classList.add('open'); else alert("Incorrecta.");
   }
-}
 
-function pedirPasswordSub() { 
-  if(sistemaEnMantenimiento) return;
-  if (prompt("Contraseña:") === PASS_ADMIN) cambiarVista('subdireccion'); else alert("Incorrecta."); 
-}
-function pedirPasswordNuevo() { 
-  if(sistemaEnMantenimiento) return;
-  if (prompt("Contraseña:") === PASS_ADMIN) document.getElementById('modal-alumno').classList.add('open'); else alert("Incorrecta."); 
-}
-
-function cambiarVista(vista) {
-    if(sistemaEnMantenimiento) return;
-    document.querySelectorAll('.view-section').forEach(s => s.classList.remove('view-active'));
-    if(vista === 'subdireccion') {
-        document.getElementById('view-subdireccion').classList.add('view-active');
-        document.getElementById('btn-volver-asist').style.display = 'block';
-        cargarReportesSub(false);
-    } else {
-        document.getElementById('view-docente').classList.add('view-active');
-        document.getElementById('btn-volver-asist').style.display = 'none';
-    }
-}
-
-async function inicializarBaseDatos() {
-  if(sistemaEnMantenimiento) return;
-  const cont = document.getElementById('tabla-alumnos');
-  const selDoc = document.getElementById('select-docente-inicio');
-  
-  cont.innerHTML = '<div style="padding: 20px; text-align: center; color: #185FA5; font-weight:bold;">Sincronizando con la nube...</div>';
-  selDoc.innerHTML = '<option value="">Descargando lista...</option>';
-  
-  try {
-    const [responseAlu, responseDoc] = await Promise.all([ fetch(SCRIPT_URL), fetch(SCRIPT_URL + "?tipo=lista_docentes") ]);
-    if(!responseAlu.ok || !responseDoc.ok) throw new Error("Error");
-
-    baseDatosAlumnos = await responseAlu.json();
-    baseDatosAlumnos.sort((a, b) => a.nombre.localeCompare(b.nombre));
-    cargarAlumnos();
-    
-    baseDatosDocentes = await responseDoc.json();
-    let htmlDoc = `<option value="">-- Seleccionar --</option><option value="Invitado">👤 Entrar como Invitado</option>`;
-    baseDatosDocentes.forEach(d => { htmlDoc += `<option value="${d.nombre}">${d.nombre}</option>`; });
-    selDoc.innerHTML = htmlDoc;
-    
-  } catch (error) { 
-    cont.innerHTML = '<div style="padding: 20px; text-align: center; color: red;">Error de conexión.</div>'; 
-    selDoc.innerHTML = '<option value="Invitado">Error de red - Invitado</option>';
+  function cambiarVista(vista) {
+      if (sistemaEnMantenimiento) return;
+      document.querySelectorAll('.view-section').forEach(s => s.classList.remove('view-active'));
+      if (vista === 'subdireccion') {
+          document.getElementById('view-subdireccion').classList.add('view-active');
+          document.getElementById('btn-volver-asist').style.display = 'block';
+          cargarReportesSub(false);
+      } else if (vista === 'pdf-reportes') {
+          document.getElementById('view-pdf-reportes').classList.add('view-active');
+          document.getElementById('btn-volver-asist').style.display = 'block';
+          cargarListaPDFs();
+      } else {
+          document.getElementById('view-docente').classList.add('view-active');
+          document.getElementById('btn-volver-asist').style.display = 'none';
+      }
   }
-}
 
-async function cargarReportesSub(fuerzarRefresco = false) {
-    if(sistemaEnMantenimiento) return;
-    const container = document.getElementById('sub-lista-reportes');
-    const stats = document.getElementById('resumen-estadisticas');
-    
-    if(todosLosReportes.length > 0 && !fuerzarRefresco) { filtrarReportesSub(); return; }
+  async function inicializarBaseDatos() {
+      if (sistemaEnMantenimiento) return;
+      const cont = document.getElementById('tabla-alumnos');
+      const selDoc = document.getElementById('select-docente-inicio');
 
-    container.innerHTML = "Sincronizando reportes desde la nube..."; stats.innerHTML = "";
+      cont.innerHTML = '<div style="padding: 20px; text-align: center; color: #185FA5; font-weight:bold;">Sincronizando con la nube...</div>';
+      selDoc.innerHTML = '<option value="">Descargando lista...</option>';
 
-    try {
-        const response = await fetch(SCRIPT_URL + "?tipo=reportes");
-        todosLosReportes = await response.json();
-        
-        const hoy = new Date();
-        const fechaLocal = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
-        document.getElementById('filtro-fecha-sub').value = fechaLocal;
+      try {
+          const [responseAlu, responseDoc] = await Promise.all([fetch(SCRIPT_URL), fetch(SCRIPT_URL + "?tipo=lista_docentes")]);
+          if (!responseAlu.ok || !responseDoc.ok) throw new Error("Error");
 
-        filtrarReportesSub();
-    } catch (e) { container.innerHTML = "Error al cargar reportes."; }
-}
+          baseDatosAlumnos = await responseAlu.json();
+          baseDatosAlumnos.sort((a, b) => a.nombre.localeCompare(b.nombre));
+          cargarAlumnos();
 
-function limpiarFiltroSub() {
-    document.getElementById('filtro-fecha-sub').value = '';
-    filtrarReportesSub();
-}
+          baseDatosDocentes = await responseDoc.json();
+          let htmlDoc = `<option value="">-- Seleccionar --</option><option value="Invitado">👤 Entrar como Invitado</option>`;
+          baseDatosDocentes.forEach(d => { htmlDoc += `<option value="${d.nombre}">${d.nombre}</option>`; });
+          selDoc.innerHTML = htmlDoc;
 
-function filtrarReportesSub() {
-    const fechaFiltro = document.getElementById('filtro-fecha-sub').value;
-    let reportesAMostrar = todosLosReportes;
+      } catch (error) {
+          cont.innerHTML = '<div style="padding: 20px; text-align: center; color: red;">Error de conexión.</div>';
+          selDoc.innerHTML = '<option value="Invitado">Error de red - Invitado</option>';
+      }
+  }
 
-    if (fechaFiltro) {
-        const [fYear, fMonth, fDay] = fechaFiltro.split('-');
-        reportesAMostrar = todosLosReportes.filter(r => {
-            const rDate = new Date(r.fecha);
-            return rDate.getFullYear() == fYear && String(rDate.getMonth() + 1).padStart(2, '0') == fMonth && String(rDate.getDate()).padStart(2, '0') == fDay;
-        });
-    }
-    renderizarReportesSub(reportesAMostrar);
-}
+  async function cargarReportesSub(fuerzarRefresco = false) {
+      if (sistemaEnMantenimiento) return;
+      const container = document.getElementById('sub-lista-reportes');
+      const stats = document.getElementById('resumen-estadisticas');
 
-function renderizarReportesSub(reportes) {
-    const container = document.getElementById('sub-lista-reportes');
-    const stats = document.getElementById('resumen-estadisticas');
+      if (todosLosReportes.length > 0 && !fuerzarRefresco) { filtrarReportesSub(); return; }
 
-    let tGeneral = baseDatosAlumnos.length, tM = baseDatosAlumnos.filter(a => a.sexo === 'M').length, tF = baseDatosAlumnos.filter(a => a.sexo === 'F').length;
+      container.innerHTML = "Sincronizando reportes desde la nube..."; stats.innerHTML = "";
 
-    if(!reportes || reportes.length === 0) { 
-        container.innerHTML = "<div style='color:var(--red-600); text-align:center; padding:20px; font-weight:bold;'>No hay reportes de asistencia para esta fecha.</div>"; 
-        stats.innerHTML = generarHTMLResumen(tGeneral, tM, tF, 0, 0, 0, 0); return; 
-    }
-    
-    let html = `<table class="sub-table"><tr style="background-color: var(--blue-800); color: white;"><th>Fecha</th><th>Grado/Secc</th><th>Docente</th><th style="text-align:center;">M</th><th style="text-align:center;">F</th><th style="text-align:center;">Ausentes</th><th style="text-align:center;">Total Asist.</th></tr>`;
-    let sumaPres = 0, sumAus = 0, sumM = 0, sumF = 0;
+      try {
+          const response = await fetch(SCRIPT_URL + "?tipo=reportes");
+          todosLosReportes = await response.json();
 
-    [...reportes].reverse().slice(0, 100).forEach(r => {
-        const fechaFormateada = new Date(r.fecha).toLocaleDateString('es-ES');
-        html += `<tr><td>${fechaFormateada}</td><td>${r.grado} ${r.seccion}</td><td style="font-size: 11px;">${r.docente}</td><td style="text-align:center;">${r.m || 0}</td><td style="text-align:center;">${r.f || 0}</td><td style="text-align:center; font-weight:bold; color:#E24B4A;">${r.ausentes || 0}</td><td style="text-align:center; font-weight:bold; color:#1D9E75;">${r.presentes || 0}</td></tr>`;
-        sumaPres += parseInt(r.presentes) || 0; sumAus += parseInt(r.ausentes) || 0; sumM += parseInt(r.m) || 0; sumF += parseInt(r.f) || 0;
-    });
-    container.innerHTML = html + `</table>`;
-    stats.innerHTML = generarHTMLResumen(tGeneral, tM, tF, sumaPres, sumAus, sumM, sumF);
-}
+          const hoy = new Date();
+          const fechaLocal = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
+          document.getElementById('filtro-fecha-sub').value = fechaLocal;
 
-function generarHTMLResumen(tGeneral, tM, tF, sPres, sAus, sM, sF) {
-    return `
-    <div style="margin-top: 25px; padding: 20px; background: var(--blue-50); border: 2px solid var(--blue-600); border-radius: 10px;">
-        <h3 style="color: var(--blue-800); font-size: 16px; margin-bottom: 15px; text-transform: uppercase; text-align: center;">📊 Cuadro Resumen de Estadísticas</h3>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid var(--blue-600);">
-                <p style="font-size: 12px; color: gray; font-weight: bold; margin-bottom: 5px;">TOTAL DE MATRÍCULA 2026</p>
-                <p style="font-size: 20px; font-weight: bold; color: var(--blue-800);">Total: ${tGeneral}</p>
-                <p style="font-size: 14px; color: #555; margin-top: 5px;">M: <strong>${tM}</strong> | F: <strong>${tF}</strong></p>
-            </div>
-            <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid var(--green-600);">
-                <p style="font-size: 12px; color: gray; font-weight: bold; margin-bottom: 5px;">REPORTE DE ASISTENCIA (DE LA TABLA)</p>
-                <p style="font-size: 20px; font-weight: bold; color: var(--green-600);">Presentes: ${sPres} <span style="font-size: 16px; color: var(--red-600); margin-left: 10px;">Ausentes: ${sAus}</span></p>
-                <p style="font-size: 14px; color: #555; margin-top: 5px;">Asist. M: <strong>${sM}</strong> | Asist. F: <strong>${sF}</strong></p>
-            </div>
+          filtrarReportesSub();
+      } catch (e) { container.innerHTML = "Error al cargar reportes."; }
+  }
+
+  function limpiarFiltroSub() {
+      document.getElementById('filtro-fecha-sub').value = '';
+      filtrarReportesSub();
+  }
+
+  function filtrarReportesSub() {
+      const fechaFiltro = document.getElementById('filtro-fecha-sub').value;
+      let reportesAMostrar = todosLosReportes;
+
+      if (fechaFiltro) {
+          const [fYear, fMonth, fDay] = fechaFiltro.split('-');
+          reportesAMostrar = todosLosReportes.filter(r => {
+              const rDate = new Date(r.fecha);
+              return rDate.getFullYear() == fYear && String(rDate.getMonth() + 1).padStart(2, '0') == fMonth && String(rDate.getDate()).padStart(2, '0') == fDay;
+          });
+      }
+      renderizarReportesSub(reportesAMostrar);
+  }
+
+  function renderizarReportesSub(reportes) {
+      const container = document.getElementById('sub-lista-reportes');
+      const stats = document.getElementById('resumen-estadisticas');
+
+      let tGeneral = baseDatosAlumnos.length, tM = baseDatosAlumnos.filter(a => a.sexo === 'M').length, tF = baseDatosAlumnos.filter(a => a.sexo === 'F').length;
+
+      if (!reportes || reportes.length === 0) {
+          container.innerHTML = "<div style='color:var(--red-600); text-align:center; padding:20px; font-weight:bold;'>No hay reportes de asistencia para esta fecha.</div>";
+          stats.innerHTML = generarHTMLResumen(tGeneral, tM, tF, 0, 0, 0, 0); return;
+      }
+
+      let html = `<table class="sub-table"><tr style="background-color: var(--blue-800); color: white;"><th>Fecha</th><th>Grado/Secc</th><th>Docente</th><th style="text-align:center;">M</th><th style="text-align:center;">F</th><th style="text-align:center;">Ausentes</th><th style="text-align:center;">Total Asist.</th></tr>`;
+      let sumaPres = 0, sumAus = 0, sumM = 0, sumF = 0;
+
+      [...reportes].reverse().slice(0, 100).forEach(r => {
+          const fechaFormateada = new Date(r.fecha).toLocaleDateString('es-ES');
+          const mValue = `<button class="detalle-estudiantes-btn" data-tipo="M" data-grado="${r.grado}" data-seccion="${r.seccion}" style="background:none; border:none; color:var(--blue-600); text-decoration:underline; font-weight:bold; cursor:pointer;" title="Ver Masculinos">${r.m || 0}</button>`;
+          const fValue = `<button class="detalle-estudiantes-btn" data-tipo="F" data-grado="${r.grado}" data-seccion="${r.seccion}" style="background:none; border:none; color:#9D234C; text-decoration:underline; font-weight:bold; cursor:pointer;" title="Ver Femeninos">${r.f || 0}</button>`;
+          const ausentesValue = `<button class="detalle-estudiantes-btn" data-tipo="AUSENTES" data-grado="${r.grado}" data-seccion="${r.seccion}" style="background:none; border:none; font-weight:bold; color:#E24B4A; text-decoration:underline; cursor:pointer;" title="Ver Ausentes (Estimado)">${r.ausentes || 0}</button>`;
+          const presentesValue = `<button class="detalle-estudiantes-btn" data-tipo="PRESENTES" data-grado="${r.grado}" data-seccion="${r.seccion}" style="background:none; border:none; font-weight:bold; color:#1D9E75; text-decoration:underline; cursor:pointer;" title="Ver Presentes (Estimado)">${r.presentes || 0}</button>`;
+          html += `<tr>
+              <td>${fechaFormateada}</td>
+              <td>${r.grado} ${r.seccion}</td>
+              <td style="font-size: 11px;">${r.docente}</td>
+              <td style="text-align:center;">${mValue}</td>
+              <td style="text-align:center;">${fValue}</td>
+              <td style="text-align:center;">${ausentesValue}</td>
+              <td style="text-align:center;">${presentesValue}</td>
+          </tr>`;
+          sumaPres += parseInt(r.presentes) || 0; sumAus += parseInt(r.ausentes) || 0; sumM += parseInt(r.m) || 0; sumF += parseInt(r.f) || 0;
+      });
+      container.innerHTML = html + `</table>`;
+      stats.innerHTML = generarHTMLResumen(tGeneral, tM, tF, sumaPres, sumAus, sumM, sumF);
+  }
+
+  function generarHTMLResumen(tGeneral, tM, tF, sPres, sAus, sM, sF) {
+      return `
+<div style="margin-top: 25px; padding: 20px; background: var(--blue-50); border: 2px solid var(--blue-600); border-radius: 10px;">
+<h3 style="color: var(--blue-800); font-size: 16px; margin-bottom: 15px; text-transform: uppercase; text-align: center;">📊 Cuadro Resumen de Estadísticas</h3>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+  <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid var(--blue-600);">
+    <p style="font-size: 12px; color: gray; font-weight: bold; margin-bottom: 5px;">TOTAL DE MATRÍCULA 2026</p>
+    <p style="font-size: 20px; font-weight: bold; color: var(--blue-800);">Total: ${tGeneral}</p>
+    <p style="font-size: 14px; color: #555; margin-top: 5px;">M: <strong style="cursor: pointer; color: var(--blue-600);" onclick="mostrarListadoEstudiantes('M')">${tM}</strong> | F: <strong style="cursor: pointer; color: var(--blue-600);" onclick="mostrarListadoEstudiantes('F')">${tF}</strong></p>
+  </div>
+  <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid var(--green-600);">
+    <p style="font-size: 12px; color: gray; font-weight: bold; margin-bottom: 5px;">REPORTE DE ASISTENCIA (DE LA TABLA)</p>
+    <p style="font-size: 20px; font-weight: bold; color: var(--green-600); cursor: pointer;" onclick="mostrarListadoAsistentes()">Presentes: ${sPres}</p>
+    <p style="font-size: 16px; color: var(--red-600); margin-left: 10px; cursor: pointer;" onclick="mostrarListadoAusentes()">Ausentes: ${sAus}</p>
+    <p style="font-size: 14px; color: #555; margin-top: 5px;">Asist. M: <strong>${sM}</strong> | Asist. F: <strong>${sF}</strong></p>
+  </div>
+</div>
+</div>`;
+  }
+
+  function cargarAlumnos() {
+      const grado = document.getElementById('grado-select').value;
+      const seccion = document.getElementById('seccion-select').value;
+      const contenedor = document.getElementById('tabla-alumnos');
+      if (!grado || !seccion) { contenedor.innerHTML = '<div style="padding: 20px; text-align: center; color: #5F5E5A;">Seleccione un grado y una sección.</div>'; alumnosFiltrados = []; return; }
+      alumnosFiltrados = baseDatosAlumnos.filter(a => a.grado === grado && a.seccion === seccion);
+      if (alumnosFiltrados.length === 0) { contenedor.innerHTML = '<div style="padding: 20px; text-align: center; color: #E24B4A;">No hay alumnos en este grado.</div>'; return; }
+
+      let html = `<div class="student-row student-header"><div class="checkbox-wrapper">✓</div><div>Nombre del Estudiante</div><div>Sexo</div><div>NIE</div><div>Teléfono</div></div>`;
+      alumnosFiltrados.forEach((alumno, index) => {
+          html += `<div class="student-row" onclick="toggleFila(event, ${index})"><div class="checkbox-wrapper"><input type="checkbox" id="chk-${index}" value="${index}" checked></div><div style="font-weight: 500; font-size:13px;">${alumno.nombre}</div><div><span class="badge ${alumno.sexo.toLowerCase()}">${alumno.sexo}</span></div><div style="font-size: 13px;">${alumno.nie}</div><div style="font-size: 13px;">${alumno.telefono || 'N/A'}</div></div>`;
+      });
+      contenedor.innerHTML = html; estadoSeleccion = true;
+  }
+
+  function toggleFila(event, index) { if (event.target.tagName.toLowerCase() !== 'input') document.getElementById(`chk-${index}`).checked = !document.getElementById(`chk-${index}`).checked; }
+  function toggleTodos() { estadoSeleccion = !estadoSeleccion; alumnosFiltrados.forEach((a, i) => document.getElementById(`chk-${i}`).checked = estadoSeleccion); }
+
+  function accederLimpieza() { if (prompt("Contraseña:") === PASS_ADMIN) document.getElementById("zona-peligro").style.display = "block"; }
+  function regresarLugarSeguro() { document.getElementById("zona-peligro").style.display = "none"; }
+
+  async function borrarReportes() {
+      if (!confirm("¿Borrar historial?")) return;
+      const btn = document.getElementById('btn-delete-reportes'); btn.disabled = true; btn.innerText = "⏳...";
+      try {
+          await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "delete_reportes", rango: document.getElementById('delete-rango').value, fecha: new Date().toLocaleDateString('es-ES') }) });
+          setTimeout(() => { alert("Borrado enviado."); cargarReportesSub(true); btn.disabled = false; btn.innerText = "🗑️ Ejecutar Borrado"; document.getElementById("zona-peligro").style.display = "none"; }, 1500);
+      } catch (e) { btn.disabled = false; btn.innerText = "🗑️ Ejecutar Borrado"; }
+  }
+
+  // =========================================================================
+  // FUNCIÓN PDF — GENERAR Y GUARDAR
+  // =========================================================================
+  async function generarPDF() {
+      if (sistemaEnMantenimiento) return;
+      const docente = document.getElementById('docente-nombre').value.trim();
+      const grado = document.getElementById('grado-select').value;
+      const seccion = document.getElementById('seccion-select').value;
+      const orientacion = document.querySelector('input[name="orientacion"]:checked').value;
+      const btn = document.getElementById('btn-pdf-generate');
+
+      if (!grado || !seccion || !docente) return alert("Faltan datos.");
+      btn.disabled = true; btn.innerText = "⏳ Generando PDF...";
+
+      const presentes = [], ausentes = []; let masc = 0, fem = 0;
+      alumnosFiltrados.forEach((alumno, index) => {
+          if (document.getElementById(`chk-${index}`).checked) { presentes.push(alumno); alumno.sexo === 'M' ? masc++ : fem++; }
+          else { ausentes.push(alumno); }
+      });
+
+      const ahora = new Date();
+      const fechaStr = ahora.toLocaleDateString('es-ES');
+      const fechaArchivo = ahora.toLocaleDateString('es-ES').replace(/\//g, '-');
+      const secLimpia = seccion.replace(/"/g, '');
+
+      fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "asistencia", fecha: ahora, grado: grado, seccion: seccion, docente: docente, presentes: presentes.length, ausentes: ausentes.length, m: masc, f: fem, asistentes: presentes.map(a => a.nombre), ausentes_lista: ausentes.map(a => a.nombre) }) }).catch(e => console.log(e));
+
+      const pdfHtml = `
+<div style="position: relative; background: white; padding: 0;">
+
+  <div style="position: absolute; top: 150px; left: 0; width: 100%; text-align: center; z-index: 1; opacity: 0.15;">
+    <img src="logo3.jpg" crossorigin="anonymous" style="width: 400px; height: auto;" onerror="this.style.display='none';">
+  </div>
+
+  <div style="position: relative; z-index: 10; padding: 40px;">
+    <div style="text-align: center; padding-top: 100px; padding-bottom: 200px;">
+      <h1 style="color: #0C447C; font-size: 26px; margin-bottom: 10px; text-transform: uppercase;">Ministerio de Educación, Ciencia y Tecnología</h1>
+      <h2 style="color: #2C2C2A; font-size: 22px; margin-bottom: 50px; text-transform: uppercase;">Instituto Nacional de Mercedes Umaña</h2>
+      <div style="border: 2px solid #0C447C; padding: 40px; border-radius: 15px; background-color: transparent; width: 80%; margin: 0 auto;">
+        <h3 style="font-size: 24px; color: #185FA5; margin-bottom: 30px; text-transform: uppercase; border-bottom: 2px solid #185FA5; padding-bottom: 10px;">Registro de Asistencia Diario</h3>
+        <div style="text-align: left; padding-left: 20px;">
+          <p style="font-size: 18px; margin: 15px 0;"><strong>Grado:</strong> ${grado} &nbsp; <strong>Sección:</strong> ${seccion}</p>
+          <p style="font-size: 18px; margin: 15px 0;"><strong>Docente Responsable:</strong> ${docente}</p>
+          <p style="font-size: 18px; margin: 15px 0;"><strong>Fecha:</strong> ${fechaStr}</p>
         </div>
-    </div>`;
-}
+      </div>
+    </div>
 
-function cargarAlumnos() {
-  const grado = document.getElementById('grado-select').value;
-  const seccion = document.getElementById('seccion-select').value;
-  const contenedor = document.getElementById('tabla-alumnos');
-  if (!grado || !seccion) { contenedor.innerHTML = '<div style="padding: 20px; text-align: center; color: #5F5E5A;">Seleccione un grado y una sección.</div>'; alumnosFiltrados = []; return; }
-  alumnosFiltrados = baseDatosAlumnos.filter(a => a.grado === grado && a.seccion === seccion);
-  if (alumnosFiltrados.length === 0) { contenedor.innerHTML = '<div style="padding: 20px; text-align: center; color: #E24B4A;">No hay alumnos en este grado.</div>'; return; }
+    <div class="html2pdf__page-break"></div>
 
-  let html = `<div class="student-row student-header"><div class="checkbox-wrapper">✓</div><div>Nombre del Estudiante</div><div>Sexo</div><div>NIE</div><div>Teléfono</div></div>`;
-  alumnosFiltrados.forEach((alumno, index) => {
-    html += `<div class="student-row" onclick="toggleFila(event, ${index})"><div class="checkbox-wrapper"><input type="checkbox" id="chk-${index}" value="${index}" checked></div><div style="font-weight: 500; font-size:13px;">${alumno.nombre}</div><div><span class="badge ${alumno.sexo.toLowerCase()}">${alumno.sexo}</span></div><div style="font-size: 13px;">${alumno.nie}</div><div style="font-size: 13px;">${alumno.telefono || 'N/A'}</div></div>`;
-  });
-  contenedor.innerHTML = html; estadoSeleccion = true; 
-}
-
-function toggleFila(event, index) { if(event.target.tagName.toLowerCase() !== 'input') document.getElementById(`chk-${index}`).checked = !document.getElementById(`chk-${index}`).checked; }
-function toggleTodos() { estadoSeleccion = !estadoSeleccion; alumnosFiltrados.forEach((a, i) => document.getElementById(`chk-${i}`).checked = estadoSeleccion); }
-
-function accederLimpieza() { if (prompt("Contraseña:") === PASS_ADMIN) document.getElementById("zona-peligro").style.display = "block"; }
-function regresarLugarSeguro() { document.getElementById("zona-peligro").style.display = "none"; }
-
-async function borrarReportes() {
-  if(!confirm("¿Borrar historial?")) return;
-  const btn = document.getElementById('btn-delete-reportes'); btn.disabled = true; btn.innerText = "⏳...";
-  try {
-    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "delete_reportes", rango: document.getElementById('delete-rango').value, fecha: new Date().toLocaleDateString('es-ES') }) });
-    setTimeout(() => { alert("Borrado enviado."); cargarReportesSub(true); btn.disabled = false; btn.innerText = "🗑️ Ejecutar Borrado"; document.getElementById("zona-peligro").style.display = "none"; }, 1500);
-  } catch(e) { btn.disabled = false; btn.innerText = "🗑️ Ejecutar Borrado"; }
-}
-
-// === CÓDIGO DE PDF CORREGIDO ===
-async function generarPDF() {
-  if(sistemaEnMantenimiento) return;
-  const docente = document.getElementById('docente-nombre').value.trim();
-  const grado = document.getElementById('grado-select').value;
-  const seccion = document.getElementById('seccion-select').value;
-  const orientacion = document.querySelector('input[name="orientacion"]:checked').value;
-  const btn = document.getElementById('btn-pdf-generate');
-
-  if (!grado || !seccion || !docente) return alert("Faltan datos.");
-  btn.disabled = true; btn.innerText = "⏳ Generando PDF...";
-
-  const presentes = [], ausentes = []; let masc = 0, fem = 0;
-  alumnosFiltrados.forEach((alumno, index) => {
-    if (document.getElementById(`chk-${index}`).checked) { presentes.push(alumno); alumno.sexo === 'M' ? masc++ : fem++; } 
-    else { ausentes.push(alumno); }
-  });
-
-  const ahora = new Date(); 
-  const fechaStr = ahora.toLocaleDateString('es-ES'); 
-  const fechaArchivo = ahora.toLocaleDateString('es-ES').replace(/\//g, '-');
-  const secLimpia = seccion.replace(/"/g, '');
-
-  fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "asistencia", fecha: ahora, grado: grado, seccion: seccion, docente: docente, presentes: presentes.length, ausentes: ausentes.length, m: masc, f: fem }) }).catch(e => console.log(e));
-
-  const pdfHtml = `
-    <div style="position: relative; background: white; padding: 0;">
-      
-      <div style="position: absolute; top: 150px; left: 0; width: 100%; text-align: center; z-index: 1; opacity: 0.15;">
-        <img src="logo3.jpg" style="width: 400px; height: auto;" onerror="this.style.display='none';">
+    <div style="position: relative;">
+      <div style="text-align: center; border-bottom: 3px solid #0C447C; padding-bottom: 15px; margin-bottom: 20px; position: relative; z-index: 5;">
+        <h2 style="font-size: 18px; color: #0C447C; margin-bottom: 5px;">MINISTERIO DE EDUCACIÓN CIENCIA Y TECNOLOGÍA</h2>
+        <h3 style="font-size: 16px; color: #2C2C2A; margin-bottom: 5px;">INSTITUTO NACIONAL DE MERCEDES UMAÑA</h3>
       </div>
 
-      <div style="position: relative; z-index: 10; padding: 40px;">
-        <div style="text-align: center; padding-top: 100px; padding-bottom: 200px;">
-          <h1 style="color: #0C447C; font-size: 26px; margin-bottom: 10px; text-transform: uppercase;">Ministerio de Educación, Ciencia y Tecnología</h1>
-          <h2 style="color: #2C2C2A; font-size: 22px; margin-bottom: 50px; text-transform: uppercase;">Instituto Nacional de Mercedes Umaña</h2>
-          <div style="border: 2px solid #0C447C; padding: 40px; border-radius: 15px; background-color: transparent; width: 80%; margin: 0 auto;">
-            <h3 style="font-size: 24px; color: #185FA5; margin-bottom: 30px; text-transform: uppercase; border-bottom: 2px solid #185FA5; padding-bottom: 10px;">Registro de Asistencia Diario</h3>
-            <div style="text-align: left; padding-left: 20px;">
-              <p style="font-size: 18px; margin: 15px 0;"><strong>Grado:</strong> ${grado} &nbsp; <strong>Sección:</strong> ${seccion}</p>
-              <p style="font-size: 18px; margin: 15px 0;"><strong>Docente Responsable:</strong> ${docente}</p>
-              <p style="font-size: 18px; margin: 15px 0;"><strong>Fecha:</strong> ${fechaStr}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="html2pdf__page-break"></div>
-        
-        <div style="position: relative;">
-          <div style="text-align: center; border-bottom: 3px solid #0C447C; padding-bottom: 15px; margin-bottom: 20px; position: relative; z-index: 5;">
-            <h2 style="font-size: 18px; color: #0C447C; margin-bottom: 5px;">MINISTERIO DE EDUCACIÓN CIENCIA Y TECNOLOGÍA</h2>
-            <h3 style="font-size: 16px; color: #2C2C2A; margin-bottom: 5px;">INSTITUTO NACIONAL DE MERCEDES UMAÑA</h3>
-          </div>
-          
-          <table style="width: 100%; font-size: 14px; margin-bottom: 20px; border: none; position: relative; z-index: 5;">
-            <tr><td style="text-align: left; width: 33%; vertical-align: top;"><strong>Grado:</strong> ${grado} &nbsp; <strong>Secc:</strong> ${seccion}</td><td style="text-align: center; width: 34%; vertical-align: top;"><strong>Docente:</strong> ${docente}</td><td style="text-align: right; width: 33%; vertical-align: top;"><strong>Fecha:</strong> ${fechaStr}</td></tr>
-          </table>
-          
-          <div style="background-color: rgba(255,255,255,0.8); border: 1px solid #B5D4F4; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; position: relative; z-index: 5;">
-            <p><strong>Asistencias: ${presentes.length}</strong> | M: <strong>${masc}</strong> | F: <strong>${fem}</strong> | Ausencias: ${ausentes.length}</p>
-          </div>
-          
-          <h4 style="color: #1D9E75; border-bottom: 2px solid #1D9E75; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px; page-break-after: avoid; position: relative; z-index: 5;">ESTUDIANTES PRESENTES</h4>
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; page-break-before: auto; position: relative; z-index: 5; background-color: rgba(255,255,255,0.75);">
-            <colgroup><col style="width: 8%;"><col style="width: 45%;"><col style="width: 10%;"><col style="width: 17%;"><col style="width: 20%;"></colgroup>
-            ${presentes.length > 0 ? presentes.map(a => `<tr style="page-break-inside: avoid;"><td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #1D9E75; font-weight: bold;">✓</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td><td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td></tr>`).join('') : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
-          </table>
-          
-          <h4 style="color: #E24B4A; border-bottom: 2px solid #E24B4A; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px; page-break-after: avoid; position: relative; z-index: 5;">ESTUDIANTES AUSENTES</h4>
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px; font-size: 13px; page-break-before: auto; position: relative; z-index: 5; background-color: rgba(255,255,255,0.75);">
-            <colgroup><col style="width: 8%;"><col style="width: 45%;"><col style="width: 10%;"><col style="width: 17%;"><col style="width: 20%;"></colgroup>
-            ${ausentes.length > 0 ? ausentes.map(a => `<tr style="page-break-inside: avoid;"><td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #E24B4A; font-weight: bold;">✗</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td><td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td></tr>`).join('') : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
-          </table>
-          
-          <div style="text-align: center; margin-top: 50px; padding-top: 40px; border-top: 2px dashed #ddd; page-break-inside: avoid; position: relative; z-index: 10;">
-            <img src="logo5.jpg" style="width: 400px; height: auto;" onerror="this.style.display='none';">
-          </div>
-          
-        </div> 
+      <table style="width: 100%; font-size: 14px; margin-bottom: 20px; border: none; position: relative; z-index: 5;">
+        <tr><td style="text-align: left; width: 33%; vertical-align: top;"><strong>Grado:</strong> ${grado} &nbsp; <strong>Secc:</strong> ${seccion}</td><td style="text-align: center; width: 34%; vertical-align: top;"><strong>Docente:</strong> ${docente}</td><td style="text-align: right; width: 33%; vertical-align: top;"><strong>Fecha:</strong> ${fechaStr}</td></tr>
+      </table>
+
+      <div style="background-color: rgba(255,255,255,0.8); border: 1px solid #B5D4F4; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; position: relative; z-index: 5;">
+        <p><strong>Asistencias: ${presentes.length}</strong> | M: <strong>${masc}</strong> | F: <strong>${fem}</strong> | Ausencias: ${ausentes.length}</p>
       </div>
-    </div>`;
 
-  const containerHTML = document.getElementById('pdf-content'); 
-  containerHTML.innerHTML = pdfHtml;
-  
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  const opt = { 
-    margin: 15, 
-    filename: `Asistencia ${grado} ${secLimpia} - ${fechaArchivo} - ${docente}.pdf`, 
-    image: { type: 'jpeg', quality: 0.98 }, 
-    html2canvas: { scale: 2, useCORS: true }, 
-    jsPDF: { unit: 'mm', format: 'letter', orientation: orientacion }, 
-    pagebreak: { mode: ['css', 'legacy'] } 
-  };
-  
-  try { 
-    window.scrollTo(0, 0); 
-    await html2pdf().set(opt).from(containerHTML).save(); 
-  } catch (error) { 
-    alert("❌ Error al generar PDF."); 
-  } finally { 
-    btn.disabled = false; 
-    btn.innerText = "📥 Generar PDF y Guardar Reporte"; 
-  }
-}
-function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
-async function guardarAlumno() {
-  const n = { tipo_post: "alumno", grado: document.getElementById('grado-select').value, seccion: document.getElementById('seccion-select').value, nombre: document.getElementById('new-nombre').value, sexo: document.getElementById('new-sexo').value, nie: document.getElementById('new-nie').value, telefono: document.getElementById('new-telefono').value };
-  if(!n.nombre || !n.grado) return alert("Faltan datos");
-  await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(n) });
-  cerrarModal('modal-alumno'); setTimeout(inicializarBaseDatos, 1000);
-}
+      <h4 style="color: #1D9E75; border-bottom: 2px solid #1D9E75; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px; page-break-after: avoid; position: relative; z-index: 5;">ESTUDIANTES PRESENTES</h4>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; page-break-before: auto; position: relative; z-index: 5; background-color: rgba(255,255,255,0.75);">
+        <colgroup><col style="width: 8%;"><col style="width: 45%;"><col style="width: 10%;"><col style="width: 17%;"><col style="width: 20%;"></colgroup>
+        ${presentes.length > 0 ? presentes.map(a => `<tr style="page-break-inside: avoid;"><td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #1D9E75; font-weight: bold;">✓</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td><td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td></tr>`).join('') : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
+      </table>
 
-function cerrarSesion() {
-  if (confirm("¿Cerrar sesión?")) {
-    document.getElementById("login-username").value = ""; document.getElementById("login-password").value = ""; document.getElementById("docente-nombre").value = ""; document.getElementById("login-robot-check").checked = false;
-    document.getElementById("grado-select").value = ""; document.getElementById("seccion-select").value = "";
-    document.getElementById("tabla-alumnos").innerHTML = '<div style="padding: 20px; text-align: center; color: #5F5E5A;">Seleccione un grado y una sección.</div>';
-    document.getElementById("header-principal").style.display = "none"; document.getElementById("container-principal").style.display = "none";
-    if (loginRequerido) { document.getElementById("modal-inicio-login").classList.add("open"); } else { document.getElementById("modal-inicio-dropdown").classList.add("open"); }
-    cambiarVista('docente'); window.scrollTo(0, 0);
+      <h4 style="color: #E24B4A; border-bottom: 2px solid #E24B4A; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px; page-break-after: avoid; position: relative; z-index: 5;">ESTUDIANTES AUSENTES</h4>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px; font-size: 13px; page-break-before: auto; position: relative; z-index: 5; background-color: rgba(255,255,255,0.75);">
+        <colgroup><col style="width: 8%;"><col style="width: 45%;"><col style="width: 10%;"><col style="width: 17%;"><col style="width: 20%;"></colgroup>
+        ${ausentes.length > 0 ? ausentes.map(a => `<tr style="page-break-inside: avoid;"><td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #E24B4A; font-weight: bold;">✗</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td><td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td></tr>`).join('') : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
+      </table>
+
+      <div style="text-align: center; margin-top: 50px; padding-top: 40px; border-top: 2px dashed #ddd; page-break-inside: avoid; position: relative; z-index: 10;">
+        <img src="logo5.jpg" crossorigin="anonymous" style="width: 400px; height: auto;" onerror="this.style.display='none';">
+      </div>
+
+
+
+    </div>
+  </div>
+</div>`;
+
+      const containerHTML = document.getElementById('pdf-content');
+      containerHTML.innerHTML = pdfHtml;
+
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      const nombreArchivo = `Asistencia ${grado} ${secLimpia} - ${fechaArchivo} - ${docente}.pdf`;
+
+      const opt = {
+          margin: 15,
+          filename: nombreArchivo,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: {
+              scale: 2,
+              useCORS: true,
+              allowTaint: true,
+              logging: false,
+              imageTimeout: 15000,
+              removeContainer: false
+          },
+          jsPDF: { unit: 'mm', format: 'letter', orientation: orientacion },
+          pagebreak: { mode: ['css', 'legacy'] }
+      };
+
+      try {
+          window.scrollTo(0, 0);
+
+          if (typeof AndroidPDF !== 'undefined') {
+              const pdfBlob = await html2pdf().set(opt).from(containerHTML).outputPdf('blob');
+              const reader = new FileReader();
+              reader.onloadend = function () {
+                  const base64 = reader.result.split(',')[1];
+                  // 1) Registrar primero (sin file URI aún)
+                  registrarPDFGuardado(nombreArchivo, carpetaPDFUri || '', grado, '');
+                  // 2) Pedir a Kotlin que guarde; Kotlin llamará onPDFGuardado(fileUri, nombre)
+                  AndroidPDF.guardarBase64(base64, nombreArchivo, carpetaPDFUri || '');
+              };
+              reader.readAsDataURL(pdfBlob);
+          } else {
+              await html2pdf().set(opt).from(containerHTML).save();
+              registrarPDFGuardado(nombreArchivo, '', grado, '');
+          }
+
+      } catch (error) {
+          alert("❌ Error al generar PDF: " + error.message);
+      } finally {
+          btn.disabled = false;
+          btn.innerText = "📥 Generar PDF y Guardar Reporte";
+      }
   }
-}
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') {
-    if (document.getElementById('modal-inicio-login').classList.contains('open')) ejecutarLogin();
-    else if (document.getElementById('modal-inicio-dropdown').classList.contains('open')) entrarComoDocenteDropdown();
+
+  // =========================================================================
+  // REGISTRO LOCAL DE PDFs GENERADOS (via AndroidStorage)
+  // =========================================================================
+  function registrarPDFGuardado(nombre, carpetaUri, grado, fileUri) {
+      try {
+          const ahora = new Date().toISOString();
+          let registros = [];
+          if (typeof AndroidStorage !== 'undefined') {
+              const raw = AndroidStorage.get('pdf_registros');
+              if (raw) {
+                  try { registros = JSON.parse(raw); } catch (e) { registros = []; }
+              }
+              registros.push({ nombre: nombre, uri: fileUri || '', carpetaUri: carpetaUri, grado: grado, fecha: ahora });
+              // Mantener máximo 200 registros
+              if (registros.length > 200) registros = registros.slice(registros.length - 200);
+              AndroidStorage.set('pdf_registros', JSON.stringify(registros));
+          }
+      } catch (e) { }
   }
-});
+
+  // Llamada desde Kotlin después de guardar el PDF con la URI real del archivo
+  function onPDFGuardado(fileUri, nombre) {
+      try {
+          if (typeof AndroidStorage !== 'undefined') {
+              const raw = AndroidStorage.get('pdf_registros');
+              if (raw) {
+                  let registros = JSON.parse(raw);
+                  // Buscar el registro sin uri y actualizarlo
+                  const idx = registros.findLastIndex(r => r.nombre === nombre && !r.uri);
+                  if (idx !== -1) {
+                      registros[idx].uri = fileUri;
+                      AndroidStorage.set('pdf_registros', JSON.stringify(registros));
+                  }
+              }
+          }
+      } catch (e) { }
+  }
+
+  function obtenerRegistrosPDF() {
+      try {
+          if (typeof AndroidStorage !== 'undefined') {
+              const raw = AndroidStorage.get('pdf_registros');
+              if (raw) return JSON.parse(raw);
+          }
+      } catch (e) { }
+      return [];
+  }
+
+  // =========================================================================
+  // VISOR DE REPORTES PDF
+  // =========================================================================
+  function abrirVisorReportes() {
+      if (!esAppAndroid()) {
+          alert('La vista de reportes PDF solo está disponible en la app Android.');
+          return;
+      }
+      cambiarVista('pdf-reportes');
+  }
+
+  function cargarListaPDFs() {
+      const container = document.getElementById('pdf-lista-container');
+      const registros = obtenerRegistrosPDF();
+
+      if (registros.length === 0) {
+          if (typeof AndroidPDF !== 'undefined') {
+              // En Android: pedir al Kotlin que liste archivos de la carpeta
+              if (typeof AndroidPDF.listarPDFs === 'function') {
+                  container.innerHTML = '<div class="pdf-empty">⏳ Buscando archivos PDF...</div>';
+                  AndroidPDF.listarPDFs(carpetaPDFUri || '');
+                  return;
+              }
+          }
+          listaPDFs = [];
+          listaPDFsFiltrada = [];
+          renderizarListaPDFs();
+          return;
+      }
+
+      // Ordenar por fecha descendente (más reciente primero)
+      listaPDFs = [...registros].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+      listaPDFsFiltrada = [...listaPDFs];
+      renderizarListaPDFs();
+  }
+
+  // Llamada desde Kotlin con la lista de PDFs encontrados en la carpeta
+  function onListaPDFsRecibida(jsonStr) {
+      try {
+          const archivos = JSON.parse(jsonStr); // [{nombre, uri, fecha}]
+          listaPDFs = archivos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+          listaPDFsFiltrada = [...listaPDFs];
+          renderizarListaPDFs();
+      } catch (e) {
+          document.getElementById('pdf-lista-container').innerHTML = '<div class="pdf-empty">Error al leer archivos.</div>';
+      }
+  }
+
+  function extraerGradoDeNombre(nombre) {
+      const gradoOpciones = ['1° General', '1° Adm. Contable', '1° S. Eléctricos', '2° General', '2° Adm. Contable', '2° Sist. Eléctricos', '3° Adm. Contable', '3° Sist. Eléctricos'];
+      for (const g of gradoOpciones) {
+          if (nombre.includes(g)) return g;
+      }
+      return '';
+  }
+
+  function extraerFechaDeNombre(nombre) {
+      // Formato: "Asistencia Grado Secc - DD-MM-YYYY - Docente.pdf"
+      const match = nombre.match(/(\d{2}-\d{2}-\d{4})/);
+      if (match) {
+          const [d, m, y] = match[1].split('-');
+          return new Date(`${y}-${m}-${d}`);
+      }
+      return null;
+  }
+
+  function formatearFechaCorta(isoStr) {
+      try {
+          const d = new Date(isoStr);
+          return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+      } catch (e) { return isoStr || ''; }
+  }
+
+  function filtrarListaPDFs() {
+      const buscar = (document.getElementById('pdf-buscar').value || '').toLowerCase().trim();
+      const fechaFiltro = document.getElementById('pdf-filtro-fecha').value;
+      const gradoFiltro = document.getElementById('pdf-filtro-grado').value;
+
+      listaPDFsFiltrada = listaPDFs.filter(item => {
+          const nombre = (item.nombre || '').toLowerCase();
+
+          // Filtro texto
+          if (buscar && !nombre.includes(buscar)) return false;
+
+          // Filtro grado
+          if (gradoFiltro) {
+              const gradoItem = item.grado || extraerGradoDeNombre(item.nombre || '');
+              if (!gradoItem.includes(gradoFiltro)) return false;
+          }
+
+          // Filtro fecha
+          if (fechaFiltro) {
+              const fechaItem = item.fecha ? new Date(item.fecha) : extraerFechaDeNombre(item.nombre || '');
+              if (fechaItem) {
+                  const yy = fechaItem.getFullYear();
+                  const mm = String(fechaItem.getMonth() + 1).padStart(2, '0');
+                  const dd = String(fechaItem.getDate()).padStart(2, '0');
+                  if (`${yy}-${mm}-${dd}` !== fechaFiltro) return false;
+              } else {
+                  return false;
+              }
+          }
+
+          return true;
+      });
+
+      renderizarListaPDFs();
+  }
+
+  function limpiarFiltrosPDF() {
+      document.getElementById('pdf-buscar').value = '';
+      document.getElementById('pdf-filtro-fecha').value = '';
+      document.getElementById('pdf-filtro-grado').value = '';
+      listaPDFsFiltrada = [...listaPDFs];
+      renderizarListaPDFs();
+  }
+
+  function renderizarListaPDFs() {
+      const container = document.getElementById('pdf-lista-container');
+
+      if (!listaPDFsFiltrada || listaPDFsFiltrada.length === 0) {
+          container.innerHTML = '<div class="pdf-empty">📭 No se encontraron reportes PDF.<br><small style="color:#aaa;">Los PDFs guardados aparecerán aquí ordenados por fecha.</small></div>';
+          return;
+      }
+
+      let html = `<div style="font-size:12px; color:var(--gray-600); margin-bottom:10px; font-weight:bold;">${listaPDFsFiltrada.length} reporte(s) encontrado(s)</div>`;
+
+      listaPDFsFiltrada.forEach((item, idx) => {
+          const nombre = item.nombre || 'Reporte.pdf';
+          const grado = item.grado || extraerGradoDeNombre(nombre) || '—';
+          const fechaStr = formatearFechaCorta(item.fecha || '');
+          const uri = item.uri || item.carpetaUri || '';
+
+          html += `
+  <div class="pdf-item" onclick="abrirPDFVisor(${idx})">
+    <div class="pdf-item-icon">📄</div>
+    <div class="pdf-item-info">
+      <div class="pdf-item-nombre">${nombre.replace(/\.pdf$/i, '')}</div>
+      <div class="pdf-item-meta">📚 ${grado}</div>
+    </div>
+    <div class="pdf-item-fecha">${fechaStr}</div>
+  </div>`;
+      });
+
+      container.innerHTML = html;
+  }
+
+  // =========================================================================
+  // ABRIR PDF EN EL VISOR INTERNO (PDF.js)
+  // =========================================================================
+  async function abrirPDFVisor(idx) {
+      const item = listaPDFsFiltrada[idx];
+      if (!item) return;
+
+      const nombre = item.nombre || 'Reporte.pdf';
+      const uri = item.uri || item.carpetaUri || '';
+
+      document.getElementById('pdf-viewer-nombre').innerText = nombre;
+      document.getElementById('pdf-viewer-overlay').classList.add('open');
+      document.getElementById('pdf-viewer-content').innerHTML = '<div class="pdf-loading">⏳ Cargando PDF...</div>';
+      document.getElementById('pdf-viewer-nav').style.display = 'none';
+
+      pdfDoc = null;
+      pdfPaginaActual = 1;
+      pdfZoom = 1.2;
+      document.getElementById('pdf-zoom-label').innerText = Math.round(pdfZoom * 100) + '%';
+
+      // Intentar abrir: si es un content:// de archivo real, usar leerPDFBase64
+      if (typeof AndroidPDF !== 'undefined' && typeof AndroidPDF.leerPDFBase64 === 'function' && uri && uri.startsWith('content://')) {
+          // Kotlin lleerá el archivo y llamará onPDFBase64Recibido(base64)
+          AndroidPDF.leerPDFBase64(uri, nombre);
+      } else if (uri && uri.startsWith('data:')) {
+          // Ya es base64
+          cargarPDFDesdeBase64(uri);
+      } else if (!uri || uri === '') {
+          // Sin URI guardada aún - mostrar aviso
+          document.getElementById('pdf-viewer-content').innerHTML =
+              `<div class="pdf-loading" style="color:#ff8080;">⚠️ No se encontró la ruta del archivo PDF.<br><small>Regenera el PDF para que quede registrado correctamente.</small></div>`;
+      } else {
+          document.getElementById('pdf-viewer-content').innerHTML =
+              `<div class="pdf-loading" style="color:#ff8080;">⚠️ No se puede abrir este archivo.<br><small>URI: ${uri}</small><br><small>Intenta regenerar el PDF.</small></div>`;
+      }
+  }
+
+  // Llamada desde Kotlin con el PDF en base64
+  function onPDFBase64Recibido(base64) {
+      const dataUrl = 'data:application/pdf;base64,' + base64;
+      cargarPDFDesdeBase64(dataUrl);
+  }
+
+  async function cargarPDFDesdeBase64(dataUrl) {
+      try {
+          if (typeof pdfjsLib === 'undefined') {
+              document.getElementById('pdf-viewer-content').innerHTML =
+                  '<div class="pdf-loading" style="color:#ff8080;">⚠️ Librería PDF.js no disponible.<br>Verifique la conexión a Internet.</div>';
+              return;
+          }
+
+          const loadingTask = pdfjsLib.getDocument({ url: dataUrl });
+          pdfDoc = await loadingTask.promise;
+          pdfTotalPaginas = pdfDoc.numPages;
+          pdfPaginaActual = 1;
+
+          document.getElementById('pdf-viewer-nav').style.display = 'flex';
+          await renderizarPaginaPDF(pdfPaginaActual);
+      } catch (e) {
+          document.getElementById('pdf-viewer-content').innerHTML =
+              `<div class="pdf-loading" style="color:#ff8080;">❌ Error al cargar PDF: ${e.message}</div>`;
+      }
+  }
+
+  async function renderizarPaginaPDF(numPagina) {
+      if (!pdfDoc) return;
+      const content = document.getElementById('pdf-viewer-content');
+      content.innerHTML = '<div class="pdf-loading">⏳ Renderizando página...</div>';
+
+      try {
+          const pagina = await pdfDoc.getPage(numPagina);
+          const viewport = pagina.getViewport({ scale: pdfZoom });
+
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+
+          const ctx = canvas.getContext('2d');
+          await pagina.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+          content.innerHTML = '';
+          content.appendChild(canvas);
+
+          // Actualizar navegación
+          document.getElementById('pdf-page-info').innerText = `Página ${numPagina} de ${pdfTotalPaginas}`;
+          document.getElementById('pdf-btn-prev').disabled = (numPagina <= 1);
+          document.getElementById('pdf-btn-next').disabled = (numPagina >= pdfTotalPaginas);
+      } catch (e) {
+          content.innerHTML = `<div class="pdf-loading" style="color:#ff8080;">❌ Error: ${e.message}</div>`;
+      }
+  }
+
+  function cambiarPaginaPDF(delta) {
+      const nueva = pdfPaginaActual + delta;
+      if (nueva < 1 || nueva > pdfTotalPaginas) return;
+      pdfPaginaActual = nueva;
+      renderizarPaginaPDF(pdfPaginaActual);
+  }
+
+  function cambiarZoom(delta) {
+      pdfZoom = Math.max(0.4, Math.min(3.0, pdfZoom + delta));
+      document.getElementById('pdf-zoom-label').innerText = Math.round(pdfZoom * 100) + '%';
+      if (pdfDoc) renderizarPaginaPDF(pdfPaginaActual);
+  }
+
+  function cerrarVisorPDF() {
+      document.getElementById('pdf-viewer-overlay').classList.remove('open');
+      pdfDoc = null;
+  }
+
+  // =========================================================================
+  // FUNCIONES AUXILIARES
+  // =========================================================================
+  function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  async function guardarAlumno() {
+      const n = { tipo_post: "alumno", grado: document.getElementById('grado-select').value, seccion: document.getElementById('seccion-select').value, nombre: document.getElementById('new-nombre').value, sexo: document.getElementById('new-sexo').value, nie: document.getElementById('new-nie').value, telefono: document.getElementById('new-telefono').value };
+      if (!n.nombre || !n.grado) return alert("Faltan datos");
+      await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(n) });
+      cerrarModal('modal-alumno'); setTimeout(inicializarBaseDatos, 1000);
+  }
+
+  function cerrarSesion() {
+      if (confirm("¿Cerrar sesión?")) {
+          borrarSesion();
+          document.getElementById("login-username").value = "";
+          document.getElementById("login-password").value = "";
+          document.getElementById("docente-nombre").value = "";
+          document.getElementById("login-robot-check").checked = false;
+          document.getElementById("grado-select").value = "";
+          document.getElementById("seccion-select").value = "";
+          document.getElementById("tabla-alumnos").innerHTML = '<div style="padding: 20px; text-align: center; color: #5F5E5A;">Seleccione un grado y una sección.</div>';
+          document.getElementById("header-principal").style.display = "none";
+          document.getElementById("container-principal").style.display = "none";
+          if (loginRequerido) {
+              document.getElementById("modal-inicio-login").classList.add("open");
+          } else {
+              document.getElementById("modal-inicio-dropdown").classList.add("open");
+          }
+          cambiarVista('docente');
+          window.scrollTo(0, 0);
+      }
+  }
+
+  function mostrarDocentesEnLinea() {
+      document.getElementById('modal-docentes-linea').classList.add('open');
+      const cont = document.getElementById('lista-docentes-linea');
+      if(baseDatosDocentes.length === 0) {
+          cont.innerHTML = '<p style="text-align:center; color: var(--gray-600);">No hay docentes registrados.</p>';
+      } else {
+          let html = '<ul style="list-style:none; padding:0; margin:0;">';
+          baseDatosDocentes.forEach(d => {
+              html += `<li style="padding: 10px; border-bottom: 1px solid var(--gray-100); display:flex; justify-content:space-between;">
+                  <span style="font-weight:bold; color:var(--blue-800);">${d.nombre}</span>
+                  <span style="color:var(--green-600); font-size:12px;">🟢 Registrado</span>
+              </li>`;
+          });
+          html += '</ul>';
+          cont.innerHTML = html;
+      }
+  }
+
+  function mostrarDetalleEstudiantes(tipo, grado, seccion) {
+      document.getElementById('modal-detalle-estudiantes').classList.add('open');
+      document.getElementById('titulo-detalle-estudiantes').innerText = `Estudiantes: ${tipo}`;
+      document.getElementById('subtitulo-detalle-estudiantes').innerText = `Grado: ${grado} | Seç: ${seccion}\n(Calculado según matrícula actual)`;
+
+      const cont = document.getElementById('lista-detalle-estudiantes');
+
+      // Buscar alumnos de ese grado y seccion
+      let filtrados = baseDatosAlumnos.filter(a => a.grado === grado && a.seccion === seccion);
+
+      if (tipo === 'M') {
+          filtrados = filtrados.filter(a => a.sexo === 'M');
+      } else if (tipo === 'F') {
+          filtrados = filtrados.filter(a => a.sexo === 'F');
+      } else if (tipo === 'PRESENTES' || tipo === 'AUSENTES') {
+          // No tenemos el registro histórico de nombres en la nube para un día pasado.
+          // Mostrar un mensaje explicativo y todos los del grupo.
+          cont.innerHTML = `<p style="padding:10px; color:var(--amber-600); text-align:center; font-weight:bold;">⚠️ La nube solo guarda la cantidad numérica de presentes/ausentes, no los nombres específicos por día para este reporte.<br><br>A continuación, la lista completa del grupo:</p>`;
+      }
+
+      if (filtrados.length === 0) {
+          cont.innerHTML += '<p style="text-align:center; color: var(--gray-600);">No se encontraron estudiantes para este filtro.</p>';
+          return;
+      }
+
+      let html = '<table style="width:100%; border-collapse:collapse; font-size:13px;">';
+      html += '<tr style="background:var(--blue-50); border-bottom:1px solid var(--blue-800);"><th>Nombre</th><th>Sexo</th><th>NIE</th></tr>';
+      filtrados.forEach(a => {
+          html += `<tr style="border-bottom:1px solid #eee;">
+              <td style="padding:6px; font-weight:bold;">${a.nombre}</td>
+              <td style="padding:6px; text-align:center;">${a.sexo}</td>
+              <td style="padding:6px; text-align:center;">${a.nie}</td>
+          </tr>`;
+      });
+      html += '</table>';
+
+      cont.innerHTML = (tipo === 'PRESENTES' || tipo === 'AUSENTES' ? cont.innerHTML : '') + html;
+  }
+
+  document.addEventListener('click', function (event) {
+      let target = event.target;
+      if (target.nodeType === Node.TEXT_NODE) {
+          target = target.parentElement;
+      }
+      const btn = target && typeof target.closest === 'function' ? target.closest('.detalle-estudiantes-btn') : null;
+      if (btn) {
+          const tipo = btn.dataset.tipo;
+          const grado = btn.dataset.grado;
+          const seccion = btn.dataset.seccion;
+          if (tipo && grado && seccion) {
+              mostrarDetalleEstudiantes(tipo, grado, seccion);
+          }
+      }
+      const action = target.dataset.action;
+      if (action === 'asistentes-hoy') {
+          console.log('Clic en asistentes-hoy');
+          mostrarAsistentesHoy();
+      } else if (action === 'ausentes-hoy') {
+          console.log('Clic en ausentes-hoy');
+          mostrarAusentesHoy();
+      }
+  });
+
+  document.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+          if (document.getElementById('modal-inicio-login').classList.contains('open')) ejecutarLogin();
+          else if (document.getElementById('modal-inicio-dropdown').classList.contains('open')) entrarComoDocenteDropdown();
+      }
+      if (e.key === 'Escape') {
+          cerrarVisorPDF();
+      }
+  });
+
+  // Funciones para mostrar listados de estudiantes
+  function mostrarListadoEstudiantes(sexo) {
+      const estudiantes = baseDatosAlumnos.filter(a => a.sexo === sexo);
+      let html = `<h3 style="color: var(--blue-800); text-align: center; margin-bottom: 20px;">Listado de Estudiantes ${sexo === 'M' ? 'Masculinos' : 'Femeninos'}</h3>`;
+      html += '<div style="max-height: 400px; overflow-y: auto;">';
+      estudiantes.forEach(est => {
+          html += `<div style="padding: 8px; border-bottom: 1px solid var(--gray-100);">${est.nombre} - ${est.grado} ${est.seccion}</div>`;
+      });
+      html += '</div>';
+      mostrarModalListado(html);
+  }
+
+  function mostrarListadoAsistentes() {
+      const fechaFiltro = document.getElementById('filtro-fecha-sub').value;
+      let reportes = todosLosReportes;
+      if (fechaFiltro) {
+          const [fYear, fMonth, fDay] = fechaFiltro.split('-');
+          reportes = todosLosReportes.filter(r => {
+              const rDate = new Date(r.fecha);
+              return rDate.getFullYear() == fYear && String(rDate.getMonth() + 1).padStart(2, '0') == fMonth && String(rDate.getDate()).padStart(2, '0') == fDay;
+          });
+      }
+
+      let asistentes = [];
+      reportes.forEach(r => {
+          if (r.asistentes && Array.isArray(r.asistentes)) {
+              r.asistentes.forEach(nombre => {
+                  asistentes.push({ nombre, grado: r.grado, seccion: r.seccion });
+              });
+          }
+      });
+
+      let html = '<h3 style="color: var(--green-600); text-align: center; margin-bottom: 20px;">Listado de Estudiantes que Asistieron</h3>';
+      html += '<div style="max-height: 400px; overflow-y: auto;">';
+      if (asistentes.length === 0) {
+          html += '<div style="text-align: center; color: var(--gray-600);">No hay datos de asistencia detallados para esta fecha.<br><small>Los detalles solo estarán disponibles en reportes nuevos.</small></div>';
+          if (reportes.length > 0) {
+              html += '<h4 style="color: var(--blue-800); margin-top: 20px;">Resumen por Grado/Sección:</h4>';
+              reportes.forEach(r => {
+                  html += `<div style="padding: 8px; border-bottom: 1px solid var(--gray-100); background: var(--blue-50);">
+                              <strong>${r.grado} ${r.seccion}</strong> - ${r.docente}<br>
+                              Presentes: ${r.presentes || 0} (M: ${r.m || 0}, F: ${r.f || 0})
+                          </div>`;
+              });
+          }
+      } else {
+          const grupos = {};
+          asistentes.forEach(a => {
+              const key = `${a.grado} ${a.seccion}`;
+              if (!grupos[key]) grupos[key] = [];
+              grupos[key].push(a.nombre);
+          });
+          Object.keys(grupos).sort().forEach(key => {
+              html += `<div style="padding: 10px; border-bottom: 1px solid var(--gray-200); background: #F1FCF5; margin-bottom: 8px;"><strong>${key}</strong> - ${grupos[key].length} presentes</div>`;
+              grupos[key].forEach((nombre, index) => {
+                  html += `<div style="padding: 6px 10px; border-bottom: 1px solid #EAEAEA; font-size: 13px;">${index + 1}. ${nombre}</div>`;
+              });
+          });
+      }
+      html += '</div>';
+      mostrarModalListado(html);
+  }
+
+  function mostrarListadoAusentes() {
+      const fechaFiltro = document.getElementById('filtro-fecha-sub').value;
+      let reportes = todosLosReportes;
+      if (fechaFiltro) {
+          const [fYear, fMonth, fDay] = fechaFiltro.split('-');
+          reportes = todosLosReportes.filter(r => {
+              const rDate = new Date(r.fecha);
+              return rDate.getFullYear() == fYear && String(rDate.getMonth() + 1).padStart(2, '0') == fMonth && String(rDate.getDate()).padStart(2, '0') == fDay;
+          });
+      }
+
+      let ausentes = [];
+      reportes.forEach(r => {
+          if (r.ausentes_lista && Array.isArray(r.ausentes_lista)) {
+              r.ausentes_lista.forEach(nombre => {
+                  ausentes.push({ nombre, grado: r.grado, seccion: r.seccion });
+              });
+          }
+      });
+
+      let html = '<h3 style="color: var(--red-600); text-align: center; margin-bottom: 20px;">Listado de Estudiantes Ausentes</h3>';
+      html += '<div style="max-height: 400px; overflow-y: auto;">';
+      if (ausentes.length === 0) {
+          html += '<div style="text-align: center; color: var(--gray-600);">No hay datos de ausencias detallados para esta fecha.<br><small>Los detalles solo estarán disponibles en reportes nuevos.</small></div>';
+          if (reportes.length > 0) {
+              html += '<h4 style="color: var(--red-600); margin-top: 20px;">Resumen por Grado/Sección:</h4>';
+              reportes.forEach(r => {
+                  html += `<div style="padding: 8px; border-bottom: 1px solid var(--gray-100); background: #FCEBEB;">
+                              <strong>${r.grado} ${r.seccion}</strong> - ${r.docente}<br>
+                              Ausentes: ${r.ausentes || 0}
+                          </div>`;
+              });
+          }
+      } else {
+          const grupos = {};
+          ausentes.forEach(a => {
+              const key = `${a.grado} ${a.seccion}`;
+              if (!grupos[key]) grupos[key] = [];
+              grupos[key].push(a.nombre);
+          });
+          Object.keys(grupos).sort().forEach(key => {
+              html += `<div style="padding: 10px; border-bottom: 1px solid var(--gray-200); background: #FDEDEE; margin-bottom: 8px;"><strong>${key}</strong> - ${grupos[key].length} ausentes</div>`;
+              grupos[key].forEach((nombre, index) => {
+                  html += `<div style="padding: 6px 10px; border-bottom: 1px solid #EAEAEA; font-size: 13px;">${index + 1}. ${nombre}</div>`;
+              });
+          });
+      }
+      html += '</div>';
+      mostrarModalListado(html);
+  }
+
+  async function mostrarResumenDelDia() {
+      if (todosLosReportes.length === 0) {
+          await cargarReportesSub(true);
+      }
+
+      const hoy = new Date();
+      const fechaFiltro = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+      let reportes = todosLosReportes.filter(r => {
+          const rDate = new Date(r.fecha);
+          return rDate.getFullYear() == hoy.getFullYear() && String(rDate.getMonth() + 1).padStart(2, '0') == String(hoy.getMonth() + 1).padStart(2, '0') && String(rDate.getDate()).padStart(2, '0') == String(hoy.getDate()).padStart(2, '0');
+      });
+
+      let html = '<h3 style="color: var(--blue-800); text-align: center; margin-bottom: 20px;">Resumen del Día</h3>';
+      html += `<p style="text-align:center; color:var(--gray-700); margin-bottom:15px;">Fecha: ${hoy.toLocaleDateString('es-ES')}</p>`;
+      if (reportes.length === 0) {
+          html += '<div style="text-align:center; color: var(--gray-600); padding: 20px;">No hay reportes para este día.</div>';
+      } else {
+          let totalPres = 0;
+          let totalAus = 0;
+          let totalM = 0;
+          let totalF = 0;
+          html += '<div style="margin-bottom: 15px; display:grid; grid-template-columns:1fr 1fr; gap:10px;">';
+          reportes.forEach(r => {
+              totalPres += parseInt(r.presentes) || 0;
+              totalAus += parseInt(r.ausentes) || 0;
+              totalM += parseInt(r.m) || 0;
+              totalF += parseInt(r.f) || 0;
+          });
+          html += `<div onclick="mostrarAsistentesHoy()" style="background:#F3F9F3; padding:12px; border-radius:10px; cursor:pointer;">
+                    <strong>Presentes</strong><br>
+                    <span style="font-size:20px; color:var(--green-600); font-weight:bold;">${totalPres}</span>
+                  </div>`;
+          html += `<div onclick="mostrarAusentesHoy()" style="background:#FFF4F4; padding:12px; border-radius:10px; cursor:pointer;">
+                    <strong>Ausentes</strong><br>
+                    <span style="font-size:20px; color:var(--red-600); font-weight:bold;">${totalAus}</span>
+                  </div>`;
+          html += '</div>';
+          html += `<p style="font-size:14px; color:#555; margin-bottom:15px;">Asist. M: <strong>${totalM}</strong> | Asist. F: <strong>${totalF}</strong></p>`;
+          html += '<div style="border-top:1px solid #E5E7EB; padding-top:10px;">';
+          reportes.forEach(r => {
+              html += `<div style="padding:10px; border-bottom:1px solid #E5E7EB;">`;
+              html += `<strong>${r.grado} ${r.seccion}</strong> — ${r.docente}<br>`;
+              html += `M: ${r.m || 0}, F: ${r.f || 0}, Ausentes: ${r.ausentes || 0}, Total: ${r.presentes || 0}`;
+              html += '</div>';
+          });
+          html += '</div>';
+      }
+
+      mostrarModalListado(html);
+  }
+
+  function mostrarAsistentesHoy() {
+      console.log('Ejecutando mostrarAsistentesHoy');
+      const hoy = new Date();
+      let reportes = todosLosReportes.filter(r => {
+          const rDate = new Date(r.fecha);
+          return rDate.getFullYear() == hoy.getFullYear() && String(rDate.getMonth() + 1).padStart(2, '0') == String(hoy.getMonth() + 1).padStart(2, '0') && String(rDate.getDate()).padStart(2, '0') == String(hoy.getDate()).padStart(2, '0');
+      });
+
+      let asistentes = [];
+      reportes.forEach(r => {
+          if (r.asistentes && Array.isArray(r.asistentes)) {
+              r.asistentes.forEach(nombre => {
+                  asistentes.push({ nombre, grado: r.grado, seccion: r.seccion });
+              });
+          }
+      });
+
+      let html = '<h3 style="color: var(--green-600); text-align: center; margin-bottom: 20px;">Listado de Estudiantes que Asistieron</h3>';
+      html += '<div style="max-height: 400px; overflow-y: auto;">';
+      if (asistentes.length === 0) {
+          html += '<div style="text-align: center; color: var(--gray-600);">No hay datos de asistencia detallados para hoy.<br><small>Los detalles solo estarán disponibles en reportes nuevos.</small></div>';
+          if (reportes.length > 0) {
+              html += '<h4 style="color: var(--blue-800); margin-top: 20px;">Resumen por Grado/Sección:</h4>';
+              reportes.forEach(r => {
+                  html += `<div style="padding: 8px; border-bottom: 1px solid var(--gray-100); background: var(--blue-50);">
+                              <strong>${r.grado} ${r.seccion}</strong> - ${r.docente}<br>
+                              Presentes: ${r.presentes || 0} (M: ${r.m || 0}, F: ${r.f || 0})
+                          </div>`;
+              });
+          }
+      } else {
+          const grupos = {};
+          asistentes.forEach(a => {
+              const key = `${a.grado} ${a.seccion}`;
+              if (!grupos[key]) grupos[key] = [];
+              grupos[key].push(a.nombre);
+          });
+          Object.keys(grupos).sort().forEach(key => {
+              html += `<div style="padding: 10px; border-bottom: 1px solid var(--gray-200); background: #F1FCF5; margin-bottom: 8px;"><strong>${key}</strong> - ${grupos[key].length} presentes</div>`;
+              grupos[key].forEach((nombre, index) => {
+                  html += `<div style="padding: 6px 10px; border-bottom: 1px solid #EAEAEA; font-size: 13px;">${index + 1}. ${nombre}</div>`;
+              });
+          });
+      }
+      html += '</div>';
+      mostrarModalListado(html);
+  }
+
+  function mostrarAusentesHoy() {
+      console.log('Ejecutando mostrarAusentesHoy');
+      const hoy = new Date();
+      let reportes = todosLosReportes.filter(r => {
+          const rDate = new Date(r.fecha);
+          return rDate.getFullYear() == hoy.getFullYear() && String(rDate.getMonth() + 1).padStart(2, '0') == String(hoy.getMonth() + 1).padStart(2, '0') && String(rDate.getDate()).padStart(2, '0') == String(hoy.getDate()).padStart(2, '0');
+      });
+
+      let ausentes = [];
+      reportes.forEach(r => {
+          if (r.ausentes_lista && Array.isArray(r.ausentes_lista)) {
+              r.ausentes_lista.forEach(nombre => {
+                  ausentes.push({ nombre, grado: r.grado, seccion: r.seccion });
+              });
+          }
+      });
+
+      let html = '<h3 style="color: var(--red-600); text-align: center; margin-bottom: 20px;">Listado de Estudiantes Ausentes</h3>';
+      html += '<div style="max-height: 400px; overflow-y: auto;">';
+      if (ausentes.length === 0) {
+          html += '<div style="text-align: center; color: var(--gray-600);">No hay datos de ausencias detallados para hoy.<br><small>Los detalles solo estarán disponibles en reportes nuevos.</small></div>';
+          if (reportes.length > 0) {
+              html += '<h4 style="color: var(--red-600); margin-top: 20px;">Resumen por Grado/Sección:</h4>';
+              reportes.forEach(r => {
+                  html += `<div style="padding: 8px; border-bottom: 1px solid var(--gray-100); background: #FCEBEB;">
+                              <strong>${r.grado} ${r.seccion}</strong> - ${r.docente}<br>
+                              Ausentes: ${r.ausentes || 0}
+                          </div>`;
+              });
+          }
+      } else {
+          const grupos = {};
+          ausentes.forEach(a => {
+              const key = `${a.grado} ${a.seccion}`;
+              if (!grupos[key]) grupos[key] = [];
+              grupos[key].push(a.nombre);
+          });
+          Object.keys(grupos).sort().forEach(key => {
+              html += `<div style="padding: 10px; border-bottom: 1px solid var(--gray-200); background: #FDEDEE; margin-bottom: 8px;"><strong>${key}</strong> - ${grupos[key].length} ausentes</div>`;
+              grupos[key].forEach((nombre, index) => {
+                  html += `<div style="padding: 6px 10px; border-bottom: 1px solid #EAEAEA; font-size: 13px;">${index + 1}. ${nombre}</div>`;
+              });
+          });
+      }
+      html += '</div>';
+      mostrarModalListado(html);
+  }
+
+  function mostrarModalListado(html) {
+      // Eliminar overlay previo si existe
+      const previo = document.getElementById('modal-listado-dinamico');
+      if (previo) previo.remove();
+
+      const overlay = document.createElement('div');
+      overlay.id = 'modal-listado-dinamico';
+      overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2000; display:flex; align-items:center; justify-content:center;';
+      // Cerrar al hacer clic en el fondo
+      overlay.addEventListener('click', function(e) {
+          if (e.target === overlay) overlay.remove();
+      });
+      overlay.innerHTML = `
+          <div style="background:white; padding:20px; border-radius:12px; width:90%; max-width:500px; max-height:80vh; overflow-y:auto;" onclick="event.stopPropagation()">
+              ${html}
+              <div style="text-align:center; margin-top:20px;">
+                  <button id="btn-cerrar-listado-modal" style="padding:10px 20px; background:var(--blue-600); color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">✕ Cerrar</button>
+              </div>
+          </div>
+      `;
+      document.body.appendChild(overlay);
+      // Asignar evento al botón cerrar después de insertar en DOM
+      document.getElementById('btn-cerrar-listado-modal').addEventListener('click', function() {
+          overlay.remove();
+      });
+  }
+
+  // Función para ver alumnos en línea (presentes) del día seleccionado
+  function verDocentesEnLinea() {
+      const fechaFiltro = document.getElementById('filtro-fecha-sub').value;
+
+      let reportesFiltrados = todosLosReportes;
+      if (fechaFiltro) {
+          const [fYear, fMonth, fDay] = fechaFiltro.split('-');
+          reportesFiltrados = todosLosReportes.filter(r => {
+              const rDate = new Date(r.fecha);
+              return rDate.getFullYear() == fYear &&
+                     String(rDate.getMonth() + 1).padStart(2, '0') == fMonth &&
+                     String(rDate.getDate()).padStart(2, '0') == fDay;
+          });
+      }
+
+      const fechaMostrada = fechaFiltro
+          ? new Date(fechaFiltro + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' })
+          : 'todos los días';
+
+      let todosAsistentes = [];
+      reportesFiltrados.forEach(r => {
+          if (r.asistentes && Array.isArray(r.asistentes)) {
+              r.asistentes.forEach(nombre => {
+                  todosAsistentes.push({ nombre, grado: r.grado, seccion: r.seccion });
+              });
+          }
+      });
+
+      let html = `<h3 style="color:var(--green-600); text-align:center; margin-bottom:5px;">🟢 Alumnos Presentes</h3>`;
+      html += `<p style="text-align:center; font-size:12px; color:var(--gray-600); margin-bottom:15px;">📅 ${fechaMostrada}</p>`;
+      html += `<div style="max-height:400px; overflow-y:auto;">`;
+
+      if (todosAsistentes.length === 0) {
+          html += `<p style="text-align:center; color:var(--gray-600); padding:20px;">
+              No hay alumnos registrados como presentes para esta fecha.<br>
+              <small>Asegúrese de que los docentes hayan generado su reporte de asistencia.</small>
+          </p>`;
+      } else {
+          // Agrupar por grado y sección
+          const grupos = {};
+          todosAsistentes.forEach(a => {
+              const key = `${a.grado} ${a.seccion}`;
+              if (!grupos[key]) grupos[key] = [];
+              grupos[key].push(a.nombre);
+          });
+          Object.keys(grupos).sort().forEach(key => {
+              html += `<div style="background:var(--green-50); padding:8px 12px; border-radius:6px; margin-bottom:5px; font-weight:bold; color:var(--green-600); font-size:13px;">📚 ${key} (${grupos[key].length} presentes)</div>`;
+              grupos[key].forEach((nombre, i) => {
+                  html += `<div style="padding:6px 12px; border-bottom:1px solid var(--gray-100); font-size:13px;">${i+1}. ${nombre}</div>`;
+              });
+          });
+          html += `<p style="text-align:center; padding:10px; font-weight:bold; color:var(--green-600);">Total: ${todosAsistentes.length} alumnos presentes</p>`;
+      }
+
+      html += `</div>`;
+      mostrarModalListado(html);
+  }
 </script>
 </body>
+
 </html>
