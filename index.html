@@ -1832,11 +1832,11 @@
 
       [...reportes].reverse().slice(0, 100).forEach(r => {
           const fechaFormateada = new Date(r.fecha).toLocaleDateString('es-ES');
-          const mValue = `<button class="detalle-estudiantes-btn" data-tipo="M" data-grado="${r.grado}" data-seccion="${r.seccion}" style="background:none; border:none; color:var(--blue-600); text-decoration:underline; font-weight:bold; cursor:pointer;" title="Ver Masculinos">${r.m || 0}</button>`;
-          const fValue = `<button class="detalle-estudiantes-btn" data-tipo="F" data-grado="${r.grado}" data-seccion="${r.seccion}" style="background:none; border:none; color:#9D234C; text-decoration:underline; font-weight:bold; cursor:pointer;" title="Ver Femeninos">${r.f || 0}</button>`;
-          const ausentesValue = `<button class="detalle-estudiantes-btn" data-tipo="AUSENTES" data-grado="${r.grado}" data-seccion="${r.seccion}" style="background:none; border:none; font-weight:bold; color:#E24B4A; text-decoration:underline; cursor:pointer;" title="Ver Ausentes">${r.ausentes || 0}</button>`;
-          const permisosValue = `<button class="detalle-estudiantes-btn" data-tipo="PERMISOS" data-grado="${r.grado}" data-seccion="${r.seccion}" style="background:none; border:none; font-weight:bold; color:#F39C12; text-decoration:underline; cursor:pointer;" title="Ver Permisos">${r.permisos || 0}</button>`;
-          const presentesValue = `<button class="detalle-estudiantes-btn" data-tipo="PRESENTES" data-grado="${r.grado}" data-seccion="${r.seccion}" style="background:none; border:none; font-weight:bold; color:#1D9E75; text-decoration:underline; cursor:pointer;" title="Ver Presentes">${r.presentes || 0}</button>`;
+          const mValue = `<button class="detalle-estudiantes-btn" data-tipo="M" data-grado="${r.grado}" data-seccion="${r.seccion}" data-docente="${r.docente}" data-fecha="${encodeURIComponent(r.fecha)}" style="background:none; border:none; color:var(--blue-600); text-decoration:underline; font-weight:bold; cursor:pointer;" title="Ver Masculinos">${r.m || 0}</button>`;
+          const fValue = `<button class="detalle-estudiantes-btn" data-tipo="F" data-grado="${r.grado}" data-seccion="${r.seccion}" data-docente="${r.docente}" data-fecha="${encodeURIComponent(r.fecha)}" style="background:none; border:none; color:#9D234C; text-decoration:underline; font-weight:bold; cursor:pointer;" title="Ver Femeninos">${r.f || 0}</button>`;
+          const ausentesValue = `<button class="detalle-estudiantes-btn" data-tipo="AUSENTES" data-grado="${r.grado}" data-seccion="${r.seccion}" data-docente="${r.docente}" data-fecha="${encodeURIComponent(r.fecha)}" style="background:none; border:none; font-weight:bold; color:#E24B4A; text-decoration:underline; cursor:pointer;" title="Ver Ausentes">${r.ausentes || 0}</button>`;
+          const permisosValue = `<button class="detalle-estudiantes-btn" data-tipo="PERMISOS" data-grado="${r.grado}" data-seccion="${r.seccion}" data-docente="${r.docente}" data-fecha="${encodeURIComponent(r.fecha)}" style="background:none; border:none; font-weight:bold; color:#F39C12; text-decoration:underline; cursor:pointer;" title="Ver Permisos">${r.permisos || 0}</button>`;
+          const presentesValue = `<button class="detalle-estudiantes-btn" data-tipo="PRESENTES" data-grado="${r.grado}" data-seccion="${r.seccion}" data-docente="${r.docente}" data-fecha="${encodeURIComponent(r.fecha)}" style="background:none; border:none; font-weight:bold; color:#1D9E75; text-decoration:underline; cursor:pointer;" title="Ver Presentes">${r.presentes || 0}</button>`;
           html += `<tr>
               <td>${fechaFormateada}</td>
               <td>${r.grado} ${r.seccion}</td>
@@ -2147,9 +2147,25 @@
           })
       }).catch(e => console.log('Error registrando versión PDF:', e));
 
+      // Obtener estudiantes en peligro
+      let estudiantesPeligro = [];
+      try {
+          const responsePeligro = await fetch(`${SCRIPT_URL}?tipo=estudiantes_peligro&grado=${grado}&seccion=${seccion}`);
+          estudiantesPeligro = await responsePeligro.json();
+      } catch (e) {
+          console.log('Error obteniendo estudiantes en peligro:', e);
+      }
+
+      // Agregar mensajes de peligro a la observación general
+      let obsConPeligro = obsGeneral;
+      if (estudiantesPeligro.length > 0) {
+          const mensajes = estudiantesPeligro.map(e => `El estudiante ${e.nombre} está en peligro por inasistencia (30+ ausencias sin justificar).`).join(' ');
+          obsConPeligro = (obsGeneral ? obsGeneral + ' ' : '') + mensajes;
+      }
+
       const pdfHtml = generarHTMLParaPDF({
           grado, seccion, docente, fechaStr, secLimpia,
-          presentes, ausentes, permisos, masc, fem, obsGeneral
+          presentes, ausentes, permisos, masc, fem, obsConPeligro
       });
 
       const containerHTML = document.getElementById('pdf-content');
@@ -2522,19 +2538,50 @@
           const url = `${SCRIPT_URL}?tipo=observacion_grado&grado=${encodeURIComponent(grado)}&seccion=${encodeURIComponent(seccion)}&fecha=${fecha}`;
           const res = await fetch(url);
           const data = await res.json();
+          
+          // Obtener estudiantes en peligro
+          let estudiantesPeligro = [];
+          try {
+              const resPeligro = await fetch(`${SCRIPT_URL}?tipo=estudiantes_peligro&grado=${encodeURIComponent(grado)}&seccion=${encodeURIComponent(seccion)}`);
+              estudiantesPeligro = await resPeligro.json();
+          } catch (e) {
+              console.log('Error obteniendo estudiantes en peligro:', e);
+          }
+          
           const cont = document.getElementById('obs-grado-contenido');
           if (cont) {
-              cont.innerHTML = data.observacion
+              let htmlObs = data.observacion
                   ? `<em>${data.observacion}</em><br><small style="color:var(--gray-600);">— ${data.docente || ''} (${data.fecha ? new Date(data.fecha).toLocaleDateString('es-ES') : ''})</small>`
                   : '<span style="color:var(--gray-600);">Sin observación registrada para hoy.</span>';
+              
+              if (estudiantesPeligro.length > 0) {
+                  const mensajes = estudiantesPeligro.map(e => `<br><strong style="color:#E24B4A;">⚠ El estudiante ${e.nombre} está en peligro por inasistencia (30+ ausencias sin justificar).</strong>`).join('');
+                  htmlObs += mensajes;
+              }
+              
+              cont.innerHTML = htmlObs;
           }
       } catch (e) {
           const cont = document.getElementById('obs-grado-contenido');
           if (cont) {
               const obsLocal = (document.getElementById('observacion-general') || {}).value || '';
-              cont.innerHTML = obsLocal
+              let htmlObs = obsLocal
                   ? `<em>${obsLocal}</em><br><small style="color:var(--amber-600);">(Observación local — no enviada a la nube aún)</small>`
                   : '<span style="color:var(--gray-600);">Sin observación local registrada.</span>';
+              
+              // Agregar estudiantes en peligro incluso en local
+              try {
+                  const resPeligro = await fetch(`${SCRIPT_URL}?tipo=estudiantes_peligro&grado=${encodeURIComponent(grado)}&seccion=${encodeURIComponent(seccion)}`);
+                  const estudiantesPeligro = await resPeligro.json();
+                  if (estudiantesPeligro.length > 0) {
+                      const mensajes = estudiantesPeligro.map(e => `<br><strong style="color:#E24B4A;">⚠ El estudiante ${e.nombre} está en peligro por inasistencia (30+ ausencias sin justificar).</strong>`).join('');
+                      htmlObs += mensajes;
+                  }
+              } catch (e2) {
+                  console.log('Error obteniendo estudiantes en peligro:', e2);
+              }
+              
+              cont.innerHTML = htmlObs;
           }
       }
   }
@@ -2971,17 +3018,18 @@
       }
   }
 
-  async function mostrarDetalleEstudiantes(tipo, grado, seccion) {
+  async function mostrarDetalleEstudiantes(tipo, grado, seccion, docente, fecha) {
       document.getElementById('modal-detalle-estudiantes').classList.add('open');
       document.getElementById('titulo-detalle-estudiantes').innerText = `Estudiantes: ${tipo}`;
-      document.getElementById('subtitulo-detalle-estudiantes').innerText = `Grado: ${grado} | Seç: ${seccion}`;
+      const fechaTexto = fecha ? ` | Fecha: ${new Date(fecha).toLocaleDateString('es-ES')}` : '';
+      document.getElementById('subtitulo-detalle-estudiantes').innerText = `Grado: ${grado} | Seç: ${seccion}${fechaTexto}`;
 
       const cont = document.getElementById('lista-detalle-estudiantes');
       cont.innerHTML = '<p style="text-align:center; color:#185FA5; font-weight:bold;">⏳ Cargando datos...</p>';
 
       try {
           // Fetch de detalles de asistencia
-          const response = await fetch(`${SCRIPT_URL}?tipo=detalles_asistencia&grado=${grado}&seccion=${seccion}`);
+          const response = await fetch(`${SCRIPT_URL}?tipo=detalles_asistencia&grado=${grado}&seccion=${seccion}&docente=${encodeURIComponent(docente)}&fecha=${encodeURIComponent(fecha)}`);
           const detalles = await response.json();
 
           if (!detalles || detalles.length === 0) {
@@ -3047,8 +3095,10 @@
           const tipo = btn.dataset.tipo;
           const grado = btn.dataset.grado;
           const seccion = btn.dataset.seccion;
+          const docente = btn.dataset.docente || '';
+          const fecha = btn.dataset.fecha || '';
           if (tipo && grado && seccion) {
-              mostrarDetalleEstudiantes(tipo, grado, seccion);
+              mostrarDetalleEstudiantes(tipo, grado, seccion, docente, fecha);
           }
       }
       const action = target.dataset.action;
@@ -3347,7 +3397,8 @@
               html += `<div style="margin-bottom: 15px; padding: 10px; background: #FFF9E6; border-radius: 8px;">`;
               html += `<strong>${r.grado} ${r.seccion} - ${r.docente}</strong><br>`;
               html += '<ul style="margin-top: 8px;">';
-              r.permisos_lista.forEach(nombre => {
+              r.permisos_lista.forEach(item => {
+                  const nombre = item && item.nombre ? item.nombre : (typeof item === 'string' ? item : 'Sin nombre');
                   html += `<li>${nombre}</li>`;
                   totalPermisos++;
               });
@@ -3708,7 +3759,7 @@
           Object.keys(grupos).sort().forEach(key => {
               html += `<div style="padding: 10px; border-bottom: 1px solid var(--gray-200); background: #FDEDEE; margin-bottom: 8px;"><strong>${key}</strong> - ${grupos[key].length} ausentes</div>`;
               grupos[key].forEach((nombre, index) => {
-                  html += `<div style="padding: 6px 10px; border-bottom: 1px solid #EAEAEA; font-size: 13px;">${index + 1}. ${nombre}</div>`;
+                  html += `<div style="padding: 6px 10px; border-bottom: 1px solid #EAEAEA; font-size: 13px; background-color: #ffcccc; color: #cc0000; font-weight: bold;">${index + 1}. ${nombre}</div>`;
               });
           });
       }
