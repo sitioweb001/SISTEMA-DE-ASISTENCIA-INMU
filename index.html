@@ -189,7 +189,7 @@
 
     .student-row {
         display: grid;
-        grid-template-columns: 40px 2fr 1fr 1fr 1fr;
+        grid-template-columns: 40px 2fr 1fr 1fr 1fr 100px;
         gap: 10px;
         padding: 12px 15px;
         border-bottom: 1px solid var(--gray-100);
@@ -200,6 +200,29 @@
 
     .student-row:hover {
         background-color: var(--blue-50);
+    }
+
+    .student-row.permiso {
+        background-color: rgba(243, 156, 18, 0.15);
+    }
+
+    .permiso-btn {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: #F39C12;
+        color: white;
+        font-size: 12px;
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .permiso-btn:hover {
+        background: #d77c13;
     }
 
     .student-header {
@@ -497,6 +520,7 @@
         padding: 10px 16px;
         color: white;
         flex-shrink: 0;
+        gap: 8px;
     }
 
     .pdf-viewer-titulo {
@@ -506,18 +530,20 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        margin: 0 12px;
     }
 
     .pdf-viewer-btn {
         background: rgba(255, 255, 255, 0.12);
         border: none;
         color: white;
-        padding: 8px 14px;
+        padding: 8px 12px;
         border-radius: 6px;
         cursor: pointer;
-        font-size: 13px;
+        font-size: 12px;
         font-weight: bold;
+        display: flex;
+        align-items: center;
+        gap: 5px;
     }
 
     .pdf-viewer-btn:hover {
@@ -528,8 +554,8 @@
         background: var(--red-600);
     }
 
-    .pdf-viewer-btn.rojo:hover {
-        background: #b53a3a;
+    .pdf-viewer-btn.verde {
+        background: var(--green-600);
     }
 
     .pdf-viewer-content {
@@ -621,6 +647,13 @@
 
 <body>
 
+<div id="fallback-loading" style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#fff; color:#333; font-family:Arial, sans-serif; z-index:100000; padding:20px; text-align:center;">
+    <div>
+        <div style="font-size:24px; font-weight:bold; margin-bottom:10px;">Cargando aplicación...</div>
+        <div style="font-size:14px; color:#555;">Si la página tarda mucho, puede necesitar conexión o un recargo de la app.</div>
+    </div>
+</div>
+
 <div id="pantalla-mantenimiento">
         <span style="font-size: 100px; cursor: pointer; user-select: none;" ondblclick="toggleMantenimiento()"
               title="Doble clic para desbloquear">⚠️</span>
@@ -701,6 +734,9 @@
       Menú Alternativo
     </p>
 
+    <button onclick="entrarComoDocenteDropdown('Invitado')"
+            style="width:100%; padding:12px; margin-bottom:20px; background: var(--green-600); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">👤 Entrar como Invitado</button>
+
     <select id="select-docente-inicio"
             style="width:100%; padding:12px; margin-bottom:20px; border-radius:8px; border:1px solid var(--gray-100);">
       <option value="">Cargando docentes...</option>
@@ -756,8 +792,8 @@
           <label>Sección</label>
           <select id="seccion-select" onchange="cargarAlumnos()">
             <option value="">-- Seleccionar --</option>
-            <option value='"A"'>"A"</option>
-            <option value='"B"'>"B"</option>
+            <option value="A">"A"</option>
+            <option value="B">"B"</option>
             <option value="Única">Única</option>
           </select>
         </div>
@@ -772,7 +808,13 @@
           <button onclick="inicializarBaseDatos()"
                   style="background:none; border:none; color:var(--blue-600); cursor:pointer; font-size:12px; font-weight:bold; margin-left: 10px;">🔄
             Nube</button>
+          <button onclick="seleccionarArchivoLocal()"
+                  style="background:none; border:none; color:var(--green-600); cursor:pointer; font-size:12px; font-weight:bold; margin-left: 10px;">📂 Local</button>
         </div>
+      </div>
+      <div style="margin-bottom: 15px;">
+          <button onclick="abrirPanelActualizarAsistencia()"
+                  style="background:none; border:none; color:#F39C12; cursor:pointer; font-size:12px; font-weight:bold;">🔄 Actualizar asistencia</button>
       </div>
       <div class="student-list" id="tabla-alumnos">
         <div style="padding: 20px; text-align: center; color: var(--gray-600);">⏳ Conectando a la base de
@@ -799,6 +841,10 @@
           <span id="carpeta-seleccionada"
                 style="font-size:11px; color:var(--gray-600); font-style:italic;">Carpeta: Descargas (por
                             defecto)</span>
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label for="observacion-general" style="display: block; margin-bottom: 5px; font-weight: bold; color: var(--gray-700);">Observación General (opcional):</label>
+          <textarea id="observacion-general" placeholder="Escriba aquí cualquier observación general sobre la asistencia del día..." style="width: 100%; height: 60px; padding: 8px; border: 1px solid var(--gray-300); border-radius: 6px; resize: vertical; font-size: 14px;"></textarea>
         </div>
         <button class="btn-generate" id="btn-pdf-generate" onclick="generarPDF()">📥 Generar PDF y Guardar
           Reporte</button>
@@ -1044,8 +1090,8 @@
 
       <select id="new-docente-seccion" style="width:100%; padding:10px; margin-bottom:15px;">
         <option value="">-- Sección Asignada --</option>
-        <option value='"A"'>"A"</option>
-        <option value='"B"'>"B"</option>
+        <option value="A">"A"</option>
+        <option value="B">"B"</option>
         <option value="Única">Única</option>
       </select>
 
@@ -1062,6 +1108,7 @@
          style="padding: 40px; font-family: Arial, sans-serif; color: black; background: white; width: 100%; box-sizing: border-box; position: relative; min-height: 1000px;">
     </div>
   </div>
+  <input type="file" id="input-local-data" accept=".json,.csv" style="display:none;" onchange="cargarDatosLocal(event)">
   <div class="modal-overlay" id="modal-docentes-linea">
     <div class="modal">
       <h3 style="color: var(--blue-800); margin-bottom: 15px; text-align: center;">👨‍🏫 Docentes Registrados / En Línea</h3>
@@ -1092,8 +1139,9 @@
 ═══════════════════════════════════════════════════════════════ -->
 <div class="pdf-viewer-overlay" id="pdf-viewer-overlay">
   <div class="pdf-viewer-toolbar">
-    <button class="pdf-viewer-btn roj" onclick="cerrarVisorPDF()" style="background:var(--red-600);">✕ CERRAR</button>
+    <button class="pdf-viewer-btn rojo" onclick="cerrarVisorPDF()">✕ CERRAR</button>
     <div class="pdf-viewer-titulo" id="pdf-viewer-nombre">—</div>
+    <button class="pdf-viewer-btn verde" id="btn-compartir-visor" onclick="compartirPDFActual()" style="display:none;">📤 COMPARTIR</button>
     <div class="pdf-zoom-controls">
       <button onclick="cambiarZoom(-0.2)" title="Alejar">−</button>
       <span id="pdf-zoom-label">100%</span>
@@ -1119,14 +1167,115 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   }
 
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwL2huKwIXPI2xVLo1M_Z7rEaXa3Wdgx6boUFj0CiaSVyVwtOV8HxyShrnxMtzmp0qy/exec";
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxKnxasl94QOwaLx2QZMDNnfNG8NTtnWg1agE9shf9cyeYeP1PsgtUjbu4X94lXRSIM/exec";
   const PASS_LOGIN = "89";
   const PASS_ADMIN = "747-8";
 
-  const ES_ANDROID_APP = typeof AndroidStorage !== 'undefined' && AndroidStorage && typeof AndroidStorage.get === 'function';
+  function normalizarTexto(valor) {
+      return String(valor || '').trim().replace(/^\"+|\"+$/g, '').replace(/\"/g, '').trim();
+  }
 
   function esAppAndroid() {
-      return ES_ANDROID_APP;
+      return typeof AndroidStorage !== 'undefined' && AndroidStorage && typeof AndroidStorage.get === 'function';
+  }
+
+  function seleccionarArchivoLocal() {
+      const input = document.getElementById('input-local-data');
+      if (input) input.click();
+  }
+
+  function cargarDatosLocal(event) {
+      const file = event?.target?.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+          const contenido = e.target.result;
+          try {
+              let data = null;
+              if (file.name.toLowerCase().endsWith('.json')) {
+                  data = JSON.parse(contenido);
+              } else {
+                  data = parseCSV(contenido);
+              }
+
+              if (Array.isArray(data)) {
+                  baseDatosAlumnos = data;
+              } else if (data && typeof data === 'object') {
+                  baseDatosAlumnos = Array.isArray(data.alumnos) ? data.alumnos : (Array.isArray(data.alumnos || data.students) ? data.alumnos || data.students : []);
+                  baseDatosDocentes = Array.isArray(data.docentes) ? data.docentes : (Array.isArray(data.teachers) ? data.teachers : []);
+              }
+
+              if (!baseDatosDocentes || baseDatosDocentes.length === 0) {
+                  baseDatosDocentes = [{ nombre: 'Invitado' }];
+              }
+
+              const cont = document.getElementById('tabla-alumnos');
+              if (cont) cont.innerHTML = '<div style="padding: 20px; text-align:center; color:var(--green-600);">Datos locales cargados. Seleccione grado y sección.</div>';
+              const selDoc = document.getElementById('select-docente-inicio');
+              if (selDoc) selDoc.innerHTML = `<option value="">-- Seleccionar --</option><option value="Invitado">👤 Entrar como Invitado</option>`;
+              alert('Datos locales cargados con éxito. Ahora seleccione grado y sección.');
+          } catch (error) {
+              console.error('Error cargando datos locales:', error);
+              alert('No se pudo leer el archivo local. Use JSON válido o CSV con cabeceras.');
+          }
+      };
+      reader.readAsText(file, 'UTF-8');
+  }
+
+  function parseCSV(text) {
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      if (lines.length === 0) return [];
+      const headers = lines[0].split(/[,;]+/).map(h => h.trim().toLowerCase());
+      const rows = [];
+      for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(/[,;]+/).map(v => v.trim());
+          if (values.length !== headers.length) continue;
+          const row = {};
+          headers.forEach((h, j) => row[h] = values[j]);
+          if (row.nombre) rows.push(row);
+      }
+      return rows;
+  }
+
+  function marcarModoOffline() {
+      modoOffline = true;
+      baseDatosDocentes = [
+          { nombre: 'Invitado' },
+          { nombre: 'Prof. Ana López', grado: '1', seccion: 'A' },
+          { nombre: 'Prof. Carlos Ruiz', grado: '2', seccion: 'A' },
+          { nombre: 'Prof. María González', grado: '3', seccion: 'B' },
+          { nombre: 'Prof. Juan Pérez', grado: '4', seccion: 'A' }
+      ];
+      baseDatosAlumnos = [
+          { grado: '1', seccion: 'A', nombre: 'Juan Pérez', sexo: 'M', nie: '12345', telefono: '12345678' },
+          { grado: '1', seccion: 'A', nombre: 'María García', sexo: 'F', nie: '12346', telefono: '12345679' },
+          { grado: '1', seccion: 'A', nombre: 'Pedro López', sexo: 'M', nie: '12347', telefono: '12345680' },
+          { grado: '1', seccion: 'B', nombre: 'Ana Rodríguez', sexo: 'F', nie: '12348', telefono: '12345681' },
+          { grado: '1', seccion: 'B', nombre: 'Carlos Sánchez', sexo: 'M', nie: '12349', telefono: '12345682' },
+          { grado: '2', seccion: 'A', nombre: 'Luis Martínez', sexo: 'M', nie: '12350', telefono: '12345683' },
+          { grado: '2', seccion: 'A', nombre: 'Sofia Hernández', sexo: 'F', nie: '12351', telefono: '12345684' },
+          { grado: '2', seccion: 'B', nombre: 'Miguel Torres', sexo: 'M', nie: '12352', telefono: '12345685' },
+          { grado: '3', seccion: 'A', nombre: 'Elena Díaz', sexo: 'F', nie: '12353', telefono: '12345686' },
+          { grado: '3', seccion: 'B', nombre: 'Diego Ramírez', sexo: 'M', nie: '12354', telefono: '12345687' },
+          { grado: '4', seccion: 'A', nombre: 'Valentina Flores', sexo: 'F', nie: '12355', telefono: '12345688' },
+          { grado: '5', seccion: 'A', nombre: 'Andrés Morales', sexo: 'M', nie: '12356', telefono: '12345689' },
+          { grado: '6', seccion: 'A', nombre: 'Camila Ruiz', sexo: 'F', nie: '12357', telefono: '12345690' }
+      ];
+      const cont = document.getElementById('tabla-alumnos');
+      if (cont) {
+          cont.innerHTML = `<div style="padding:20px; text-align:center; color:#185FA5;">⛔ Modo offline activado. Datos de ejemplo cargados. Seleccione grado y sección.</div>`;
+      }
+      const selDoc = document.getElementById('select-docente-inicio');
+      if (selDoc) {
+          let options = `<option value="">-- Seleccionar --</option>`;
+          baseDatosDocentes.forEach(d => {
+              if (d.nombre !== 'Invitado') {
+                  options += `<option value="${d.nombre}">${d.nombre}</option>`;
+              }
+          });
+          selDoc.innerHTML = options;
+      }
   }
 
   function actualizarUISegunPlataforma() {
@@ -1165,12 +1314,15 @@
   let sistemaEnMantenimiento = true;
   let todosLosReportes = [];
   let loginRequerido = true;
+  window.usuarioActual = '';
 
   // ── Variables del visor PDF ──────────────────────────────────────
   let pdfDoc = null;
   let pdfPaginaActual = 1;
   let pdfTotalPaginas = 0;
   let pdfZoom = 1.2;
+  let pdfUriActual = '';      // URI del PDF abierto actualmente
+  let pdfNombreActual = '';   // Nombre del PDF abierto actualmente
   let listaPDFs = [];          // Array de {nombre, uri, fecha, grado}
   let listaPDFsFiltrada = [];
 
@@ -1214,9 +1366,26 @@
               setTimeout(restaurarSesionGuardada, 2000);
           }
       } catch (error) {
-          document.getElementById("mantenimiento-titulo").innerText = "ERROR DE CONEXIÓN";
-          document.getElementById("mantenimiento-texto").innerText = "Revise su internet o enlace de base de datos.";
-          document.getElementById('pantalla-mantenimiento').style.display = 'flex';
+          console.warn('No se pudo conectar con la nube:', error);
+          sistemaEnMantenimiento = false;
+          if (!esAppAndroid()) {
+              loginRequerido = false;
+              marcarModoOffline();
+              document.getElementById('pantalla-mantenimiento').style.display = 'none';
+              document.getElementById('modal-inicio-dropdown').classList.remove('open');
+              document.getElementById('modal-inicio-login').classList.add('open');
+              document.getElementById("mantenimiento-titulo").innerText = "SIN CONEXIÓN";
+              document.getElementById("mantenimiento-texto").innerText = "Cargando modo offline. Si hay datos guardados localmente, se restaurarán.";
+              setTimeout(restaurarSesionGuardada, 2000);
+              return;
+          }
+          document.getElementById('pantalla-mantenimiento').style.display = 'none';
+          document.getElementById('modal-inicio-dropdown').classList.remove('open');
+          document.getElementById('modal-inicio-login').classList.add('open');
+          document.getElementById("mantenimiento-titulo").innerText = "SIN CONEXIÓN";
+          document.getElementById("mantenimiento-texto").innerText = "Cargando modo offline. Si hay datos guardados localmente, se restaurarán.";
+          inicializarBaseDatos();
+          setTimeout(restaurarSesionGuardada, 2000);
       }
   }
 
@@ -1274,7 +1443,7 @@
           if (docente) document.getElementById('docente-nombre').value = docente;
           if (grado && seccion) cargarAlumnos();
 
-          desbloquearInterfazMain();
+          desbloquearInterfazMain(usuario);
       } catch (e) { }
   }
 
@@ -1301,9 +1470,43 @@
   }
 
   window.onload = function() {
-      actualizarUISegunPlataforma();
-      chequearMantenimientoNube();
+      try {
+          const fallback = document.getElementById('fallback-loading');
+          if (fallback) fallback.remove();
+          actualizarUISegunPlataforma();
+          chequearMantenimientoNube();
+      } catch (e) {
+          console.error('Error en window.onload:', e);
+          modoOffline = true;
+          loginRequerido = false;
+          marcarModoOffline();
+          desbloquearInterfazMain('invitado');
+      }
   };
+
+  window.onerror = function(message, source, lineno, colno, error) {
+      console.error('Error crítico en la aplicación:', message, source, lineno, colno, error);
+      const details = `
+          <p style="margin:10px 0 0 0; font-size:14px; color:#5F5E5A;">Mensaje: ${String(message)}</p>
+          <p style="margin:5px 0 0 0; font-size:14px; color:#5F5E5A;">Origen: ${source || 'desconocido'}:${lineno || 0}:${colno || 0}</p>
+          <pre style="margin-top:12px; padding:12px; background:#fff5f5; border:1px solid #F5C6CB; color:#A71D2A; overflow:auto; max-height:220px; white-space:pre-wrap;">${error && error.stack ? String(error.stack) : ''}</pre>
+      `;
+      document.body.innerHTML = `<div style="padding: 25px; font-family: Arial, sans-serif; color: #E24B4A; background: #fff8f0; min-height: 100vh; display: flex; align-items: center; justify-content: center;"><div><h1 style="margin:0 0 10px 0; font-size: 24px;">Error de carga</h1><p style="margin:0; font-size: 16px;">Hubo un problema al iniciar la aplicación. Reinicia la app o contacta al administrador.</p>${details}</div></div>`;
+      return false;
+  };
+
+  window.addEventListener('unhandledrejection', function(event) {
+      console.error('Unhandled promise rejection:', event.reason);
+      event.preventDefault();
+      const body = document.body || document.documentElement;
+      if (body) {
+          const warning = document.createElement('div');
+          warning.style.cssText = 'position:fixed;top:0;left:0;right:0;padding:12px 16px;background:#FDECEA;color:#721C24;z-index:99999;font-family:Arial,sans-serif;font-size:13px;';
+          warning.textContent = 'Error no manejado: ' + (event.reason ? event.reason.toString() : 'desconocido');
+          body.appendChild(warning);
+          setTimeout(() => warning.remove(), 8000);
+      }
+  });
 
   document.addEventListener('keydown', function (event) {
       if (event.key === 'Enter') {
@@ -1397,8 +1600,8 @@
       }
   }
 
-  function entrarComoDocenteDropdown() {
-      const sel = document.getElementById("select-docente-inicio").value;
+  function entrarComoDocenteDropdown(sel = null) {
+      if (sel === null) sel = document.getElementById("select-docente-inicio").value;
       if (!sel) return alert("Por favor, seleccione una opción.");
 
       if (sel !== "Invitado") {
@@ -1417,19 +1620,20 @@
       desbloquearInterfazMain(sel !== "Invitado" ? sel : "invitado");
   }
 
-  function desbloquearInterfazMain(usuarioActual) {
+  function desbloquearInterfazMain(usuario) {
+      window.usuarioActual = usuario || '';
       document.getElementById("modal-inicio-login").classList.remove('open');
       document.getElementById("modal-inicio-dropdown").classList.remove('open');
       document.getElementById('header-principal').style.display = 'flex';
       document.getElementById('container-principal').style.display = 'block';
-      if (usuarioActual) {
+      if (window.usuarioActual) {
           const g = document.getElementById('grado-select').value;
           const s = document.getElementById('seccion-select').value;
           const d = document.getElementById('docente-nombre').value;
-          guardarSesion(usuarioActual, g, s, d);
+          guardarSesion(window.usuarioActual, g, s, d);
           // Marcar como online
-          if (usuarioActual !== "invitado") {
-              actualizarStatusDocente(usuarioActual, "online");
+          if (window.usuarioActual !== "invitado") {
+              actualizarStatusDocente(window.usuarioActual, "online");
           }
       }
   }
@@ -1502,16 +1706,22 @@
       if (sistemaEnMantenimiento) return;
       document.querySelectorAll('.view-section').forEach(s => s.classList.remove('view-active'));
       if (vista === 'subdireccion') {
-          document.getElementById('view-subdireccion').classList.add('view-active');
-          document.getElementById('btn-volver-asist').style.display = 'block';
+          const view = document.getElementById('view-subdireccion');
+          if (view) view.classList.add('view-active');
+          const btn = document.getElementById('btn-volver-asist');
+          if (btn) btn.style.display = 'block';
           cargarReportesSub(false);
       } else if (vista === 'pdf-reportes') {
-          document.getElementById('view-pdf-reportes').classList.add('view-active');
-          document.getElementById('btn-volver-asist').style.display = 'block';
+          const view = document.getElementById('view-pdf-reportes');
+          if (view) view.classList.add('view-active');
+          const btn = document.getElementById('btn-volver-asist');
+          if (btn) btn.style.display = 'block';
           cargarListaPDFs();
       } else {
-          document.getElementById('view-docente').classList.add('view-active');
-          document.getElementById('btn-volver-asist').style.display = 'none';
+          const view = document.getElementById('view-docente');
+          if (view) view.classList.add('view-active');
+          const btn = document.getElementById('btn-volver-asist');
+          if (btn) btn.style.display = 'none';
       }
   }
 
@@ -1520,11 +1730,16 @@
       const cont = document.getElementById('tabla-alumnos');
       const selDoc = document.getElementById('select-docente-inicio');
 
+      if (!navigator.onLine && !esAppAndroid()) {
+          marcarModoOffline();
+          return;
+      }
+
       cont.innerHTML = '<div style="padding: 20px; text-align: center; color: #185FA5; font-weight:bold;">Sincronizando con la nube...</div>';
       selDoc.innerHTML = '<option value="">Descargando lista...</option>';
 
       try {
-          const [responseAlu, responseDoc] = await Promise.all([fetch(SCRIPT_URL), fetch(SCRIPT_URL + "?tipo=lista_docentes")]);
+          const [responseAlu, responseDoc] = await Promise.all([fetch(SCRIPT_URL + "?tipo=alumnos"), fetch(SCRIPT_URL + "?tipo=docentes")]);
           if (!responseAlu.ok || !responseDoc.ok) throw new Error("Error");
 
           baseDatosAlumnos = await responseAlu.json();
@@ -1532,11 +1747,16 @@
           cargarAlumnos();
 
           baseDatosDocentes = await responseDoc.json();
-          let htmlDoc = `<option value="">-- Seleccionar --</option><option value="Invitado">👤 Entrar como Invitado</option>`;
+          let htmlDoc = `<option value="">-- Seleccionar --</option>`;
           baseDatosDocentes.forEach(d => { htmlDoc += `<option value="${d.nombre}">${d.nombre}</option>`; });
           selDoc.innerHTML = htmlDoc;
 
       } catch (error) {
+          console.warn('Error inicializando datos:', error);
+          if (!esAppAndroid()) {
+              marcarModoOffline();
+              return;
+          }
           cont.innerHTML = '<div style="padding: 20px; text-align: center; color: red;">Error de conexión.</div>';
           selDoc.innerHTML = '<option value="Invitado">Error de red - Invitado</option>';
       }
@@ -1590,7 +1810,7 @@
 
       if (!reportes || reportes.length === 0) {
           container.innerHTML = "<div style='color:var(--red-600); text-align:center; padding:20px; font-weight:bold;'>No hay reportes de asistencia para esta fecha.</div>";
-          stats.innerHTML = generarHTMLResumen(tGeneral, tM, tF, 0, 0, 0, 0); return;
+          stats.innerHTML = generarHTMLResumen(tGeneral, tM, tF, 0, 0, 0, 0, 0); return;
       }
 
       let html = `<table class="sub-table"><tr style="background-color: var(--blue-800); color: white;"><th>Fecha</th><th>Grado/Secc</th><th>Docente</th><th style="text-align:center;">M</th><th style="text-align:center;">F</th><th style="text-align:center;">Ausentes</th><th style="text-align:center;">Total Asist.</th></tr>`;
@@ -1614,45 +1834,203 @@
           sumaPres += parseInt(r.presentes) || 0; sumAus += parseInt(r.ausentes) || 0; sumM += parseInt(r.m) || 0; sumF += parseInt(r.f) || 0;
       });
       container.innerHTML = html + `</table>`;
-      stats.innerHTML = generarHTMLResumen(tGeneral, tM, tF, sumaPres, sumAus, sumM, sumF);
+      stats.innerHTML = generarHTMLResumen(tGeneral, tM, tF, sumaPres, sumAus, 0, sumM, sumF);
   }
 
-  function generarHTMLResumen(tGeneral, tM, tF, sPres, sAus, sM, sF) {
+  function generarHTMLResumen(tGeneral, tM, tF, sPres, sAus, sPerm, sM, sF) {
       return `
 <div style="margin-top: 25px; padding: 20px; background: var(--blue-50); border: 2px solid var(--blue-600); border-radius: 10px;">
-<h3 style="color: var(--blue-800); font-size: 16px; margin-bottom: 15px; text-transform: uppercase; text-align: center;">📊 Cuadro Resumen de Estadísticas</h3>
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-  <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid var(--blue-600);">
-    <p style="font-size: 12px; color: gray; font-weight: bold; margin-bottom: 5px;">TOTAL DE MATRÍCULA 2026</p>
-    <p style="font-size: 20px; font-weight: bold; color: var(--blue-800);">Total: ${tGeneral}</p>
-    <p style="font-size: 14px; color: #555; margin-top: 5px;">M: <strong style="cursor: pointer; color: var(--blue-600);" onclick="mostrarListadoEstudiantes('M')">${tM}</strong> | F: <strong style="cursor: pointer; color: var(--blue-600);" onclick="mostrarListadoEstudiantes('F')">${tF}</strong></p>
+  <h3 style="color: var(--blue-800); font-size: 16px; margin-bottom: 15px; text-transform: uppercase; text-align: center;">📊 Cuadro Resumen de Estadísticas</h3>
+
+  <!-- Botones de categorías rápidas -->
+  <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:16px;">
+    <button onclick="mostrarListadoAsistentes()" style="padding:8px 14px;background:#1D9E75;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:13px;">
+      ✅ Asistencia (${sPres})
+    </button>
+    <button onclick="mostrarListadoAusentes()" style="padding:8px 14px;background:#E24B4A;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:13px;">
+      ❌ No asistieron (${sAus})
+    </button>
+    <button onclick="mostrarListadoPermisos()" style="padding:8px 14px;background:#F39C12;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:13px;">
+      ⚠ Con permiso (${sPerm})
+    </button>
+    <button onclick="abrirPanelActualizarAsistencia()" style="padding:8px 14px;background:#185FA5;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:13px;">
+      🔄 Actualizar asistencia
+    </button>
+    <button onclick="verObservacionGrado()" style="padding:8px 14px;background:#5F5E5A;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:13px;">
+      📝 Ver observación del grado
+    </button>
   </div>
-  <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid var(--green-600);">
-    <p style="font-size: 12px; color: gray; font-weight: bold; margin-bottom: 5px;">REPORTE DE ASISTENCIA (DE LA TABLA)</p>
-    <p style="font-size: 20px; font-weight: bold; color: var(--green-600); cursor: pointer;" onclick="mostrarListadoAsistentes()">Presentes: ${sPres}</p>
-    <p style="font-size: 16px; color: var(--red-600); margin-left: 10px; cursor: pointer;" onclick="mostrarListadoAusentes()">Ausentes: ${sAus}</p>
-    <p style="font-size: 14px; color: #555; margin-top: 5px;">Asist. M: <strong>${sM}</strong> | Asist. F: <strong>${sF}</strong></p>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+    <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid var(--blue-600);">
+      <p style="font-size: 12px; color: gray; font-weight: bold; margin-bottom: 5px;">TOTAL DE MATRÍCULA 2026</p>
+      <p style="font-size: 20px; font-weight: bold; color: var(--blue-800);">Total: ${tGeneral}</p>
+      <p style="font-size: 14px; color: #555; margin-top: 5px;">M: <strong style="cursor: pointer; color: var(--blue-600);" onclick="mostrarListadoEstudiantes('M')">${tM}</strong> | F: <strong style="cursor: pointer; color: var(--blue-600);" onclick="mostrarListadoEstudiantes('F')">${tF}</strong></p>
+    </div>
+    <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid var(--green-600);">
+      <p style="font-size: 12px; color: gray; font-weight: bold; margin-bottom: 5px;">ESTADO DE ASISTENCIA ACTUAL</p>
+      <p style="font-size: 18px; font-weight: bold; color: var(--green-600); cursor: pointer;" onclick="mostrarListadoAsistentes()">Presentes: ${sPres}</p>
+      <p style="font-size: 16px; color: var(--red-600); margin-left: 10px; cursor: pointer;" onclick="mostrarListadoAusentes()">Ausentes: ${sAus}</p>
+      <p style="font-size: 16px; color: #F39C12; margin-left: 10px; cursor: pointer;" onclick="mostrarListadoPermisos()">Permisos: ${sPerm}</p>
+      <p style="font-size: 14px; color: #555; margin-top: 5px;">Asist. M: <strong>${sM}</strong> | Asist. F: <strong>${sF}</strong></p>
+    </div>
   </div>
-</div>
 </div>`;
   }
 
   function cargarAlumnos() {
-      const grado = document.getElementById('grado-select').value;
-      const seccion = document.getElementById('seccion-select').value;
+      const grado = normalizarTexto(document.getElementById('grado-select').value);
+      const seccion = normalizarTexto(document.getElementById('seccion-select').value);
       const contenedor = document.getElementById('tabla-alumnos');
-      if (!grado || !seccion) { contenedor.innerHTML = '<div style="padding: 20px; text-align: center; color: #5F5E5A;">Seleccione un grado y una sección.</div>'; alumnosFiltrados = []; return; }
-      alumnosFiltrados = baseDatosAlumnos.filter(a => a.grado === grado && a.seccion === seccion);
-      if (alumnosFiltrados.length === 0) { contenedor.innerHTML = '<div style="padding: 20px; text-align: center; color: #E24B4A;">No hay alumnos en este grado.</div>'; return; }
+      if (!grado || !seccion) {
+          contenedor.innerHTML = '<div style="padding: 20px; text-align: center; color: #5F5E5A;">Seleccione un grado y una sección.</div>';
+          alumnosFiltrados = [];
+          return;
+      }
+      alumnosFiltrados = baseDatosAlumnos.filter(a => normalizarTexto(a.grado) === grado && normalizarTexto(a.seccion) === seccion);
+      if (alumnosFiltrados.length === 0) {
+          contenedor.innerHTML = '<div style="padding: 20px; text-align: center; color: #E24B4A;">No hay alumnos en este grado.</div>';
+          return;
+      }
 
-      let html = `<div class="student-row student-header"><div class="checkbox-wrapper">✓</div><div>Nombre del Estudiante</div><div>Sexo</div><div>NIE</div><div>Teléfono</div></div>`;
+      let html = `<div class="student-row student-header">
+          <div class="checkbox-wrapper">✓</div>
+          <div>Nombre del Estudiante</div>
+          <div>Sexo</div><div>NIE</div><div>Teléfono</div><div>Permiso</div>
+      </div>`;
+
       alumnosFiltrados.forEach((alumno, index) => {
-          html += `<div class="student-row" onclick="toggleFila(event, ${index})"><div class="checkbox-wrapper"><input type="checkbox" id="chk-${index}" value="${index}" checked></div><div style="font-weight: 500; font-size:13px;">${alumno.nombre}</div><div><span class="badge ${alumno.sexo.toLowerCase()}">${alumno.sexo}</span></div><div style="font-size: 13px;">${alumno.nie}</div><div style="font-size: 13px;">${alumno.telefono || 'N/A'}</div></div>`;
+          html += `<div class="student-row" id="row-${index}"
+              onclick="toggleFila(event, ${index})"
+              ondblclick="iniciarPermisoPorDobleClick(${index}); event.stopPropagation();">
+              <div class="checkbox-wrapper"><input type="checkbox" id="chk-${index}" value="${index}" checked></div>
+              <div id="nombre-alumno-${index}" style="font-weight: 500; font-size:13px;">${alumno.nombre}</div>
+              <div><span class="badge ${alumno.sexo.toLowerCase()}">${alumno.sexo}</span></div>
+              <div style="font-size: 13px;">${alumno.nie}</div>
+              <div style="font-size: 13px;">${alumno.telefono || 'N/A'}</div>
+              <button class="permiso-btn" onclick="mostrarModalPermiso(${index}); event.stopPropagation();">Permiso</button>
+          </div>`;
       });
-      contenedor.innerHTML = html; estadoSeleccion = true;
+      contenedor.innerHTML = html;
+      estadoSeleccion = true;
+      setTimeout(cargarEstadoAsistencia, 100);
+      setTimeout(actualizarContadoresAsistencia, 200);
   }
 
-  function toggleFila(event, index) { if (event.target.tagName.toLowerCase() !== 'input') document.getElementById(`chk-${index}`).checked = !document.getElementById(`chk-${index}`).checked; }
+  function toggleFila(event, index) {
+      // Evitar que el doble clic dispare el toggle
+      if (event.detail > 1) return;
+
+      const targetTag = event.target.tagName.toLowerCase();
+      if (targetTag === 'input' || targetTag === 'button') return;
+
+      document.getElementById(`chk-${index}`).checked = !document.getElementById(`chk-${index}`).checked;
+      actualizarEstadoCheckbox(index);
+  }
+
+  function actualizarEstadoCheckbox(index) {
+      const chk = document.getElementById(`chk-${index}`);
+      if (chk.dataset.estado !== 'permiso') {
+          chk.dataset.estado = chk.checked ? 'presente' : 'ausente';
+      }
+      guardarEstadoAsistencia();
+      actualizarContadoresAsistencia();
+  }
+
+  function guardarEstadoAsistencia() {
+      if (typeof AndroidStorage !== 'undefined' && alumnosFiltrados.length > 0) {
+          const grado = document.getElementById('grado-select').value;
+          const seccion = document.getElementById('seccion-select').value;
+          const key = `asistencia_${grado}_${seccion}`;
+
+          const estados = {};
+          alumnosFiltrados.forEach((alumno, index) => {
+              const chk = document.getElementById(`chk-${index}`);
+              if (chk) {
+                  estados[alumno.nie] = {
+                      estado: chk.dataset.estado || (chk.checked ? 'presente' : 'ausente'),
+                      justificante: chk.dataset.justificante || ''
+                  };
+              }
+          });
+
+          AndroidStorage.set(key, JSON.stringify(estados));
+      }
+  }
+
+  function cargarEstadoAsistencia() {
+      if (typeof AndroidStorage !== 'undefined') {
+          const grado = document.getElementById('grado-select').value;
+          const seccion = document.getElementById('seccion-select').value;
+          const key = `asistencia_${grado}_${seccion}`;
+
+          try {
+              const saved = AndroidStorage.get(key);
+              if (saved) {
+                  const estados = JSON.parse(saved);
+                  alumnosFiltrados.forEach((alumno, index) => {
+                      const chk = document.getElementById(`chk-${index}`);
+                      if (chk && estados[alumno.nie]) {
+                          const estadoData = estados[alumno.nie];
+                          chk.dataset.estado = estadoData.estado;
+                          chk.dataset.justificante = estadoData.justificante || '';
+
+                          if (estadoData.estado === 'permiso') {
+                              chk.checked = false;
+                          } else if (estadoData.estado === 'ausente') {
+                              chk.checked = false;
+                          } else {
+                              chk.checked = true;
+                          }
+                      }
+                  });
+              }
+          } catch (e) {
+              console.log('Error cargando estado de asistencia:', e);
+          }
+      }
+  }
+
+  function mostrarModalPermiso(index) {
+      const alumno = alumnosFiltrados[index];
+      const modal = document.createElement('div');
+      modal.id = 'modal-permiso';
+      modal.innerHTML = `
+          <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+              <div style="background: white; padding: 20px; border-radius: 10px; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                  <h3 style="margin: 0 0 15px 0; color: #F39C12;">⚠ Permiso para ${alumno.nombre}</h3>
+                  <div style="margin-bottom: 15px;">
+                      <label style="display: block; margin-bottom: 5px; font-weight: bold;">Justificante (opcional):</label>
+                      <textarea id="justificante-permiso" placeholder="Describa el motivo del permiso..." style="width: 100%; height: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 6px; resize: vertical;"></textarea>
+                  </div>
+                  <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                      <button onclick="cerrarModalPermiso()" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer;">Cancelar</button>
+                      <button onclick="aplicarPermiso(${index})" style="padding: 8px 16px; background: #F39C12; color: white; border: none; border-radius: 6px; cursor: pointer;">Aplicar Permiso</button>
+                  </div>
+              </div>
+          </div>
+      `;
+      document.body.appendChild(modal);
+  }
+
+  function cerrarModalPermiso() {
+      const modal = document.getElementById('modal-permiso');
+      if (modal) modal.remove();
+  }
+
+  function aplicarPermiso(index) {
+      const chk = document.getElementById(`chk-${index}`);
+      const justificante = document.getElementById('justificante-permiso').value.trim();
+      chk.checked = false;
+      chk.dataset.estado = 'permiso';
+      chk.dataset.justificante = justificante;
+      const row = document.getElementById(`row-${index}`);
+      if (row) row.classList.add('permiso');
+      cerrarModalPermiso();
+      guardarEstadoAsistencia();
+      actualizarContadoresAsistencia();
+      mostrarNotificacion(`Permiso aplicado para ${alumnosFiltrados[index].nombre}`, 'warning');
+  }
   function toggleTodos() { estadoSeleccion = !estadoSeleccion; alumnosFiltrados.forEach((a, i) => document.getElementById(`chk-${i}`).checked = estadoSeleccion); }
 
   function accederLimpieza() { if (prompt("Contraseña:") === PASS_ADMIN) document.getElementById("zona-peligro").style.display = "block"; }
@@ -1676,36 +2054,157 @@
       const grado = document.getElementById('grado-select').value;
       const seccion = document.getElementById('seccion-select').value;
       const orientacion = document.querySelector('input[name="orientacion"]:checked').value;
+      const obsGeneral = (document.getElementById('observacion-general') || {}).value || '';
       const btn = document.getElementById('btn-pdf-generate');
 
-      if (!grado || !seccion || !docente) return alert("Faltan datos.");
+      if (!grado || !seccion || !docente) return alert("Faltan datos: grado, sección o nombre del docente.");
       btn.disabled = true; btn.innerText = "⏳ Generando PDF...";
 
-      const presentes = [], ausentes = []; let masc = 0, fem = 0;
+      const presentes = [], ausentes = [], permisos = []; let masc = 0, fem = 0;
       alumnosFiltrados.forEach((alumno, index) => {
-          if (document.getElementById(`chk-${index}`).checked) { presentes.push(alumno); alumno.sexo === 'M' ? masc++ : fem++; }
-          else { ausentes.push(alumno); }
+          const chk = document.getElementById(`chk-${index}`);
+          const estado = chk ? (chk.dataset.estado || (chk.checked ? 'presente' : 'ausente')) : 'presente';
+          if (estado === 'permiso') {
+              permisos.push({ ...alumno, justificante: chk ? (chk.dataset.justificante || '') : '' });
+          } else if (chk && chk.checked) {
+              presentes.push(alumno);
+              alumno.sexo === 'M' ? masc++ : fem++;
+          } else {
+              ausentes.push(alumno);
+          }
       });
 
       const ahora = new Date();
       const fechaStr = ahora.toLocaleDateString('es-ES');
-      const fechaArchivo = ahora.toLocaleDateString('es-ES').replace(/\//g, '-');
+      const dd = String(ahora.getDate()).padStart(2, '0');
+      const mm = String(ahora.getMonth() + 1).padStart(2, '0');
+      const yyyy = ahora.getFullYear();
+      const fechaArchivo = `${dd}-${mm}-${yyyy}`;
       const secLimpia = seccion.replace(/"/g, '');
 
-      fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "asistencia", fecha: ahora, grado: grado, seccion: seccion, docente: docente, presentes: presentes.length, ausentes: ausentes.length, m: masc, f: fem, asistentes: presentes.map(a => a.nombre), ausentes_lista: ausentes.map(a => a.nombre) }) }).catch(e => console.log(e));
+      const docenteLimpio = docente.replace(/\./g, '').replace(/[/\\:*?"<>|]/g, '_').trim();
+      const nombreBase = `${docenteLimpio}_${fechaArchivo}`;
+      const version = obtenerSiguienteVersion(nombreBase);
+      const { nombreArchivo } = construirNombreArchivo(docente, fechaArchivo, version);
 
-      const pdfHtml = `
+      fetch(SCRIPT_URL, {
+          method: 'POST', mode: 'no-cors',
+          body: JSON.stringify({
+              tipo_post: "asistencia",
+              fecha: ahora.toISOString(),
+              grado, seccion, docente,
+              presentes: presentes.length,
+              ausentes: ausentes.length,
+              permisos: permisos.length,
+              m: masc, f: fem,
+              asistentes: presentes.map(a => a.nombre),
+              ausentes_lista: ausentes.map(a => a.nombre),
+              permisos_lista: permisos.map(a => ({
+                  nombre: a.nombre,
+                  justificante: a.justificante || ''
+              })),
+              observacion_general: obsGeneral,
+              version_pdf: version <= 1 ? 'V1-0-0' : `V1-0-${version - 1}`
+          })
+      }).catch(e => console.log('Error enviando reporte:', e));
+
+      if (obsGeneral.trim()) {
+          fetch(SCRIPT_URL, {
+              method: 'POST', mode: 'no-cors',
+              body: JSON.stringify({
+                  tipo_post: "observacion_general",
+                  fecha: ahora.toISOString(),
+                  grado, seccion, docente,
+                  observacion: obsGeneral
+              })
+          }).catch(e => console.log('Error enviando observación:', e));
+      }
+
+      fetch(SCRIPT_URL, {
+          method: 'POST', mode: 'no-cors',
+          body: JSON.stringify({
+              tipo_post: "registro_pdf_version",
+              nombre_base: nombreBase,
+              version,
+              nombre_completo: nombreArchivo,
+              grado, seccion, docente
+          })
+      }).catch(e => console.log('Error registrando versión PDF:', e));
+
+      const pdfHtml = generarHTMLParaPDF({
+          grado, seccion, docente, fechaStr, secLimpia,
+          presentes, ausentes, permisos, masc, fem, obsGeneral
+      });
+
+      const containerHTML = document.getElementById('pdf-content');
+      containerHTML.innerHTML = pdfHtml;
+
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      const opt = {
+          margin: 15,
+          filename: nombreArchivo,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, allowTaint: true, logging: false, imageTimeout: 15000, removeContainer: false },
+          jsPDF: { unit: 'mm', format: 'letter', orientation: orientacion },
+          pagebreak: { mode: ['css', 'legacy'] }
+      };
+
+      try {
+          window.scrollTo(0, 0);
+          if (typeof AndroidPDF !== 'undefined') {
+              const pdfBlob = await html2pdf().set(opt).from(containerHTML).outputPdf('blob');
+              const reader = new FileReader();
+              reader.onloadend = function () {
+                  const base64 = reader.result.split(',')[1];
+                  registrarPDFGuardado(nombreArchivo, carpetaPDFUri || '', grado, '');
+                  AndroidPDF.guardarBase64(base64, nombreArchivo, carpetaPDFUri || '');
+              };
+              reader.readAsDataURL(pdfBlob);
+          } else {
+              await html2pdf().set(opt).from(containerHTML).save();
+              registrarPDFGuardado(nombreArchivo, '', grado, '');
+          }
+      } catch (error) {
+          alert("❌ Error al generar PDF: " + error.message);
+      } finally {
+          btn.disabled = false;
+          btn.innerText = "📥 Generar PDF y Guardar Reporte";
+      }
+  }
+
+  function obtenerSiguienteVersion(nombreBase) {
+      const registros = obtenerRegistrosPDF();
+      const existentes = registros.filter(r => {
+          const n = r.nombre || '';
+          const base = n.replace(/\.pdf$/i, '').replace(/_V\d+-\d+-\d+$/, '');
+          return base === nombreBase;
+      });
+      return existentes.length + 1;
+  }
+
+  function construirNombreArchivo(docente, fechaArchivo, version) {
+      const docenteLimpio = docente.replace(/\./g, '').replace(/[/\\:*?"<>|]/g, '_').trim();
+      const nombreBase = `${docenteLimpio}_${fechaArchivo}`;
+      if (version <= 1) {
+          return { nombreArchivo: `${nombreBase}.pdf`, nombreBase, sufijoVersion: '' };
+      }
+      const patch = version - 1;
+      const sufijoVersion = `_V1-0-${patch}`;
+      return { nombreArchivo: `${nombreBase}${sufijoVersion}.pdf`, nombreBase, sufijoVersion };
+  }
+
+  function generarHTMLParaPDF({ grado, seccion, docente, fechaStr, secLimpia, presentes, ausentes, permisos, masc, fem, obsGeneral }) {
+      return `
 <div style="position: relative; background: white; padding: 0;">
-
   <div style="position: absolute; top: 150px; left: 0; width: 100%; text-align: center; z-index: 1; opacity: 0.15;">
     <img src="logo3.jpg" crossorigin="anonymous" style="width: 400px; height: auto;" onerror="this.style.display='none';">
   </div>
-
   <div style="position: relative; z-index: 10; padding: 40px;">
     <div style="text-align: center; padding-top: 100px; padding-bottom: 200px;">
       <h1 style="color: #0C447C; font-size: 26px; margin-bottom: 10px; text-transform: uppercase;">Ministerio de Educación, Ciencia y Tecnología</h1>
       <h2 style="color: #2C2C2A; font-size: 22px; margin-bottom: 50px; text-transform: uppercase;">Instituto Nacional de Mercedes Umaña</h2>
-      <div style="border: 2px solid #0C447C; padding: 40px; border-radius: 15px; background-color: transparent; width: 80%; margin: 0 auto;">
+      <div style="border: 2px solid #0C447C; padding: 40px; border-radius: 15px; width: 80%; margin: 0 auto;">
         <h3 style="font-size: 24px; color: #185FA5; margin-bottom: 30px; text-transform: uppercase; border-bottom: 2px solid #185FA5; padding-bottom: 10px;">Registro de Asistencia Diario</h3>
         <div style="text-align: left; padding-left: 20px;">
           <p style="font-size: 18px; margin: 15px 0;"><strong>Grado:</strong> ${grado} &nbsp; <strong>Sección:</strong> ${seccion}</p>
@@ -1714,93 +2213,331 @@
         </div>
       </div>
     </div>
-
     <div class="html2pdf__page-break"></div>
-
     <div style="position: relative;">
       <div style="text-align: center; border-bottom: 3px solid #0C447C; padding-bottom: 15px; margin-bottom: 20px; position: relative; z-index: 5;">
         <h2 style="font-size: 18px; color: #0C447C; margin-bottom: 5px;">MINISTERIO DE EDUCACIÓN CIENCIA Y TECNOLOGÍA</h2>
         <h3 style="font-size: 16px; color: #2C2C2A; margin-bottom: 5px;">INSTITUTO NACIONAL DE MERCEDES UMAÑA</h3>
       </div>
-
-      <table style="width: 100%; font-size: 14px; margin-bottom: 20px; border: none; position: relative; z-index: 5;">
-        <tr><td style="text-align: left; width: 33%; vertical-align: top;"><strong>Grado:</strong> ${grado} &nbsp; <strong>Secc:</strong> ${seccion}</td><td style="text-align: center; width: 34%; vertical-align: top;"><strong>Docente:</strong> ${docente}</td><td style="text-align: right; width: 33%; vertical-align: top;"><strong>Fecha:</strong> ${fechaStr}</td></tr>
+      <table style="width: 100%; font-size: 14px; margin-bottom: 20px; border: none;">
+        <tr>
+          <td style="text-align: left; width: 33%; vertical-align: top;"><strong>Grado:</strong> ${grado} &nbsp; <strong>Secc:</strong> ${seccion}</td>
+          <td style="text-align: center; width: 34%; vertical-align: top;"><strong>Docente:</strong> ${docente}</td>
+          <td style="text-align: right; width: 33%; vertical-align: top;"><strong>Fecha:</strong> ${fechaStr}</td>
+        </tr>
       </table>
-
-      <div style="background-color: rgba(255,255,255,0.8); border: 1px solid #B5D4F4; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; position: relative; z-index: 5;">
-        <p><strong>Asistencias: ${presentes.length}</strong> | M: <strong>${masc}</strong> | F: <strong>${fem}</strong> | Ausencias: ${ausentes.length}</p>
+      <div style="background-color: rgba(255,255,255,0.8); border: 1px solid #B5D4F4; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;">
+        <p><strong>Asistencias: ${presentes.length}</strong> | M: <strong>${masc}</strong> | F: <strong>${fem}</strong> | Ausencias: ${ausentes.length} | Permisos: ${permisos.length}</p>
       </div>
-
-      <h4 style="color: #1D9E75; border-bottom: 2px solid #1D9E75; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px; page-break-after: avoid; position: relative; z-index: 5;">ESTUDIANTES PRESENTES</h4>
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; page-break-before: auto; position: relative; z-index: 5; background-color: rgba(255,255,255,0.75);">
+      <h4 style="color: #1D9E75; border-bottom: 2px solid #1D9E75; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px;">ESTUDIANTES PRESENTES</h4>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; background-color: rgba(255,255,255,0.75);">
         <colgroup><col style="width: 8%;"><col style="width: 45%;"><col style="width: 10%;"><col style="width: 17%;"><col style="width: 20%;"></colgroup>
-        ${presentes.length > 0 ? presentes.map(a => `<tr style="page-break-inside: avoid;"><td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #1D9E75; font-weight: bold;">✓</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td><td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td></tr>`).join('') : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
+        ${presentes.length > 0
+            ? presentes.map(a => `<tr style="page-break-inside: avoid;"><td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #1D9E75; font-weight: bold;">✓</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td><td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td></tr>`).join('')
+            : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
       </table>
-
-      <h4 style="color: #E24B4A; border-bottom: 2px solid #E24B4A; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px; page-break-after: avoid; position: relative; z-index: 5;">ESTUDIANTES AUSENTES</h4>
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px; font-size: 13px; page-break-before: auto; position: relative; z-index: 5; background-color: rgba(255,255,255,0.75);">
+      <h4 style="color: #E24B4A; border-bottom: 2px solid #E24B4A; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px;">ESTUDIANTES AUSENTES</h4>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; background-color: rgba(255,255,255,0.75);">
         <colgroup><col style="width: 8%;"><col style="width: 45%;"><col style="width: 10%;"><col style="width: 17%;"><col style="width: 20%;"></colgroup>
-        ${ausentes.length > 0 ? ausentes.map(a => `<tr style="page-break-inside: avoid;"><td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #E24B4A; font-weight: bold;">✗</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td><td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td></tr>`).join('') : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
+        ${ausentes.length > 0
+            ? ausentes.map(a => `<tr style="page-break-inside: avoid;"><td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #E24B4A; font-weight: bold;">✗</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td><td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td></tr>`).join('')
+            : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
       </table>
-
-      <div style="text-align: center; margin-top: 50px; padding-top: 40px; border-top: 2px dashed #ddd; page-break-inside: avoid; position: relative; z-index: 10;">
+      ${permisos.length > 0 ? `
+      <h4 style="color: #F39C12; border-bottom: 2px solid #F39C12; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px;">ESTUDIANTES CON PERMISO</h4>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; background-color: rgba(255,255,255,0.75);">
+        <colgroup><col style="width: 8%;"><col style="width: 35%;"><col style="width: 10%;"><col style="width: 17%;"><col style="width: 30%;"></colgroup>
+        <tr style="background:#FFF9E6;"><th style="border:1px solid #ddd;padding:6px;"></th><th style="border:1px solid #ddd;padding:6px;text-align:left;">Nombre</th><th style="border:1px solid #ddd;padding:6px;text-align:center;">Sexo</th><th style="border:1px solid #ddd;padding:6px;">NIE</th><th style="border:1px solid #ddd;padding:6px;text-align:left;">Justificante</th></tr>
+        ${permisos.map(a => `<tr style="page-break-inside: avoid;"><td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #F39C12; font-weight: bold;">⚠</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td><td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td><td style="border: 1px solid #ddd; padding: 6px; font-size:11px;">${a.justificante || 'Sin justificante'}</td></tr>`).join('')}
+      </table>
+      ` : ''}
+      <div style="background-color: rgba(255,255,255,0.9); border: 1px solid #B5D4F4; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;">
+        <strong>Observación General:</strong><br>
+        <div style="margin-top: 8px; min-height: 40px; border: 1px solid #ddd; padding: 8px; background-color: white;">${obsGeneral || 'Sin observaciones'}</div>
+      </div>
+      <div style="text-align: center; margin-top: 50px; padding-top: 40px; border-top: 2px dashed #ddd; page-break-inside: avoid;">
         <img src="logo5.jpg" crossorigin="anonymous" style="width: 400px; height: auto;" onerror="this.style.display='none';">
       </div>
-
-
-
     </div>
   </div>
 </div>`;
+  }
+  function iniciarPermisoPorDobleClick(index) {
+      const alumno = alumnosFiltrados[index];
+      const nombreEl = document.getElementById(`nombre-alumno-${index}`);
 
-      const containerHTML = document.getElementById('pdf-content');
-      containerHTML.innerHTML = pdfHtml;
+      if (nombreEl) {
+          nombreEl.style.color = '#185FA5';
+          nombreEl.style.fontWeight = 'bold';
+          nombreEl.title = 'Permiso pendiente de confirmación';
+      }
 
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const modal = document.createElement('div');
+      modal.id = 'modal-permiso-dblclick';
+      modal.innerHTML = `
+        <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;">
+            <div style="background:white;padding:25px;border-radius:12px;max-width:400px;width:90%;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+                <h3 style="margin:0 0 10px 0;color:#185FA5;">🔵 Permiso — ${alumno.nombre}</h3>
+                <p style="font-size:14px;color:#555;margin-bottom:18px;">¿El estudiante tiene justificante?</p>
+                <div style="display:flex;gap:12px;justify-content:center;margin-bottom:15px;">
+                    <button onclick="confirmarPermisoConJustificante(${index})"
+                        style="padding:10px 22px;background:#1D9E75;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:14px;">
+                        ✅ Sí, tiene justificante
+                    </button>
+                    <button onclick="confirmarPermisoSinJustificante(${index})"
+                        style="padding:10px 22px;background:#E24B4A;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:14px;">
+                        ❌ No, sin justificante
+                    </button>
+                </div>
+                <button onclick="cancelarPermisoDobleClick(${index})"
+                    style="width:100%;padding:8px;background:#6c757d;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;">
+                    Cancelar
+                </button>
+            </div>
+        </div>`;
+      document.body.appendChild(modal);
+  }
 
-      const nombreArchivo = `Asistencia ${grado} ${secLimpia} - ${fechaArchivo} - ${docente}.pdf`;
+  function confirmarPermisoConJustificante(index) {
+      cerrarModalPermisoDobleClick();
+      const alumno = alumnosFiltrados[index];
+      const modal = document.createElement('div');
+      modal.id = 'modal-justificante-ext';
+      modal.innerHTML = `
+        <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10001;display:flex;align-items:center;justify-content:center;">
+            <div style="background:white;padding:25px;border-radius:12px;max-width:400px;width:90%;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+                <h3 style="margin:0 0 12px 0;color:#1D9E75;">✅ Justificante — ${alumno.nombre}</h3>
+                <label style="display:block;margin-bottom:5px;font-weight:bold;font-size:13px;">Descripción del justificante:</label>
+                <textarea id="txt-justificante-ext" placeholder="Ej: Cita médica, permiso familiar..."
+                    style="width:100%;height:80px;padding:8px;border:1px solid #ddd;border-radius:6px;resize:vertical;font-size:13px;margin-bottom:15px;"></textarea>
+                <div style="display:flex;gap:10px;">
+                    <button onclick="cerrarJustificanteExt()" style="flex:1;padding:10px;background:#6c757d;color:white;border:none;border-radius:6px;cursor:pointer;">Cancelar</button>
+                    <button onclick="aplicarPermisoJustificado(${index})" style="flex:1;padding:10px;background:#1D9E75;color:white;border:none;border-radius:6px;font-weight:bold;cursor:pointer;">Guardar Permiso</button>
+                </div>
+            </div>
+        </div>`;
+      document.body.appendChild(modal);
+  }
 
-      const opt = {
-          margin: 15,
-          filename: nombreArchivo,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: {
-              scale: 2,
-              useCORS: true,
-              allowTaint: true,
-              logging: false,
-              imageTimeout: 15000,
-              removeContainer: false
-          },
-          jsPDF: { unit: 'mm', format: 'letter', orientation: orientacion },
-          pagebreak: { mode: ['css', 'legacy'] }
-      };
+  function confirmarPermisoSinJustificante(index) {
+      cerrarModalPermisoDobleClick();
+      const chk = document.getElementById(`chk-${index}`);
+      if (chk) {
+          chk.checked = false;
+          chk.dataset.estado = 'ausente';
+          chk.dataset.justificante = '';
+          const row = document.getElementById(`row-${index}`);
+          if (row) row.classList.remove('permiso');
+      }
+      const nombreEl = document.getElementById(`nombre-alumno-${index}`);
+      if (nombreEl) {
+          nombreEl.style.color = '';
+          nombreEl.style.fontWeight = '';
+      }
+      guardarEstadoAsistencia();
+      actualizarContadoresAsistencia();
+      mostrarNotificacion(`${alumnosFiltrados[index].nombre} marcado como ausente (sin justificante)`, 'warning');
+  }
+
+  function cancelarPermisoDobleClick(index) {
+      cerrarModalPermisoDobleClick();
+      const nombreEl = document.getElementById(`nombre-alumno-${index}`);
+      if (nombreEl) {
+          nombreEl.style.color = '';
+          nombreEl.style.fontWeight = '';
+      }
+  }
+
+  function cerrarModalPermisoDobleClick() {
+      const m = document.getElementById('modal-permiso-dblclick');
+      if (m) m.remove();
+  }
+
+  function cerrarJustificanteExt() {
+      const m = document.getElementById('modal-justificante-ext');
+      if (m) m.remove();
+  }
+
+  function aplicarPermisoJustificado(index) {
+      const justificante = (document.getElementById('txt-justificante-ext') || {}).value || '';
+      cerrarJustificanteExt();
+      const chk = document.getElementById(`chk-${index}`);
+      if (chk) {
+          chk.checked = false;
+          chk.dataset.estado = 'permiso';
+          chk.dataset.justificante = justificante;
+          const row = document.getElementById(`row-${index}`);
+          if (row) row.classList.add('permiso');
+      }
+      guardarEstadoAsistencia();
+      actualizarContadoresAsistencia();
+      mostrarNotificacion(`Permiso justificado aplicado: ${alumnosFiltrados[index].nombre}`, 'success');
+  }
+
+  function abrirPanelActualizarAsistencia() {
+      if (alumnosFiltrados.length === 0) {
+          alert('Primero seleccione un grado y sección en la vista principal.');
+          return;
+      }
+
+      const grado = document.getElementById('grado-select').value;
+      const seccion = document.getElementById('seccion-select').value;
+
+      let html = `<h3 style="color:var(--blue-800);text-align:center;margin-bottom:5px;">🔄 Actualizar Asistencia</h3>`;
+      html += `<p style="text-align:center;font-size:12px;color:var(--gray-600);margin-bottom:15px;">${grado} ${seccion}</p>`;
+      html += `<div style="max-height:55vh;overflow-y:auto;">`;
+
+      alumnosFiltrados.forEach((alumno, idx) => {
+          const chk = document.getElementById(`chk-${idx}`);
+          const estado = chk ? (chk.dataset.estado || (chk.checked ? 'presente' : 'ausente')) : 'presente';
+          const obs = chk ? (chk.dataset.justificante || '') : '';
+
+          html += `
+        <div style="border:1px solid #E5E7EB;border-radius:8px;padding:12px;margin-bottom:8px;background:#fff;">
+            <div style="font-weight:bold;font-size:13px;color:var(--blue-800);margin-bottom:8px;">${alumno.nombre}</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+                <button onclick="setEstadoFila(${idx},'presente')" id="btn-pres-${idx}"
+                    style="padding:6px 10px;border:none;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;
+                    background:${estado==='presente'?'#1D9E75':'#e0e0e0'};color:${estado==='presente'?'white':'#333'};">
+                    ✅ Asistió
+                </button>
+                <button onclick="setEstadoFila(${idx},'ausente')" id="btn-aus-${idx}"
+                    style="padding:6px 10px;border:none;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;
+                    background:${estado==='ausente'?'#E24B4A':'#e0e0e0'};color:${estado==='ausente'?'white':'#333'};">
+                    ❌ No asistió
+                </button>
+                <button onclick="setEstadoFila(${idx},'permiso')" id="btn-perm-${idx}"
+                    style="padding:6px 10px;border:none;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;
+                    background:${estado==='permiso'?'#F39C12':'#e0e0e0'};color:${estado==='permiso'?'white':'#333'};">
+                    ⚠ Permiso
+                </button>
+            </div>
+            <input type="text" id="obs-${idx}" placeholder="Observación individual..." value="${obs}"
+                style="width:100%;padding:6px;border:1px solid #ddd;border-radius:5px;font-size:12px;">
+        </div>`;
+      });
+
+      html += `</div>`;
+      html += `
+    <div style="margin-top:12px;display:flex;gap:8px;">
+        <button onclick="guardarActualizacionAsistencia()"
+            style="flex:1;padding:12px;background:var(--blue-600);color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:14px;">
+            💾 Guardar cambios
+        </button>
+    </div>`;
+
+      mostrarModalListado(html);
+  }
+
+  function setEstadoFila(index, nuevoEstado) {
+      const chk = document.getElementById(`chk-${index}`);
+      if (chk) {
+          chk.dataset.estado = nuevoEstado;
+          chk.checked = (nuevoEstado === 'presente');
+          const row = document.getElementById(`row-${index}`);
+          if (row) {
+              if (nuevoEstado === 'permiso') row.classList.add('permiso');
+              else row.classList.remove('permiso');
+          }
+      }
+      ['presente','ausente','permiso'].forEach(e => {
+          const btn = document.getElementById(`btn-${e.substring(0,4)}-${index}`);
+          if (!btn) return;
+          const colores = { presente: '#1D9E75', ausente: '#E24B4A', permiso: '#F39C12' };
+          if (e === nuevoEstado) {
+              btn.style.background = colores[e]; btn.style.color = 'white';
+          } else {
+              btn.style.background = '#e0e0e0'; btn.style.color = '#333';
+          }
+      });
+  }
+
+  function guardarActualizacionAsistencia() {
+      const grado = document.getElementById('grado-select').value;
+      const seccion = document.getElementById('seccion-select').value;
+      const docente = document.getElementById('docente-nombre').value.trim();
+
+      const actualizaciones = alumnosFiltrados.map((alumno, idx) => {
+          const chk = document.getElementById(`chk-${idx}`);
+          const obs = (document.getElementById(`obs-${idx}`) || {}).value || '';
+          const estado = chk ? (chk.dataset.estado || 'presente') : 'presente';
+          if (chk) chk.dataset.justificante = obs;
+          return { nie: alumno.nie, nombre: alumno.nombre, estado, observacion: obs };
+      });
+
+      guardarEstadoAsistencia();
+      actualizarContadoresAsistencia();
+
+      fetch(SCRIPT_URL, {
+          method: 'POST', mode: 'no-cors',
+          body: JSON.stringify({
+              tipo_post: "actualizar_asistencia",
+              grado, seccion, docente,
+              fecha: new Date().toISOString(),
+              actualizaciones
+          })
+      }).catch(e => console.log('Error enviando actualización:', e));
+
+      const overlay = document.getElementById('modal-listado-dinamico');
+      if (overlay) overlay.remove();
+
+      setTimeout(() => {
+          const aviso = document.createElement('div');
+          aviso.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:99999;background:#185FA5;color:white;padding:16px 24px;border-radius:10px;font-size:14px;font-weight:bold;max-width:350px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+          aviso.innerHTML = '📋 Cambios guardados.<br><small style="font-weight:normal;">Debe generar nuevamente el PDF para reflejar los cambios.</small>';
+          document.body.appendChild(aviso);
+          setTimeout(() => aviso.remove(), 5000);
+      }, 300);
+  }
+
+  async function verObservacionGrado() {
+      const grado = document.getElementById('grado-select').value;
+      const seccion = document.getElementById('seccion-select').value;
+
+      if (!grado || !seccion) {
+          alert('Seleccione un grado y sección primero.');
+          return;
+      }
+
+      const hoy = new Date();
+      const fecha = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
+
+      let html = `<h3 style="color:var(--blue-800);text-align:center;margin-bottom:10px;">📝 Observación del Grado</h3>`;
+      html += `<p style="text-align:center;font-size:12px;color:var(--gray-600);margin-bottom:15px;">${grado} ${seccion} — ${hoy.toLocaleDateString('es-ES')}</p>`;
+      html += `<div id="obs-grado-contenido" style="padding:10px;border:1px solid var(--gray-100);border-radius:8px;min-height:60px;background:#fafafa;font-size:14px;">⏳ Consultando...</div>`;
+      html += `<p style="margin-top:15px;font-size:12px;color:var(--gray-600);">Observación registrada en la observación general del PDF más reciente.</p>`;
+
+      mostrarModalListado(html);
 
       try {
-          window.scrollTo(0, 0);
-
-          if (typeof AndroidPDF !== 'undefined') {
-              const pdfBlob = await html2pdf().set(opt).from(containerHTML).outputPdf('blob');
-              const reader = new FileReader();
-              reader.onloadend = function () {
-                  const base64 = reader.result.split(',')[1];
-                  // 1) Registrar primero (sin file URI aún)
-                  registrarPDFGuardado(nombreArchivo, carpetaPDFUri || '', grado, '');
-                  // 2) Pedir a Kotlin que guarde; Kotlin llamará onPDFGuardado(fileUri, nombre)
-                  AndroidPDF.guardarBase64(base64, nombreArchivo, carpetaPDFUri || '');
-              };
-              reader.readAsDataURL(pdfBlob);
-          } else {
-              await html2pdf().set(opt).from(containerHTML).save();
-              registrarPDFGuardado(nombreArchivo, '', grado, '');
+          const url = `${SCRIPT_URL}?tipo=observacion_grado&grado=${encodeURIComponent(grado)}&seccion=${encodeURIComponent(seccion)}&fecha=${fecha}`;
+          const res = await fetch(url);
+          const data = await res.json();
+          const cont = document.getElementById('obs-grado-contenido');
+          if (cont) {
+              cont.innerHTML = data.observacion
+                  ? `<em>${data.observacion}</em><br><small style="color:var(--gray-600);">— ${data.docente || ''} (${data.fecha ? new Date(data.fecha).toLocaleDateString('es-ES') : ''})</small>`
+                  : '<span style="color:var(--gray-600);">Sin observación registrada para hoy.</span>';
           }
-
-      } catch (error) {
-          alert("❌ Error al generar PDF: " + error.message);
-      } finally {
-          btn.disabled = false;
-          btn.innerText = "📥 Generar PDF y Guardar Reporte";
+      } catch (e) {
+          const cont = document.getElementById('obs-grado-contenido');
+          if (cont) {
+              const obsLocal = (document.getElementById('observacion-general') || {}).value || '';
+              cont.innerHTML = obsLocal
+                  ? `<em>${obsLocal}</em><br><small style="color:var(--amber-600);">(Observación local — no enviada a la nube aún)</small>`
+                  : '<span style="color:var(--gray-600);">Sin observación local registrada.</span>';
+          }
       }
+  }
+
+  function mostrarNotificacion(mensaje, tipo) {
+      const colores = { success: '#1D9E75', warning: '#F39C12', error: '#E24B4A', info: '#185FA5' };
+      const color = colores[tipo] || colores.info;
+      const toast = document.createElement('div');
+      toast.style.cssText = `position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;background:${color};color:white;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:bold;max-width:320px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.25);`;
+      toast.textContent = mensaje;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3500);
   }
 
   // =========================================================================
@@ -1863,39 +2600,61 @@
   }
 
   function cargarListaPDFs() {
+      console.log("Iniciando carga de lista de PDFs...");
       const container = document.getElementById('pdf-lista-container');
+
+      // 1. Cargar lo que tenemos en el registro local (AndroidStorage)
       const registros = obtenerRegistrosPDF();
-
-      if (registros.length === 0) {
-          if (typeof AndroidPDF !== 'undefined') {
-              // En Android: pedir al Kotlin que liste archivos de la carpeta
-              if (typeof AndroidPDF.listarPDFs === 'function') {
-                  container.innerHTML = '<div class="pdf-empty">⏳ Buscando archivos PDF...</div>';
-                  AndroidPDF.listarPDFs(carpetaPDFUri || '');
-                  return;
-              }
-          }
-          listaPDFs = [];
-          listaPDFsFiltrada = [];
-          renderizarListaPDFs();
-          return;
-      }
-
-      // Ordenar por fecha descendente (más reciente primero)
       listaPDFs = [...registros].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
       listaPDFsFiltrada = [...listaPDFs];
+
+      // Renderizar lo que ya conocemos de inmediato
       renderizarListaPDFs();
+
+      // 2. Si estamos en Android, pedir un escaneo real del almacenamiento
+      if (typeof AndroidPDF !== 'undefined' && typeof AndroidPDF.listarPDFs === 'function') {
+          console.log("Solicitando escaneo de archivos al sistema nativo...");
+          AndroidPDF.listarPDFs(carpetaPDFUri || '');
+      }
   }
 
   // Llamada desde Kotlin con la lista de PDFs encontrados en la carpeta
   function onListaPDFsRecibida(jsonStr) {
+      console.log("Lista de PDFs recibida desde el sistema nativo");
       try {
-          const archivos = JSON.parse(jsonStr); // [{nombre, uri, fecha}]
-          listaPDFs = archivos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+          const archivosEscaneados = JSON.parse(jsonStr); // [{nombre, uri, fecha}]
+
+          // Combinar con los registros locales existentes
+          const mapaFinal = new Map();
+
+          // Primero los escaneados (tienen la URI real del sistema)
+          archivosEscaneados.forEach(arc => {
+              mapaFinal.set(arc.nombre, {
+                  nombre: arc.nombre,
+                  uri: arc.uri,
+                  fecha: arc.fecha,
+                  grado: extraerGradoDeNombre(arc.nombre)
+              });
+          });
+
+          // Luego los locales (tienen info extra como el grado exacto si el nombre falló)
+          listaPDFs.forEach(loc => {
+              if (mapaFinal.has(loc.nombre)) {
+                  const existente = mapaFinal.get(loc.nombre);
+                  mapaFinal.set(loc.nombre, { ...existente, ...loc, uri: existente.uri || loc.uri });
+              } else {
+                  // Si no está en el escaneo pero está en registros, lo mantenemos
+                  // (podría ser un archivo recién creado que el escáner aún no ve)
+                  mapaFinal.set(loc.nombre, loc);
+              }
+          });
+
+          listaPDFs = Array.from(mapaFinal.values()).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
           listaPDFsFiltrada = [...listaPDFs];
           renderizarListaPDFs();
+
       } catch (e) {
-          document.getElementById('pdf-lista-container').innerHTML = '<div class="pdf-empty">Error al leer archivos.</div>';
+          console.error("Error al procesar lista de PDFs:", e);
       }
   }
 
@@ -2007,11 +2766,16 @@
 
       const nombre = item.nombre || 'Reporte.pdf';
       const uri = item.uri || item.carpetaUri || '';
+      pdfUriActual = uri;
+      pdfNombreActual = nombre;
 
       document.getElementById('pdf-viewer-nombre').innerText = nombre;
       document.getElementById('pdf-viewer-overlay').classList.add('open');
       document.getElementById('pdf-viewer-content').innerHTML = '<div class="pdf-loading">⏳ Cargando PDF...</div>';
       document.getElementById('pdf-viewer-nav').style.display = 'none';
+
+      const btnCompartir = document.getElementById('btn-compartir-visor');
+      if (btnCompartir) btnCompartir.style.display = (esAppAndroid() && uri) ? 'flex' : 'none';
 
       pdfDoc = null;
       pdfPaginaActual = 1;
@@ -2035,10 +2799,34 @@
       }
   }
 
-  // Llamada desde Kotlin con el PDF en base64
-  function onPDFBase64Recibido(base64) {
-      const dataUrl = 'data:application/pdf;base64,' + base64;
-      cargarPDFDesdeBase64(dataUrl);
+  let pdfBase64Acumulado = "";
+  /**
+   * Llamada desde Kotlin con el PDF en base64.
+   * Si el archivo es grande, llegará en varios trozos (chunks).
+   * @param {string} chunk - Trozo de la cadena base64.
+   * @param {boolean} isLast - Indica si es el último trozo.
+   */
+  function onPDFBase64Recibido(chunk, isLast) {
+      if (chunk.startsWith('ERROR:')) {
+          document.getElementById('pdf-viewer-content').innerHTML =
+              `<div class="pdf-loading" style="color:#ff8080;">❌ ${chunk}</div>`;
+          pdfBase64Acumulado = "";
+          return;
+      }
+
+      if (isLast && pdfBase64Acumulado === "" && chunk === "") {
+          document.getElementById('pdf-viewer-content').innerHTML =
+              `<div class="pdf-loading" style="color:#ff8080;">⚠️ El archivo está vacío.</div>`;
+          return;
+      }
+
+      pdfBase64Acumulado += chunk;
+
+      if (isLast) {
+          const dataUrl = 'data:application/pdf;base64,' + pdfBase64Acumulado;
+          cargarPDFDesdeBase64(dataUrl);
+          pdfBase64Acumulado = "";
+      }
   }
 
   async function cargarPDFDesdeBase64(dataUrl) {
@@ -2106,6 +2894,15 @@
   function cerrarVisorPDF() {
       document.getElementById('pdf-viewer-overlay').classList.remove('open');
       pdfDoc = null;
+      pdfUriActual = '';
+      pdfNombreActual = '';
+  }
+
+  function compartirPDFActual() {
+      if (!esAppAndroid() || !pdfUriActual) return;
+      if (typeof AndroidPDF !== 'undefined' && typeof AndroidPDF.compartirPDF === 'function') {
+          AndroidPDF.compartirPDF(pdfUriActual, pdfNombreActual);
+      }
   }
 
   // =========================================================================
@@ -2352,6 +3149,70 @@
       mostrarModalListado(html);
   }
 
+  function mostrarListadoPermisos() {
+      if (alumnosFiltrados.length === 0) return alert("No hay alumnos cargados.");
+      let html = '<h3 style="color: #F39C12; text-align: center; margin-bottom: 20px;">⚠ Estudiantes con Permiso</h3>';
+      let permisos = [];
+      alumnosFiltrados.forEach((alumno, index) => {
+          const chk = document.getElementById(`chk-${index}`);
+          if (chk && chk.dataset.estado === 'permiso') {
+              permisos.push({
+                  ...alumno,
+                  justificante: chk.dataset.justificante || ''
+              });
+          }
+      });
+
+      if (permisos.length === 0) {
+          html += '<div style="text-align:center; color: var(--gray-600); padding: 20px;">No hay estudiantes con permiso en este momento.</div>';
+      } else {
+          html += '<div style="max-height: 400px; overflow-y: auto;">';
+          permisos.forEach((alumno, index) => {
+              html += `<div style="padding: 10px; margin-bottom: 8px; background: #FFF9E6; border-radius: 8px; border-left: 4px solid #F39C12;">`;
+              html += `<strong>${index + 1}. ${alumno.nombre}</strong><br>`;
+              html += `<small style="color: #666;">NIE: ${alumno.nie} | ${alumno.sexo}</small>`;
+              if (alumno.justificante) {
+                  html += `<br><small style="color: #F39C12;">Justificante: ${alumno.justificante}</small>`;
+              }
+              html += '</div>';
+          });
+          html += '</div>';
+      }
+      mostrarModalListado(html);
+  }
+
+  function actualizarContadoresAsistencia() {
+      if (alumnosFiltrados.length === 0) return;
+
+      let presentes = 0, ausentes = 0, permisos = 0, masc = 0, fem = 0;
+      alumnosFiltrados.forEach((alumno, index) => {
+          const chk = document.getElementById(`chk-${index}`);
+          if (chk) {
+              const estado = chk.dataset.estado || (chk.checked ? 'presente' : 'ausente');
+              if (estado === 'permiso') {
+                  permisos++;
+              } else if (estado === 'presente') {
+                  presentes++;
+                  if (alumno.sexo === 'M') masc++;
+                  else if (alumno.sexo === 'F') fem++;
+              } else {
+                  ausentes++;
+              }
+          }
+      });
+
+      // Actualizar el resumen de estadísticas
+      const stats = document.getElementById('resumen-estadisticas');
+      if (stats) {
+          // Calcular totales de matrícula
+          const tGeneral = alumnosFiltrados.length;
+          const tM = alumnosFiltrados.filter(a => a.sexo === 'M').length;
+          const tF = alumnosFiltrados.filter(a => a.sexo === 'F').length;
+
+          stats.innerHTML = generarHTMLResumen(tGeneral, tM, tF, presentes, ausentes, permisos, masc, fem);
+      }
+  }
+
   async function mostrarResumenDelDia() {
       if (todosLosReportes.length === 0) {
           await cargarReportesSub(true);
@@ -2366,41 +3227,201 @@
 
       let html = '<h3 style="color: var(--blue-800); text-align: center; margin-bottom: 20px;">Resumen del Día</h3>';
       html += `<p style="text-align:center; color:var(--gray-700); margin-bottom:15px;">Fecha: ${hoy.toLocaleDateString('es-ES')}</p>`;
+
+      // Botón Actualizar asistencia
+      html += '<div style="text-align: center; margin-bottom: 20px;">';
+      html += '<button onclick="actualizarAsistenciaDelDia()" style="padding: 12px 24px; background: var(--blue-600); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px;">🔄 Actualizar asistencia</button>';
+      html += '</div>';
+
       if (reportes.length === 0) {
           html += '<div style="text-align:center; color: var(--gray-600); padding: 20px;">No hay reportes para este día.</div>';
       } else {
           let totalPres = 0;
           let totalAus = 0;
+          let totalPerm = 0;
           let totalM = 0;
           let totalF = 0;
-          html += '<div style="margin-bottom: 15px; display:grid; grid-template-columns:1fr 1fr; gap:10px;">';
+          html += '<div style="margin-bottom: 15px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">';
           reportes.forEach(r => {
               totalPres += parseInt(r.presentes) || 0;
               totalAus += parseInt(r.ausentes) || 0;
+              totalPerm += parseInt(r.permisos) || 0;
               totalM += parseInt(r.m) || 0;
               totalF += parseInt(r.f) || 0;
           });
-          html += `<div onclick="mostrarAsistentesHoy()" style="background:#F3F9F3; padding:12px; border-radius:10px; cursor:pointer;">
+          html += `<div onclick="mostrarAsistentesHoy()" style="background:#F3F9F3; padding:12px; border-radius:10px; cursor:pointer; text-align:center;">
                     <strong>Presentes</strong><br>
                     <span style="font-size:20px; color:var(--green-600); font-weight:bold;">${totalPres}</span>
                   </div>`;
-          html += `<div onclick="mostrarAusentesHoy()" style="background:#FFF4F4; padding:12px; border-radius:10px; cursor:pointer;">
+          html += `<div onclick="mostrarAusentesHoy()" style="background:#FFF4F4; padding:12px; border-radius:10px; cursor:pointer; text-align:center;">
                     <strong>Ausentes</strong><br>
                     <span style="font-size:20px; color:var(--red-600); font-weight:bold;">${totalAus}</span>
                   </div>`;
+          html += `<div onclick="mostrarPermisosHoy()" style="background:#FFF9E6; padding:12px; border-radius:10px; cursor:pointer; text-align:center;">
+                    <strong>Permisos</strong><br>
+                    <span style="font-size:20px; color:#F39C12; font-weight:bold;">${totalPerm}</span>
+                  </div>`;
           html += '</div>';
-          html += `<p style="font-size:14px; color:#555; margin-bottom:15px;">Asist. M: <strong>${totalM}</strong> | Asist. F: <strong>${totalF}</strong></p>`;
+          html += `<p style="font-size:14px; color:#555; margin-bottom:15px;">Asist. M: <strong>${totalM}</strong> | Asist. F: <strong>${totalF}</strong> | Permisos: <strong>${totalPerm}</strong></p>`;
+
+          // Botones adicionales
+          html += '<div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap;">';
+          html += '<button onclick="exportarResumenDelDia()" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer;">📊 Exportar Resumen</button>';
+          html += '<button onclick="enviarResumenPorCorreo()" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer;">📧 Enviar por Correo</button>';
+          html += '<button onclick="imprimirResumenDelDia()" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer;">🖨️ Imprimir</button>';
+          html += '</div>';
+
           html += '<div style="border-top:1px solid #E5E7EB; padding-top:10px;">';
           reportes.forEach(r => {
               html += `<div style="padding:10px; border-bottom:1px solid #E5E7EB;">`;
               html += `<strong>${r.grado} ${r.seccion}</strong> — ${r.docente}<br>`;
-              html += `M: ${r.m || 0}, F: ${r.f || 0}, Ausentes: ${r.ausentes || 0}, Total: ${r.presentes || 0}`;
+              html += `M: ${r.m || 0}, F: ${r.f || 0}, Ausentes: ${r.ausentes || 0}, Permisos: ${r.permisos || 0}, Total: ${r.presentes || 0}`;
               html += '</div>';
           });
           html += '</div>';
       }
 
       mostrarModalListado(html);
+  }
+
+  // =========================================================================
+  // FUNCIONES PARA EL RESUMEN DEL DÍA
+  // =========================================================================
+  async function actualizarAsistenciaDelDia() {
+      if (confirm('¿Está seguro de que desea actualizar la asistencia del día? Esto recargará los datos más recientes.')) {
+          await cargarReportesSub(true);
+          mostrarResumenDelDia();
+          mostrarNotificacion('Asistencia del día actualizada', 'success');
+      }
+  }
+
+  function mostrarPermisosHoy() {
+      const hoy = new Date();
+      const fechaFiltro = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+      let reportes = todosLosReportes.filter(r => {
+          const rDate = new Date(r.fecha);
+          return rDate.getFullYear() == hoy.getFullYear() && String(rDate.getMonth() + 1).padStart(2, '0') == String(hoy.getMonth() + 1).padStart(2, '0') && String(rDate.getDate()).padStart(2, '0') == String(hoy.getDate()).padStart(2, '0');
+      });
+
+      let html = '<h3 style="color: #F39C12; text-align: center; margin-bottom: 20px;">⚠ Estudiantes con Permiso - Hoy</h3>';
+      let totalPermisos = 0;
+
+      reportes.forEach(r => {
+          if (r.permisos_lista && r.permisos_lista.length > 0) {
+              html += `<div style="margin-bottom: 15px; padding: 10px; background: #FFF9E6; border-radius: 8px;">`;
+              html += `<strong>${r.grado} ${r.seccion} - ${r.docente}</strong><br>`;
+              html += '<ul style="margin-top: 8px;">';
+              r.permisos_lista.forEach(nombre => {
+                  html += `<li>${nombre}</li>`;
+                  totalPermisos++;
+              });
+              html += '</ul></div>';
+          }
+      });
+
+      if (totalPermisos === 0) {
+          html += '<div style="text-align:center; color: var(--gray-600); padding: 20px;">No hay estudiantes con permiso para este día.</div>';
+      } else {
+          html += `<div style="text-align:center; margin-top: 20px; color: #F39C12; font-weight: bold;">Total de permisos: ${totalPermisos}</div>`;
+      }
+
+      mostrarModalListado(html);
+  }
+
+  function exportarResumenDelDia() {
+      const hoy = new Date();
+      const fechaFiltro = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+      let reportes = todosLosReportes.filter(r => {
+          const rDate = new Date(r.fecha);
+          return rDate.getFullYear() == hoy.getFullYear() && String(rDate.getMonth() + 1).padStart(2, '0') == String(hoy.getMonth() + 1).padStart(2, '0') && String(rDate.getDate()).padStart(2, '0') == String(hoy.getDate()).padStart(2, '0');
+      });
+
+      let contenido = `RESUMEN DE ASISTENCIA - ${hoy.toLocaleDateString('es-ES')}\n\n`;
+      reportes.forEach(r => {
+          contenido += `${r.grado} ${r.seccion} - ${r.docente}\n`;
+          contenido += `Presentes: ${r.presentes} (M: ${r.m}, F: ${r.f})\n`;
+          contenido += `Ausentes: ${r.ausentes}\n`;
+          contenido += `Permisos: ${r.permisos || 0}\n\n`;
+      });
+
+      const blob = new Blob([contenido], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `resumen_asistencia_${hoy.toISOString().split('T')[0]}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      mostrarNotificacion('Resumen exportado exitosamente', 'success');
+  }
+
+  function enviarResumenPorCorreo() {
+      const hoy = new Date();
+      const fechaFiltro = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+      let reportes = todosLosReportes.filter(r => {
+          const rDate = new Date(r.fecha);
+          return rDate.getFullYear() == hoy.getFullYear() && String(rDate.getMonth() + 1).padStart(2, '0') == String(hoy.getMonth() + 1).padStart(2, '0') && String(rDate.getDate()).padStart(2, '0') == String(hoy.getDate()).padStart(2, '0');
+      });
+
+      let contenido = `RESUMEN DE ASISTENCIA - ${hoy.toLocaleDateString('es-ES')}\n\n`;
+      reportes.forEach(r => {
+          contenido += `${r.grado} ${r.seccion} - ${r.docente}\n`;
+          contenido += `Presentes: ${r.presentes} (M: ${r.m}, F: ${r.f})\n`;
+          contenido += `Ausentes: ${r.ausentes}\n`;
+          contenido += `Permisos: ${r.permisos || 0}\n\n`;
+      });
+
+      const subject = encodeURIComponent(`Resumen de Asistencia - ${hoy.toLocaleDateString('es-ES')}`);
+      const body = encodeURIComponent(contenido);
+      window.open(`mailto:?subject=${subject}&body=${body}`);
+  }
+
+  function imprimirResumenDelDia() {
+      const hoy = new Date();
+      const fechaFiltro = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+      let reportes = todosLosReportes.filter(r => {
+          const rDate = new Date(r.fecha);
+          return rDate.getFullYear() == hoy.getFullYear() && String(rDate.getMonth() + 1).padStart(2, '0') == String(hoy.getMonth() + 1).padStart(2, '0') && String(rDate.getDate()).padStart(2, '0') == String(hoy.getDate()).padStart(2, '0');
+      });
+
+      let contenidoImprimir = `
+          <html>
+          <head>
+              <title>Resumen de Asistencia - ${hoy.toLocaleDateString('es-ES')}</title>
+              <style>
+                  body { font-family: Arial, sans-serif; margin: 20px; }
+                  h1 { color: #0C447C; text-align: center; }
+                  .reporte { margin-bottom: 20px; padding: 10px; border: 1px solid #ddd; }
+                  .totales { background-color: #f0f0f0; padding: 10px; margin-bottom: 20px; }
+              </style>
+          </head>
+          <body>
+              <h1>Resumen de Asistencia</h1>
+              <p><strong>Fecha:</strong> ${hoy.toLocaleDateString('es-ES')}</p>
+              <div class="totales">
+                  <strong>Totales del Día:</strong><br>
+                  Presentes: ${reportes.reduce((sum, r) => sum + (parseInt(r.presentes) || 0), 0)}<br>
+                  Ausentes: ${reportes.reduce((sum, r) => sum + (parseInt(r.ausentes) || 0), 0)}<br>
+                  Permisos: ${reportes.reduce((sum, r) => sum + (parseInt(r.permisos) || 0), 0)}
+              </div>
+      `;
+
+      reportes.forEach(r => {
+          contenidoImprimir += `
+              <div class="reporte">
+                  <strong>${r.grado} ${r.seccion} - ${r.docente}</strong><br>
+                  Presentes: ${r.presentes} (M: ${r.m}, F: ${r.f})<br>
+                  Ausentes: ${r.ausentes}<br>
+                  Permisos: ${r.permisos || 0}
+              </div>
+          `;
+      });
+
+      contenidoImprimir += '</body></html>';
+
+      const ventanaImprimir = window.open('', '_blank');
+      ventanaImprimir.document.write(contenidoImprimir);
+      ventanaImprimir.document.close();
+      ventanaImprimir.print();
   }
 
   function puedeUsarNotificacionesWeb() {
@@ -2462,11 +3483,19 @@
           const now = new Date();
           const schedule = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
           if (schedule <= now) schedule.setDate(schedule.getDate() + 1);
+
+          const g = document.getElementById('grado-select').value;
+          const s = document.getElementById('seccion-select').value;
+          const d = document.getElementById('docente-nombre').value;
+
           const payload = {
               title: 'Recordatorio de Asistencia INMU',
               message: 'Toca para posponer 1 hora o finalizar hasta el siguiente día hábil.',
               originalHour: h,
-              originalMinute: m
+              originalMinute: m,
+              grado: g,
+              seccion: s,
+              docente: d
           };
           AndroidNotification.initNotificationChannel();
           AndroidNotification.requestNotificationPermission();
@@ -2692,7 +3721,16 @@
   }
 
   // Iniciar radar de status
-  setInterval(obtenerStatusDocentes, 10000); // Cada 10 segundos
+  if (navigator.onLine || esAppAndroid()) {
+      setInterval(obtenerStatusDocentes, 10000); // Cada 10 segundos
+  }
+
+  // Keep alive: enviar actualización cada 2 minutos para mantener docente online
+  setInterval(() => {
+      if (window.usuarioActual && window.usuarioActual.trim()) {
+          actualizarStatusDocente(window.usuarioActual, "online");
+      }
+  }, 2 * 60 * 1000); // Cada 2 minutos
 
   // Sistema de detección de inactividad
   let ultimaActividad = Date.now();
@@ -2701,16 +3739,16 @@
   function actualizarUltimaActividad() {
       ultimaActividad = Date.now();
       // Si hay usuario logueado, actualizar status a online
-      if (usuarioActual && usuarioActual.trim()) {
-          actualizarStatusDocente(usuarioActual, "online");
+      if (window.usuarioActual && window.usuarioActual.trim()) {
+          actualizarStatusDocente(window.usuarioActual, "online");
       }
   }
 
   function verificarInactividad() {
       const ahora = Date.now();
       if (ahora - ultimaActividad > TIEMPO_INACTIVIDAD) {
-          if (usuarioActual && usuarioActual.trim()) {
-              actualizarStatusDocente(usuarioActual, "offline");
+          if (window.usuarioActual && window.usuarioActual.trim()) {
+              actualizarStatusDocente(window.usuarioActual, "offline");
           }
       }
   }
@@ -2727,13 +3765,16 @@
 
   // Al cargar, obtener status inicial
   window.addEventListener('load', () => {
+      actualizarUISegunPlataforma();
+      if (!navigator.onLine && !esAppAndroid()) {
+          return;
+      }
       obtenerStatusDocentes();
       actualizarUltimaActividad(); // Inicializar actividad
-      actualizarUISegunPlataforma();
       iniciarNotificacionesWeb();
   });
 
-  if ('serviceWorker' in navigator) {
+  if ('serviceWorker' in navigator && window.location.protocol !== 'file:' && !esAppAndroid()) {
       navigator.serviceWorker.register('sw.js')
           .then(reg => console.log('Service Worker registrado:', reg.scope))
           .catch(err => console.log('Error registrando Service Worker:', err));
@@ -2857,6 +3898,41 @@
 
       html += `</div>`;
       mostrarModalListado(html);
+  }
+
+  // --- MANEJO DE ACCIONES NATIVAS (Notificaciones) ---
+  function onNativeAction(action, payloadStr) {
+      console.log("Native action received:", action, payloadStr);
+      try {
+          const payload = JSON.parse(payloadStr);
+          if (action === "PASAR_ASISTENCIA") {
+              // 1. Asegurarnos de entrar a la interfaz principal si estamos en el login
+              if (document.getElementById("modal-inicio-login").classList.contains('open') ||
+                  document.getElementById("modal-inicio-dropdown").classList.contains('open')) {
+                  const usuario = payload.docente || "invitado";
+                  desbloquearInterfazMain(usuario);
+              }
+
+              // 2. Cambiar a la vista de docente
+              cambiarVista('docente');
+
+              // 3. Rellenar campos (la carga de alumnos se disparará sola si inicializarBaseDatos ya terminó,
+              // o cuando termine ya que lee estos valores del DOM)
+              if (payload.grado) document.getElementById('grado-select').value = payload.grado;
+              if (payload.seccion) document.getElementById('seccion-select').value = payload.seccion;
+              if (payload.docente) document.getElementById('docente-nombre').value = payload.docente;
+
+              // 4. Forzar carga si ya tenemos los datos
+              if (payload.grado && payload.seccion && baseDatosAlumnos.length > 0) {
+                  cargarAlumnos();
+              }
+
+              // 5. Guardar en sesión para que persista
+              guardarSesion(payload.docente || "invitado", payload.grado, payload.seccion, payload.docente);
+          }
+      } catch (e) {
+          console.error("Error handling native action:", e);
+      }
   }
 </script>
 </body>
