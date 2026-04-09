@@ -21,7 +21,7 @@
         --blue-50: #E6F1FB;
         --green-600: #1D9E75;
         --green-50: #EAF3DE;
-        --red-600: #E24B4A;
+        --red-600: #D83C3C;
         --red-50: #FCEBEB;
         --gray-900: #2C2C2A;
         --gray-600: #5F5E5A;
@@ -662,7 +662,7 @@
 <div id="pantalla-mantenimiento">
         <span style="font-size: 100px; cursor: pointer; user-select: none;" ondblclick="toggleMantenimiento()"
               title="Doble clic para desbloquear">⚠️</span>
-  <h1 style="color: #E24B4A; font-size: 45px; margin-top: 20px; font-family: 'Arial Black', sans-serif;"
+  <h1 style="color: #D83C3C; font-size: 45px; margin-top: 20px; font-family: 'Arial Black', sans-serif;"
       id="mantenimiento-titulo">SITIO EN MANTENIMIENTO</h1>
   <p style="color: #2C2C2A; font-size: 24px; font-weight: bold; margin-top: 10px;" id="mantenimiento-texto">POR
     FAVOR NO UTILIZAR</p>
@@ -1501,7 +1501,7 @@
           <p style="margin:5px 0 0 0; font-size:14px; color:#5F5E5A;">Origen: ${source || 'desconocido'}:${lineno || 0}:${colno || 0}</p>
           <pre style="margin-top:12px; padding:12px; background:#fff5f5; border:1px solid #F5C6CB; color:#A71D2A; overflow:auto; max-height:220px; white-space:pre-wrap;">${error && error.stack ? String(error.stack) : ''}</pre>
       `;
-      document.body.innerHTML = `<div style="padding: 25px; font-family: Arial, sans-serif; color: #E24B4A; background: #fff8f0; min-height: 100vh; display: flex; align-items: center; justify-content: center;"><div><h1 style="margin:0 0 10px 0; font-size: 24px;">Error de carga</h1><p style="margin:0; font-size: 16px;">Hubo un problema al iniciar la aplicación. Reinicia la app o contacta al administrador.</p>${details}</div></div>`;
+      document.body.innerHTML = `<div style="padding: 25px; font-family: Arial, sans-serif; color: #D83C3C; background: #fff8f0; min-height: 100vh; display: flex; align-items: center; justify-content: center;"><div><h1 style="margin:0 0 10px 0; font-size: 24px;">Error de carga</h1><p style="margin:0; font-size: 16px;">Hubo un problema al iniciar la aplicación. Reinicia la app o contacta al administrador.</p>${details}</div></div>`;
       return false;
   };
 
@@ -1838,7 +1838,7 @@
           const fechaFormateada = new Date(r.fecha).toLocaleDateString('es-ES');
           const mValue = `<button class="detalle-estudiantes-btn" data-tipo="M" data-grado="${r.grado}" data-seccion="${r.seccion}" data-docente="${r.docente}" data-fecha="${r.fecha}" style="background:none; border:none; color:var(--blue-600); text-decoration:underline; font-weight:bold; cursor:pointer;" title="Ver Masculinos">${r.m || 0}</button>`;
           const fValue = `<button class="detalle-estudiantes-btn" data-tipo="F" data-grado="${r.grado}" data-seccion="${r.seccion}" data-docente="${r.docente}" data-fecha="${r.fecha}" style="background:none; border:none; color:#9D234C; text-decoration:underline; font-weight:bold; cursor:pointer;" title="Ver Femeninos">${r.f || 0}</button>`;
-          const ausentesValue = `<button class="detalle-estudiantes-btn" data-tipo="AUSENTES" data-grado="${r.grado}" data-seccion="${r.seccion}" data-docente="${r.docente}" data-fecha="${r.fecha}" style="background:none; border:none; font-weight:bold; color:#E24B4A; text-decoration:underline; cursor:pointer;" title="Ver Ausentes">${r.ausentes || 0}</button>`;
+          const ausentesValue = `<button class="detalle-estudiantes-btn" data-tipo="AUSENTES" data-grado="${r.grado}" data-seccion="${r.seccion}" data-docente="${r.docente}" data-fecha="${r.fecha}" style="background:none; border:none; font-weight:bold; color:#D83C3C; text-decoration:underline; cursor:pointer;" title="Ver Ausentes">${r.ausentes || 0}</button>`;
           const permisosValue = `<button class="detalle-estudiantes-btn" data-tipo="PERMISOS" data-grado="${r.grado}" data-seccion="${r.seccion}" data-docente="${r.docente}" data-fecha="${r.fecha}" style="background:none; border:none; font-weight:bold; color:#F39C12; text-decoration:underline; cursor:pointer;" title="Ver Permisos">${r.permisos || 0}</button>`;
           const presentesValue = `<button class="detalle-estudiantes-btn" data-tipo="PRESENTES" data-grado="${r.grado}" data-seccion="${r.seccion}" data-docente="${r.docente}" data-fecha="${r.fecha}" style="background:none; border:none; font-weight:bold; color:#1D9E75; text-decoration:underline; cursor:pointer;" title="Ver Presentes">${r.presentes || 0}</button>`;
           html += `<tr>
@@ -1867,7 +1867,7 @@
     <button onclick="mostrarListadoAsistentes()" style="padding:8px 14px;background:#1D9E75;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:13px;">
       ✅ Asistencia (${sPres})
     </button>
-    <button onclick="mostrarListadoAusentes()" style="padding:8px 14px;background:#E24B4A;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:13px;">
+    <button onclick="mostrarListadoAusentes()" style="padding:8px 14px;background:#D83C3C;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:13px;">
       ❌ No asistieron (${sAus})
     </button>
     <button onclick="mostrarListadoPermisos()" style="padding:8px 14px;background:#F39C12;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:13px;">
@@ -1909,7 +1909,7 @@
       }
       alumnosFiltrados = baseDatosAlumnos.filter(a => normalizarTexto(a.grado) === grado && normalizarTexto(a.seccion) === seccion);
       if (alumnosFiltrados.length === 0) {
-          contenedor.innerHTML = '<div style="padding: 20px; text-align: center; color: #E24B4A;">No hay alumnos en este grado.</div>';
+          contenedor.innerHTML = '<div style="padding: 20px; text-align: center; color: #D83C3C;">No hay alumnos en este grado.</div>';
           return;
       }
 
@@ -1924,7 +1924,7 @@
               onclick="toggleFila(event, ${index})"
               ondblclick="iniciarPermisoPorDobleClick(${index}); event.stopPropagation();">
               <div class="checkbox-wrapper"><input type="checkbox" id="chk-${index}" value="${index}" checked></div>
-              <div id="nombre-alumno-${index}" style="font-weight: 500; font-size:13px;">${alumno.nombre}</div>
+              <div id="nombre-alumno-${index}" style="font-weight: 500; font-size:13px; cursor:pointer;" title="Triple clic para ver detalle" onclick="handleNombreAlumnoClick(event, ${index})">${alumno.nombre}</div>
               <div><span class="badge ${alumno.sexo.toLowerCase()}">${alumno.sexo}</span></div>
               <div style="font-size: 13px;">${alumno.nie}</div>
               <div style="font-size: 13px;">${alumno.telefono || 'N/A'}</div>
@@ -2148,6 +2148,8 @@
               ausentes_lista: ausentes.map(a => a.nombre),
               permisos_lista: permisos.map(a => ({
                   nombre: a.nombre,
+                  sexo: a.sexo,
+                  nie: a.nie,
                   justificante: a.justificante || ''
               })),
               observacion_general: obsGeneral,
@@ -2292,11 +2294,11 @@
             ? presentes.map(a => `<tr style="page-break-inside: avoid;"><td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #1D9E75; font-weight: bold;">✓</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td><td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td></tr>`).join('')
             : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
       </table>
-      <h4 style="color: #E24B4A; border-bottom: 2px solid #E24B4A; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px;">ESTUDIANTES AUSENTES</h4>
+      <h4 style="color: #D83C3C; border-bottom: 2px solid #D83C3C; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px;">ESTUDIANTES AUSENTES</h4>
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; background-color: rgba(255,255,255,0.75);">
         <colgroup><col style="width: 8%;"><col style="width: 45%;"><col style="width: 10%;"><col style="width: 17%;"><col style="width: 20%;"></colgroup>
         ${ausentes.length > 0
-            ? ausentes.map(a => `<tr style="page-break-inside: avoid;"><td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #E24B4A; font-weight: bold;">✗</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td><td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td></tr>`).join('')
+            ? ausentes.map(a => `<tr style="page-break-inside: avoid;"><td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #D83C3C; font-weight: bold;">✗</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td><td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td></tr>`).join('')
             : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
       </table>
       ${permisos.length > 0 ? `
@@ -2341,7 +2343,7 @@
                         ✅ Sí, tiene justificante
                     </button>
                     <button onclick="confirmarPermisoSinJustificante(${index})"
-                        style="padding:10px 22px;background:#E24B4A;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:14px;">
+                        style="padding:10px 22px;background:#D83C3C;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:14px;">
                         ❌ No, sin justificante
                     </button>
                 </div>
@@ -2459,7 +2461,7 @@
                 </button>
                 <button onclick="setEstadoFila(${idx},'ausente')" id="btn-aus-${idx}"
                     style="padding:6px 10px;border:none;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;
-                    background:${estado==='ausente'?'#E24B4A':'#e0e0e0'};color:${estado==='ausente'?'white':'#333'};">
+                    background:${estado==='ausente'?'#D83C3C':'#e0e0e0'};color:${estado==='ausente'?'white':'#333'};">
                     ❌ No asistió
                 </button>
                 <button onclick="setEstadoFila(${idx},'permiso')" id="btn-perm-${idx}"
@@ -2507,7 +2509,7 @@
       ['presente','ausente','permiso'].forEach(e => {
           const btn = document.getElementById(`btn-${e.substring(0,4)}-${index}`);
           if (!btn) return;
-          const colores = { presente: '#1D9E75', ausente: '#E24B4A', permiso: '#F39C12' };
+          const colores = { presente: '#1D9E75', ausente: '#D83C3C', permiso: '#F39C12' };
           if (e === nuevoEstado) {
               btn.style.background = colores[e]; btn.style.color = 'white';
           } else {
@@ -2594,7 +2596,7 @@
                   : '<span style="color:var(--gray-600);">Sin observación registrada para hoy.</span>';
               
               if (estudiantesPeligro.length > 0) {
-                  const mensajes = estudiantesPeligro.map(e => `<br><strong style="color:#E24B4A;">⚠ El estudiante ${e.nombre} está en peligro por inasistencia (30+ ausencias sin justificar).</strong>`).join('');
+                  const mensajes = estudiantesPeligro.map(e => `<br><strong style="color:#D83C3C;">⚠ El estudiante ${e.nombre} está en peligro por inasistencia (30+ ausencias sin justificar).</strong>`).join('');
                   htmlObs += mensajes;
               }
               
@@ -2613,7 +2615,7 @@
                   const resPeligro = await fetch(`${SCRIPT_URL}?tipo=estudiantes_peligro&grado=${encodeURIComponent(grado)}&seccion=${encodeURIComponent(seccion)}`);
                   const estudiantesPeligro = await resPeligro.json();
                   if (estudiantesPeligro.length > 0) {
-                      const mensajes = estudiantesPeligro.map(e => `<br><strong style="color:#E24B4A;">⚠ El estudiante ${e.nombre} está en peligro por inasistencia (30+ ausencias sin justificar).</strong>`).join('');
+                      const mensajes = estudiantesPeligro.map(e => `<br><strong style="color:#D83C3C;">⚠ El estudiante ${e.nombre} está en peligro por inasistencia (30+ ausencias sin justificar).</strong>`).join('');
                       htmlObs += mensajes;
                   }
               } catch (e2) {
@@ -2626,7 +2628,7 @@
   }
 
   function mostrarNotificacion(mensaje, tipo) {
-      const colores = { success: '#1D9E75', warning: '#F39C12', error: '#E24B4A', info: '#185FA5' };
+      const colores = { success: '#1D9E75', warning: '#F39C12', error: '#D83C3C', info: '#185FA5' };
       const color = colores[tipo] || colores.info;
       const toast = document.createElement('div');
       toast.style.cssText = `position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;background:${color};color:white;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:bold;max-width:320px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.25);`;
@@ -3307,6 +3309,66 @@
           html += '</div>';
       }
       mostrarModalListado(html);
+  }
+
+  function handleNombreAlumnoClick(event, index) {
+      event.stopPropagation();
+      if (event.detail === 3) {
+          mostrarDetalleAlumnoTripleClick(index);
+      }
+  }
+
+  async function mostrarDetalleAlumnoTripleClick(index) {
+      const alumno = alumnosFiltrados[index];
+      if (!alumno) return;
+
+      const grado = document.getElementById('grado-select').value;
+      const seccion = document.getElementById('seccion-select').value;
+      const fecha = new Date().toLocaleDateString('es-ES');
+      const params = new URLSearchParams({
+          tipo: 'detalle_alumno',
+          nombre: alumno.nombre,
+          nie: alumno.nie || '',
+          sexo: alumno.sexo || '',
+          grado,
+          seccion,
+          fecha
+      });
+
+      mostrarModalListado('<p style="text-align:center; color:#185FA5; font-weight:bold;">⏳ Cargando detalle del estudiante...</p>');
+
+      try {
+          const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+          const data = await response.json();
+          const justificantes = Array.isArray(data.justificantes) ? data.justificantes : [];
+          const faltas = Number(data.faltas_totales) || 0;
+
+          let html = `<h3 style="color: var(--blue-800); text-align:center; margin-bottom: 12px;">Detalle del Estudiante</h3>`;
+          html += `<p style="margin: 8px 0;"><strong>Fecha:</strong> ${fecha}</p>`;
+          html += `<p style="margin: 8px 0;"><strong>Grado:</strong> ${grado} / ${seccion}</p>`;
+          html += `<p style="margin: 8px 0;"><strong>Nombre:</strong> ${alumno.nombre}</p>`;
+          html += `<p style="margin: 8px 0;"><strong>Sexo:</strong> ${alumno.sexo || 'N/A'}</p>`;
+          html += `<p style="margin: 8px 0;"><strong>NIE:</strong> ${alumno.nie || 'N/A'}</p>`;
+          html += `<p style="margin: 8px 0;"><strong>Teléfono:</strong> ${alumno.telefono || 'N/A'}</p>`;
+          html += `<p style="margin: 12px 0 8px;"><strong>Faltas totales:</strong> ${faltas}</p>`;
+
+          if (justificantes.length === 0) {
+              html += '<p style="margin: 8px 0; color: var(--gray-600);">No hay justificantes registrados para este estudiante.</p>';
+          } else {
+              html += '<div style="margin-top: 12px;"><strong>Justificantes:</strong>';
+              html += '<ul style="margin: 8px 0 0 18px; color: var(--gray-700);">';
+              justificantes.forEach((item, idx) => {
+                  const fechaItem = item.fecha ? new Date(item.fecha).toLocaleDateString('es-ES') : 'Fecha no disponible';
+                  html += `<li style="margin-bottom: 6px;"><strong>${fechaItem}</strong>: ${item.justificante || 'Sin justificante registrado'}</li>`;
+              });
+              html += '</ul></div>';
+          }
+
+          mostrarModalListado(html);
+      } catch (error) {
+          console.error('Error cargando detalle de estudiante:', error);
+          mostrarModalListado('<p style="text-align:center; color: red; font-weight:bold;">❌ Error cargando detalle del estudiante. Intente de nuevo.</p>');
+      }
   }
 
   function actualizarContadoresAsistencia() {
