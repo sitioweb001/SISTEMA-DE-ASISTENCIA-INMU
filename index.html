@@ -1095,6 +1095,11 @@
         <option value="Única">Única</option>
       </select>
 
+      <label style="display:flex; align-items:center; gap:10px; margin-bottom:15px; font-size:14px;">
+        <input type="checkbox" id="new-docente-admin" style="transform: scale(1.1); margin:0;">
+        <span>Acceso administrador</span>
+      </label>
+
       <div style="display:flex; gap:10px;">
         <button onclick="cerrarModal('modal-docente')" style="flex:1; padding:10px;">Cancelar</button>
         <button onclick="guardarNuevoDocente()" id="btn-save-doc"
@@ -1572,6 +1577,7 @@
       }
       if (userStr === "invitado") {
           document.getElementById("docente-nombre").value = "";
+          window.usuarioAdmin = false;
           desbloquearInterfazMain("invitado");
           return;
       }
@@ -1579,6 +1585,7 @@
       const docenteEncontrado = baseDatosDocentes.find(d => d.nombre.toLowerCase().includes(userStr));
       if (docenteEncontrado) {
           document.getElementById("docente-nombre").value = docenteEncontrado.nombre;
+          window.usuarioAdmin = docenteEncontrado.admin === true || docenteEncontrado.admin === 'true';
           if (docenteEncontrado.grado && docenteEncontrado.seccion) {
               document.getElementById("grado-select").value = docenteEncontrado.grado;
               document.getElementById("seccion-select").value = docenteEncontrado.seccion;
@@ -1607,6 +1614,7 @@
       if (sel !== "Invitado") {
           document.getElementById("docente-nombre").value = sel;
           const docenteEncontrado = baseDatosDocentes.find(d => d.nombre === sel);
+          window.usuarioAdmin = docenteEncontrado ? (docenteEncontrado.admin === true || docenteEncontrado.admin === 'true') : false;
           if (docenteEncontrado && docenteEncontrado.grado && docenteEncontrado.seccion) {
               document.getElementById("grado-select").value = docenteEncontrado.grado;
               document.getElementById("seccion-select").value = docenteEncontrado.seccion;
@@ -1614,6 +1622,7 @@
           }
       } else {
           document.getElementById("docente-nombre").value = "";
+          window.usuarioAdmin = false;
       }
 
       document.getElementById("modal-inicio-dropdown").classList.remove('open');
@@ -1622,6 +1631,7 @@
 
   function desbloquearInterfazMain(usuario) {
       window.usuarioActual = usuario || '';
+      window.usuarioAdmin = window.usuarioAdmin || false;
       document.getElementById("modal-inicio-login").classList.remove('open');
       document.getElementById("modal-inicio-dropdown").classList.remove('open');
       document.getElementById('header-principal').style.display = 'flex';
@@ -1651,12 +1661,13 @@
       const nom = document.getElementById('new-docente-nombre').value.trim();
       const gra = document.getElementById('new-docente-grado').value;
       const sec = document.getElementById('new-docente-seccion').value;
+      const isAdmin = document.getElementById('new-docente-admin').checked;
 
       if (!nom || !gra || !sec) return alert("Por favor complete todos los datos del docente.");
       btn.disabled = true; btn.innerText = "Guardando...";
 
       try {
-          await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "nuevo_docente", nombre: nom, grado: gra, seccion: sec }) });
+          await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "nuevo_docente", nombre: nom, grado: gra, seccion: sec, admin: isAdmin }) });
           alert("Docente registrado exitosamente.");
           cerrarModal('modal-docente'); setTimeout(() => { location.reload(); }, 1000);
       } catch (e) { alert("Error al guardar."); }
@@ -1695,10 +1706,12 @@
 
   function pedirPasswordSub() {
       if (sistemaEnMantenimiento) return;
+      if (window.usuarioAdmin) return cambiarVista('subdireccion');
       if (prompt("Contraseña:") === PASS_ADMIN) cambiarVista('subdireccion'); else alert("Incorrecta.");
   }
   function pedirPasswordNuevo() {
       if (sistemaEnMantenimiento) return;
+      if (window.usuarioAdmin) return document.getElementById('modal-alumno').classList.add('open');
       if (prompt("Contraseña:") === PASS_ADMIN) document.getElementById('modal-alumno').classList.add('open'); else alert("Incorrecta.");
   }
 
@@ -2033,7 +2046,7 @@
   }
   function toggleTodos() { estadoSeleccion = !estadoSeleccion; alumnosFiltrados.forEach((a, i) => document.getElementById(`chk-${i}`).checked = estadoSeleccion); }
 
-  function accederLimpieza() { if (prompt("Contraseña:") === PASS_ADMIN) document.getElementById("zona-peligro").style.display = "block"; }
+  function accederLimpieza() { if (window.usuarioAdmin || prompt("Contraseña:") === PASS_ADMIN) document.getElementById("zona-peligro").style.display = "block"; }
   function regresarLugarSeguro() { document.getElementById("zona-peligro").style.display = "none"; }
 
   async function borrarReportes() {
@@ -2076,16 +2089,16 @@
 
       const ahora = new Date();
       const fechaStr = ahora.toLocaleDateString('es-ES');
-      const dd = String(ahora.getDate()).padStart(2, '0');
-      const mm = String(ahora.getMonth() + 1).padStart(2, '0');
+      const dd = ahora.getDate();
+      const mm = ahora.getMonth() + 1;
       const yyyy = ahora.getFullYear();
       const fechaArchivo = `${dd}-${mm}-${yyyy}`;
       const secLimpia = seccion.replace(/"/g, '');
 
       const docenteLimpio = docente.replace(/\./g, '').replace(/[/\\:*?"<>|]/g, '_').trim();
-      const nombreBase = `${docenteLimpio}_${fechaArchivo}`;
+      const nombreBase = `Asistencia ${grado} ${secLimpia} - ${fechaArchivo} - ${docenteLimpio}`;
       const version = obtenerSiguienteVersion(nombreBase);
-      const { nombreArchivo } = construirNombreArchivo(docente, fechaArchivo, version);
+      const { nombreArchivo, sufijoVersion } = construirNombreArchivo(nombreBase, version);
 
       fetch(SCRIPT_URL, {
           method: 'POST', mode: 'no-cors',
@@ -2104,7 +2117,7 @@
                   justificante: a.justificante || ''
               })),
               observacion_general: obsGeneral,
-              version_pdf: version <= 1 ? 'V1-0-0' : `V1-0-${version - 1}`
+              version_pdf: sufijoVersion
           })
       }).catch(e => console.log('Error enviando reporte:', e));
 
@@ -2177,21 +2190,15 @@
       const registros = obtenerRegistrosPDF();
       const existentes = registros.filter(r => {
           const n = r.nombre || '';
-          const base = n.replace(/\.pdf$/i, '').replace(/_V\d+-\d+-\d+$/, '');
+          const base = n.replace(/\.pdf$/i, '').replace(/ - V1\.[0-9]{2}$/, '');
           return base === nombreBase;
       });
       return existentes.length + 1;
   }
 
-  function construirNombreArchivo(docente, fechaArchivo, version) {
-      const docenteLimpio = docente.replace(/\./g, '').replace(/[/\\:*?"<>|]/g, '_').trim();
-      const nombreBase = `${docenteLimpio}_${fechaArchivo}`;
-      if (version <= 1) {
-          return { nombreArchivo: `${nombreBase}.pdf`, nombreBase, sufijoVersion: '' };
-      }
-      const patch = version - 1;
-      const sufijoVersion = `_V1-0-${patch}`;
-      return { nombreArchivo: `${nombreBase}${sufijoVersion}.pdf`, nombreBase, sufijoVersion };
+  function construirNombreArchivo(nombreBase, version) {
+      const versionLabel = `V1.${String(version - 1).padStart(2, '0')}`;
+      return { nombreArchivo: `${nombreBase} - ${versionLabel}.pdf`, nombreBase, sufijoVersion: versionLabel };
   }
 
   function generarHTMLParaPDF({ grado, seccion, docente, fechaStr, secLimpia, presentes, ausentes, permisos, masc, fem, obsGeneral }) {
