@@ -207,6 +207,10 @@
         background-color: rgba(243, 156, 18, 0.15);
     }
 
+    .student-row.ausente {
+        background-color: rgba(226, 75, 74, 0.12);
+    }
+
     .permiso-btn {
         display: inline-flex;
         justify-content: center;
@@ -1949,6 +1953,19 @@
       if (chk.dataset.estado !== 'permiso') {
           chk.dataset.estado = chk.checked ? 'presente' : 'ausente';
       }
+      const row = document.getElementById(`row-${index}`);
+      if (row) {
+          if (chk.dataset.estado === 'permiso') {
+              row.classList.add('permiso');
+              row.classList.remove('ausente');
+          } else if (chk.dataset.estado === 'ausente') {
+              row.classList.add('ausente');
+              row.classList.remove('permiso');
+          } else {
+              row.classList.remove('permiso');
+              row.classList.remove('ausente');
+          }
+      }
       guardarEstadoAsistencia();
       actualizarContadoresAsistencia();
   }
@@ -1986,10 +2003,24 @@
                   const estados = JSON.parse(saved);
                   alumnosFiltrados.forEach((alumno, index) => {
                       const chk = document.getElementById(`chk-${index}`);
-                      if (chk && estados[alumno.nie]) {
+                                      if (chk && estados[alumno.nie]) {
                           const estadoData = estados[alumno.nie];
                           chk.dataset.estado = estadoData.estado;
                           chk.dataset.justificante = estadoData.justificante || '';
+
+                          const row = document.getElementById(`row-${index}`);
+                          if (row) {
+                              if (estadoData.estado === 'permiso') {
+                                  row.classList.add('permiso');
+                                  row.classList.remove('ausente');
+                              } else if (estadoData.estado === 'ausente') {
+                                  row.classList.add('ausente');
+                                  row.classList.remove('permiso');
+                              } else {
+                                  row.classList.remove('permiso');
+                                  row.classList.remove('ausente');
+                              }
+                          }
 
                           if (estadoData.estado === 'permiso') {
                               chk.checked = false;
@@ -2165,7 +2196,7 @@
 
       const pdfHtml = generarHTMLParaPDF({
           grado, seccion, docente, fechaStr, secLimpia,
-          presentes, ausentes, permisos, masc, fem, obsConPeligro
+          presentes, ausentes, permisos, masc, fem, obsGeneral: obsConPeligro
       });
 
       const containerHTML = document.getElementById('pdf-content');
@@ -2461,8 +2492,16 @@
           chk.checked = (nuevoEstado === 'presente');
           const row = document.getElementById(`row-${index}`);
           if (row) {
-              if (nuevoEstado === 'permiso') row.classList.add('permiso');
-              else row.classList.remove('permiso');
+              if (nuevoEstado === 'permiso') {
+                  row.classList.add('permiso');
+                  row.classList.remove('ausente');
+              } else if (nuevoEstado === 'ausente') {
+                  row.classList.add('ausente');
+                  row.classList.remove('permiso');
+              } else {
+                  row.classList.remove('permiso');
+                  row.classList.remove('ausente');
+              }
           }
       }
       ['presente','ausente','permiso'].forEach(e => {
