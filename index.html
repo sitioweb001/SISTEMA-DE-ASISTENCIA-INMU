@@ -761,11 +761,11 @@
     <p>Instituto Nacional de Mercedes Umaña</p>
   </div>
   <div class="btn-group-nav">
-    <button class="btn-nav" style="background:#4B77FF; color:white;" onclick="mostrarNotificaciones()">🔔 Notificaciones</button>
+    <button class="btn-nav" style="background:#F39C12; color:white; font-weight:bold;" onclick="mostrarNotificaciones()">🔔 Notificaciones</button>
     <button id="btn-install-pwa" class="btn-nav" style="background:#0C447C; display:none;" onclick="mostrarInstallPrompt()">📥 Instalar app</button>
     <span id="install-pwa-helper" style="display:none; align-self:center; font-size:12px; color:#F8F9FA; margin-left:10px; max-width:400px;"></span>
-    <button class="btn-nav" style="background:var(--blue-600);" onclick="cambiarVista('docente')">✍️ Pasar Lista</button>
-    <button class="btn-nav" style="background:#0E6EB8;" onclick="mostrarResumenDelDia()">📊 Ver resumen del día</button>
+    <button class="btn-nav" style="background:#1D9E75; color:white; font-weight:bold;" onclick="cambiarVista('docente')">✍️ Pasar Lista</button>
+    <button class="btn-nav" style="background:#8E44AD; color:white; font-weight:bold;" onclick="mostrarResumenDelDia()">📊 Ver resumen del día</button>
   </div>
 </div>
 
@@ -2968,43 +2968,67 @@
       }
   }
 
-  function mostrarDetalleEstudiantes(tipo, grado, seccion) {
+  async function mostrarDetalleEstudiantes(tipo, grado, seccion) {
       document.getElementById('modal-detalle-estudiantes').classList.add('open');
       document.getElementById('titulo-detalle-estudiantes').innerText = `Estudiantes: ${tipo}`;
-      document.getElementById('subtitulo-detalle-estudiantes').innerText = `Grado: ${grado} | Seç: ${seccion}\n(Calculado según matrícula actual)`;
+      document.getElementById('subtitulo-detalle-estudiantes').innerText = `Grado: ${grado} | Seç: ${seccion}`;
 
       const cont = document.getElementById('lista-detalle-estudiantes');
+      cont.innerHTML = '<p style="text-align:center; color:#185FA5; font-weight:bold;">⏳ Cargando datos...</p>';
 
-      // Buscar alumnos de ese grado y seccion
-      let filtrados = baseDatosAlumnos.filter(a => a.grado === grado && a.seccion === seccion);
+      try {
+          // Fetch de detalles de asistencia
+          const response = await fetch(`${SCRIPT_URL}?tipo=detalles_asistencia&grado=${grado}&seccion=${seccion}`);
+          const detalles = await response.json();
 
-      if (tipo === 'M') {
-          filtrados = filtrados.filter(a => a.sexo === 'M');
-      } else if (tipo === 'F') {
-          filtrados = filtrados.filter(a => a.sexo === 'F');
-      } else if (tipo === 'PRESENTES' || tipo === 'AUSENTES') {
-          // No tenemos el registro histórico de nombres en la nube para un día pasado.
-          // Mostrar un mensaje explicativo y todos los del grupo.
-          cont.innerHTML = `<p style="padding:10px; color:var(--amber-600); text-align:center; font-weight:bold;">⚠️ La nube solo guarda la cantidad numérica de presentes/ausentes, no los nombres específicos por día para este reporte.<br><br>A continuación, la lista completa del grupo:</p>`;
+          if (!detalles || detalles.length === 0) {
+              cont.innerHTML = '<p style="text-align:center; color: var(--gray-600);">No hay registros para este grupo.</p>';
+              return;
+          }
+
+          const registro = detalles[0];
+          let lista = [];
+          let titulo = '';
+
+          if (tipo === 'M') {
+              lista = baseDatosAlumnos.filter(a => a.grado === grado && a.seccion === seccion && a.sexo === 'M');
+              titulo = `Masculinos: ${lista.length}`;
+          } else if (tipo === 'F') {
+              lista = baseDatosAlumnos.filter(a => a.grado === grado && a.seccion === seccion && a.sexo === 'F');
+              titulo = `Femeninos: ${lista.length}`;
+          } else if (tipo === 'PRESENTES') {
+              lista = registro.asistentes || [];
+              titulo = `Presentes: ${lista.length}`;
+          } else if (tipo === 'AUSENTES') {
+              lista = registro.ausentes_lista || [];
+              titulo = `Ausentes: ${lista.length}`;
+          }
+
+          if (lista.length === 0) {
+              cont.innerHTML = `<p style="text-align:center; color: var(--gray-600);">${titulo} - No hay estudiantes.</p>`;
+              return;
+          }
+
+          let html = '<table style="width:100%; border-collapse:collapse; font-size:13px;">';
+          html += '<tr style="background:var(--blue-50); border-bottom:1px solid var(--blue-800);"><th>Nombre</th><th>Sexo</th><th>NIE</th></tr>';
+          
+          lista.forEach(a => {
+              const nombre = typeof a === 'string' ? a : a.nombre;
+              const sexo = (typeof a === 'string' ? '' : a.sexo) || '';
+              const nie = (typeof a === 'string' ? '' : a.nie) || '';
+              html += `<tr style="border-bottom:1px solid #eee;">
+                  <td style="padding:6px; font-weight:bold;">${nombre}</td>
+                  <td style="padding:6px; text-align:center;">${sexo}</td>
+                  <td style="padding:6px; text-align:center;">${nie}</td>
+              </tr>`;
+          });
+          html += '</table>';
+
+          cont.innerHTML = `<p style="font-weight:bold; padding:8px; background:var(--blue-100); border-radius:6px; margin-bottom:10px;">${titulo}</p>` + html;
+      } catch (error) {
+          console.error('Error cargando detalles:', error);
+          cont.innerHTML = '<p style="text-align:center; color: red;">❌ Error cargando datos. Intente nuevamente.</p>';
       }
-
-      if (filtrados.length === 0) {
-          cont.innerHTML += '<p style="text-align:center; color: var(--gray-600);">No se encontraron estudiantes para este filtro.</p>';
-          return;
-      }
-
-      let html = '<table style="width:100%; border-collapse:collapse; font-size:13px;">';
-      html += '<tr style="background:var(--blue-50); border-bottom:1px solid var(--blue-800);"><th>Nombre</th><th>Sexo</th><th>NIE</th></tr>';
-      filtrados.forEach(a => {
-          html += `<tr style="border-bottom:1px solid #eee;">
-              <td style="padding:6px; font-weight:bold;">${a.nombre}</td>
-              <td style="padding:6px; text-align:center;">${a.sexo}</td>
-              <td style="padding:6px; text-align:center;">${a.nie}</td>
-          </tr>`;
-      });
-      html += '</table>';
-
-      cont.innerHTML = (tipo === 'PRESENTES' || tipo === 'AUSENTES' ? cont.innerHTML : '') + html;
   }
 
   document.addEventListener('click', function (event) {
