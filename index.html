@@ -817,6 +817,10 @@
                   style="background:none; border:none; color:var(--green-600); cursor:pointer; font-size:12px; font-weight:bold; margin-left: 10px;">📂 Local</button>
         </div>
       </div>
+      <div style="margin-bottom:12px; display:flex; gap:10px; align-items:center;">
+          <input type="text" id="student-list-search" placeholder="Buscar por nombre o NIE..." oninput="filtrarStudentList()" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+          <button type="button" onclick="clearStudentListSearch()" style="padding:10px 16px;border:1px solid #ddd;border-radius:8px;background:#f5f5f5;color:#333;font-size:13px;cursor:pointer;white-space:nowrap;">Limpiar</button>
+      </div>
       <div style="margin-bottom: 25px;">
           <button onclick="abrirPanelActualizarAsistencia()"
                   style="background:none; border:none; color:#ff00e1; cursor:pointer; font-size:25px; font-weight:bold;">🔄 Actualizar asistencia</button>
@@ -1195,7 +1199,7 @@
   }
 
   function cargarDatosLocal(event) {
-      const file = event?.target?.files?.[0];
+      const file = event && event.target && event.target.files && event.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
@@ -1939,6 +1943,33 @@
       setTimeout(actualizarContadoresAsistencia, 200);
   }
 
+  function filtrarStudentList() {
+      const filtro = (document.getElementById('student-list-search') || {}).value.toLowerCase().trim();
+      document.querySelectorAll('.student-row').forEach(row => {
+          if (row.classList.contains('student-header')) {
+              row.style.display = '';
+              return;
+          }
+          var nombreEl = row.querySelector('[id^="nombre-alumno-"]');
+          var nombre = (nombreEl && nombreEl.textContent || '').toLowerCase();
+          var nieEl = row.querySelector('div:nth-child(4)');
+          var nie = (nieEl && nieEl.textContent || '').toLowerCase();
+          if (!filtro || nombre.includes(filtro) || nie.includes(filtro)) {
+              row.style.display = '';
+          } else {
+              row.style.display = 'none';
+          }
+      });
+  }
+
+  function clearStudentListSearch() {
+      const input = document.getElementById('student-list-search');
+      if (input) {
+          input.value = '';
+          filtrarStudentList();
+      }
+  }
+
   function toggleFila(event, index) {
       // Evitar que el doble clic dispare el toggle
       if (event.detail > 1) return;
@@ -2151,8 +2182,7 @@
 
       const docenteLimpio = docente.replace(/\./g, '').replace(/[/\\:*?"<>|]/g, '_').trim();
       const nombreBase = `Asistencia ${grado} ${secLimpia} - ${fechaArchivo} - ${docenteLimpio}`;
-      const version = obtenerSiguienteVersion(nombreBase);
-      const { nombreArchivo, sufijoVersion } = construirNombreArchivo(nombreBase, version);
+      const { nombreArchivo } = construirNombreArchivo(nombreBase);
 
       fetch(SCRIPT_URL, {
           method: 'POST', mode: 'no-cors',
@@ -2172,8 +2202,7 @@
                   nie: a.nie,
                   justificante: a.justificante || ''
               })),
-              observacion_general: obsGeneral,
-              version_pdf: sufijoVersion
+              observacion_general: obsGeneral
           })
       }).catch(e => console.log('Error enviando reporte:', e));
 
@@ -2188,17 +2217,6 @@
               })
           }).catch(e => console.log('Error enviando observación:', e));
       }
-
-      fetch(SCRIPT_URL, {
-          method: 'POST', mode: 'no-cors',
-          body: JSON.stringify({
-              tipo_post: "registro_pdf_version",
-              nombre_base: nombreBase,
-              version,
-              nombre_completo: nombreArchivo,
-              grado, seccion, docente
-          })
-      }).catch(e => console.log('Error registrando versión PDF:', e));
 
       // Obtener estudiantes en peligro
       let estudiantesPeligro = [];
@@ -2222,13 +2240,13 @@
       const containerHTML = document.getElementById('pdf-content');
       containerHTML.innerHTML = pdfHtml;
 
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       const opt = {
           margin: 15,
           filename: nombreArchivo,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, allowTaint: true, logging: false, imageTimeout: 15000, removeContainer: false },
+          image: { type: 'jpeg', quality: 0.95 },
+          html2canvas: { scale: 1.5, useCORS: true, allowTaint: true, logging: false, imageTimeout: 15000, removeContainer: false },
           jsPDF: { unit: 'mm', format: 'letter', orientation: orientacion },
           pagebreak: { mode: ['css', 'legacy'] }
       };
@@ -2266,8 +2284,8 @@
       return existentes.length + 1;
   }
 
-  function construirNombreArchivo(nombreBase, version) {
-      return { nombreArchivo: `${nombreBase} - V1.00.pdf`, nombreBase, sufijoVersion: 'V1.00' };
+  function construirNombreArchivo(nombreBase) {
+      return { nombreArchivo: `${nombreBase}.pdf`, nombreBase };
   }
 
   function generarHTMLParaPDF({ grado, seccion, docente, fechaStr, secLimpia, presentes, ausentes, permisos, masc, fem, obsGeneral, reprobados = [], estudiantesPeligro = [], personalObservaciones = [] }) {
@@ -2289,7 +2307,7 @@
         </div>
       </div>
     </div>
-    <div class="html2pdf__page-break"></div>
+    <div class="html2pdf__page-break" style="page-break-after: always; break-after: page; display: block;"></div>
     <div style="position: relative;">
       <div style="text-align: center; border-bottom: 3px solid #0C447C; padding-bottom: 15px; margin-bottom: 20px; position: relative; z-index: 5;">
         <h2 style="font-size: 18px; color: #0C447C; margin-bottom: 5px;">MINISTERIO DE EDUCACIÓN CIENCIA Y TECNOLOGÍA</h2>
@@ -2306,14 +2324,14 @@
         <p><strong>Asistencias: ${presentes.length}</strong> | M: <strong>${masc}</strong> | F: <strong>${fem}</strong> | Ausencias: ${ausentes.length} | Permisos: ${permisos.length}</p>
       </div>
       <h4 style="color: #1D9E75; border-bottom: 2px solid #1D9E75; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px;">ESTUDIANTES PRESENTES</h4>
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; background-color: rgba(255,255,255,0.75);">
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; background-color: rgba(255,255,255,0.75); page-break-inside: auto; break-inside: auto;">
         <colgroup><col style="width: 8%;"><col style="width: 45%;"><col style="width: 10%;"><col style="width: 17%;"><col style="width: 20%;"></colgroup>
         ${presentes.length > 0
             ? presentes.map(a => `<tr style="page-break-inside: avoid;"><td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #1D9E75; font-weight: bold;">✓</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td><td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td></tr>`).join('')
             : `<tr><td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Ninguno</td></tr>`}
       </table>
       <h4 style="color: var(--red-600); border-bottom: 2px solid var(--red-600); padding-bottom: 5px; margin-bottom: 10px; font-size: 15px;">ESTUDIANTES AUSENTES</h4>
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; background-color: rgba(255,255,255,0.75);">
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; background-color: rgba(255,255,255,0.75); page-break-inside: auto; break-inside: auto;">
         <colgroup><col style="width: 8%;"><col style="width: 45%;"><col style="width: 10%;"><col style="width: 17%;"><col style="width: 20%;"></colgroup>
         ${ausentes.length > 0
             ? ausentes.map(a => `<tr style="page-break-inside: avoid;"><td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: var(--red-600); font-weight: bold;">✗</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td><td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.telefono || 'N/A'}</td></tr>`).join('')
@@ -2321,17 +2339,17 @@
       </table>
       ${permisos.length > 0 ? `
       <h4 style="color: #F39C12; border-bottom: 2px solid #F39C12; padding-bottom: 5px; margin-bottom: 10px; font-size: 15px;">ESTUDIANTES CON PERMISO</h4>
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; background-color: rgba(255,255,255,0.75);">
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; background-color: rgba(255,255,255,0.75); page-break-inside: auto; break-inside: auto;">
         <colgroup><col style="width: 8%;"><col style="width: 35%;"><col style="width: 10%;"><col style="width: 17%;"><col style="width: 30%;"></colgroup>
         <tr style="background:#FFF9E6;"><th style="border:1px solid #ddd;padding:6px;"></th><th style="border:1px solid #ddd;padding:6px;text-align:left;">Nombre</th><th style="border:1px solid #ddd;padding:6px;text-align:center;">Sexo</th><th style="border:1px solid #ddd;padding:6px;">NIE</th><th style="border:1px solid #ddd;padding:6px;text-align:left;">Justificante</th></tr>
-        ${permisos.map(a => `<tr style="page-break-inside: avoid;"><td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #F39C12; font-weight: bold;">⚠</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td><td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td><td style="border: 1px solid #ddd; padding: 6px; font-size:11px;">${a.justificante || 'Sin justificante'}</td></tr>`).join('')}
+        ${permisos.map(a => `<tr style="page-break-inside: avoid; break-inside: avoid-page;"><td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #F39C12; font-weight: bold;">⚠</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nombre}</td><td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${a.sexo}</td><td style="border: 1px solid #ddd; padding: 6px;">${a.nie}</td><td style="border: 1px solid #ddd; padding: 6px; font-size:11px;">${a.justificante || 'Sin justificante'}</td></tr>`).join('')}
       </table>
       ` : ''}
       ${reprobados.length > 0 ? `
       <h4 style="color: var(--red-600); border-bottom: 3px solid var(--red-600); padding-bottom: 5px; margin-bottom: 10px; font-size: 15px; text-transform: uppercase;">🔴 ESTUDIANTES REPROBADOS (>= 30 AUSENCIAS)</h4>
-      <div style="background-color: rgba(183,28,28,0.08); border-left: 5px solid var(--red-600); padding: 12px; border-radius: 6px; margin-bottom: 25px;">
+      <div style="background-color: rgba(183,28,28,0.08); border-left: 5px solid var(--red-600); padding: 12px; border-radius: 6px; margin-bottom: 25px; page-break-inside: avoid; break-inside: avoid-page;">
         <ul style="list-style: none; padding: 0; margin: 0;">
-          ${reprobados.map(r => `<li style="margin-bottom: 8px; padding: 8px; background: white; border-left: 3px solid var(--red-600); padding-left: 10px;"><strong style="color: var(--red-600);">${r.nombre}</strong><br><small style="color: #666;">NIE: ${r.nie || 'N/A'} | Ausencias: <strong style="color: var(--red-600);">${r.conteo}</strong></small></li>`).join('')}
+          ${reprobados.map(r => `<li style="margin-bottom: 8px; padding: 8px; background: white; border-left: 3px solid var(--red-600); padding-left: 10px; page-break-inside: avoid; break-inside: avoid-page;"><strong style="color: var(--red-600);">${r.nombre}</strong><br><small style="color: #666;">NIE: ${r.nie || 'N/A'} | Ausencias: <strong style="color: var(--red-600);">${r.conteo}</strong></small></li>`).join('')}
         </ul>
       </div>
       ` : ''}
@@ -2339,7 +2357,7 @@
         <strong>📝 Observación General:</strong><br>
         <div style="margin-top: 8px; min-height: 40px; border: 1px solid #ddd; padding: 8px; background-color: white; line-height: 1.6;">
           <ul style="list-style:none; padding:0; margin:0;">
-            ${obsGeneral ? `<li style="margin-bottom:6px; padding:4px 0; border-bottom:1px solid #eee;">• ${obsGeneral.split(';').map(s => s.trim()).filter(s => s).join('</li><li style="margin-bottom:6px; padding:4px 0; border-bottom:1px solid #eee;">• ')}</li>` : '<li style="color:#999;">Sin observaciones</li>'}
+            ${obsGeneral ? `<li style="margin-bottom:6px; padding:4px 0; border-bottom:1px solid #eee; page-break-inside: avoid; break-inside: avoid-page;">• ${obsGeneral.split(';').map(s => s.trim()).filter(s => s).join('</li><li style="margin-bottom:6px; padding:4px 0; border-bottom:1px solid #eee; page-break-inside: avoid; break-inside: avoid-page;">• ')}</li>` : '<li style="color:#999;">Sin observaciones</li>'}
           </ul>
         </div>
       </div>
@@ -2348,7 +2366,7 @@
         <strong>🗒️ Observaciones Personales:</strong>
         <div style="margin-top: 10px;">
           <ul style="padding-left: 16px; margin: 0;">
-            ${personalObservaciones.map(o => `<li style="margin-bottom: 8px; line-height: 1.5;"><strong>${o.nombre}</strong> (${o.nie || 'NIE no registrado'}): ${o.observacion_personal || 'Sin observación'}</li>`).join('')}
+            ${personalObservaciones.map(o => `<li style="margin-bottom: 8px; line-height: 1.5; page-break-inside: avoid; break-inside: avoid-page;"><strong>${o.nombre}</strong> (${o.nie || 'NIE no registrado'}): ${o.observacion_personal || 'Sin observación'}</li>`).join('')}
           </ul>
         </div>
       </div>
@@ -2583,6 +2601,11 @@
   function mostrarPermisoPersonal(index) {
       const alumno = alumnosFiltrados[index];
       if (!alumno) return;
+      var tmp;
+      tmp = document.getElementById('modal-permiso-personal'); if (tmp) tmp.remove();
+      tmp = document.getElementById('modal-permiso-dblclick'); if (tmp) tmp.remove();
+      tmp = document.getElementById('modal-justificante-ext'); if (tmp) tmp.remove();
+
       const chk = document.getElementById(`chk-${index}`);
       const observacionActual = chk ? (chk.dataset.observacionPersonal || '') : '';
       const estadoActual = chk ? (chk.dataset.estado || 'presente') : 'presente';
@@ -2592,33 +2615,35 @@
       const modal = document.createElement('div');
       modal.id = 'modal-permiso-personal';
       modal.innerHTML = `
-        <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);z-index:10000;display:flex;align-items:center;justify-content:center;">
-            <div style="background:white;padding:22px;border-radius:12px;max-width:520px;width:94%;box-shadow:0 4px 18px rgba(0,0,0,0.25);">
+        <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);z-index:10000;display:flex;align-items:center;justify-content:center;pointer-events:auto;">
+            <div style="background:white;padding:22px;border-radius:12px;max-width:520px;width:94%;box-shadow:0 4px 18px rgba(0,0,0,0.25);pointer-events:auto;" onclick="event.stopPropagation()">
                 <h3 style="margin:0 0 14px 0;color:#185FA5;">✍️ Observación Personal — ${alumno.nombre}</h3>
                 <label style="display:block;font-weight:bold;margin-bottom:6px;">Observación personal</label>
                 <textarea id="personal-obs-${index}" placeholder="Ej. Llegó tarde, trajo justificante, ..." style="width:100%;min-height:96px;padding:12px;border:1px solid #ddd;border-radius:10px;font-size:14px;resize:vertical;">${observacionActual}</textarea>
                 <div style="margin-top:14px;">
                     <p style="margin:0 0 8px 0;font-weight:bold;">¿Asistió?</p>
                     <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                        <button id="asistio-yes-${index}" type="button" onclick="setAsistioPersonal(${index}, true)" style="flex:1;padding:10px 12px;border:none;border-radius:10px;font-weight:bold;cursor:pointer;">✅ Sí asistió</button>
-                        <button id="asistio-no-${index}" type="button" onclick="setAsistioPersonal(${index}, false)" style="flex:1;padding:10px 12px;border:none;border-radius:10px;font-weight:bold;cursor:pointer;">❌ No asistió</button>
+                        <button id="asistio-yes-${index}" type="button" onclick="setAsistioPersonal(${index}, true)" style="flex:1;padding:10px 12px;border:none;border-radius:10px;font-weight:bold;cursor:pointer;pointer-events:auto;">✅ Sí asistió</button>
+                        <button id="asistio-no-${index}" type="button" onclick="setAsistioPersonal(${index}, false)" style="flex:1;padding:10px 12px;border:none;border-radius:10px;font-weight:bold;cursor:pointer;pointer-events:auto;">❌ No asistió</button>
                     </div>
                 </div>
                 <div id="justificante-block-${index}" style="margin-top:14px;display:${tieneJustificante ? 'block' : 'none'};">
                     <p style="margin:0 0 8px 0;font-weight:bold;">¿El estudiante tiene justificante?</p>
                     <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                        <button id="just-yes-${index}" type="button" onclick="setJustificantePersonal(${index}, true)" style="flex:1;padding:10px 12px;border:none;border-radius:10px;font-weight:bold;cursor:pointer;">✅ Sí</button>
-                        <button id="just-no-${index}" type="button" onclick="setJustificantePersonal(${index}, false)" style="flex:1;padding:10px 12px;border:none;border-radius:10px;font-weight:bold;cursor:pointer;">❌ No</button>
+                        <button id="just-yes-${index}" type="button" onclick="setJustificantePersonal(${index}, true)" style="flex:1;padding:10px 12px;border:none;border-radius:10px;font-weight:bold;cursor:pointer;pointer-events:auto;">✅ Sí</button>
+                        <button id="just-no-${index}" type="button" onclick="setJustificantePersonal(${index}, false)" style="flex:1;padding:10px 12px;border:none;border-radius:10px;font-weight:bold;cursor:pointer;pointer-events:auto;">❌ No</button>
                     </div>
                     <textarea id="input-justificante-${index}" placeholder="Describa el justificante..." style="width:100%;margin-top:10px;padding:12px;border:1px solid #ddd;border-radius:10px;font-size:14px;resize:vertical;display:${tieneJustificante ? 'block' : 'none'};">${chk ? (chk.dataset.justificante || '') : ''}</textarea>
                 </div>
                 <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:18px;">
-                    <button type="button" onclick="document.getElementById('modal-permiso-personal')?.remove()" style="padding:10px 16px;background:#6c757d;color:white;border:none;border-radius:10px;cursor:pointer;">Cancelar</button>
-                    <button type="button" onclick="guardarPermisoPersonal(${index})" style="padding:10px 16px;background:#1D9E75;color:white;border:none;border-radius:10px;cursor:pointer;">Guardar</button>
+                    <button type="button" onclick="var m=document.getElementById('modal-permiso-personal'); if (m) m.remove();" style="padding:10px 16px;background:#6c757d;color:white;border:none;border-radius:10px;cursor:pointer;pointer-events:auto;">Cancelar</button>
+                    <button type="button" onclick="guardarPermisoPersonal(${index})" style="padding:10px 16px;background:#1D9E75;color:white;border:none;border-radius:10px;cursor:pointer;pointer-events:auto;">Guardar</button>
                 </div>
             </div>
         </div>`;
       document.body.appendChild(modal);
+      modal.tabIndex = -1;
+      modal.focus();
       setAsistioPersonal(index, asistioActual);
       setJustificantePersonal(index, tieneJustificante);
   }
@@ -2709,7 +2734,7 @@
           }).catch(e => console.log('Error guardando observación personal:', e));
       }
 
-      document.getElementById('modal-permiso-personal')?.remove();
+      var modalPersonal = document.getElementById('modal-permiso-personal'); if (modalPersonal) modalPersonal.remove();
       mostrarNotificacion('Observación personal guardada.', 'success');
   }
 
@@ -3357,12 +3382,21 @@
   function mostrarListadoEstudiantes(sexo) {
       const estudiantes = baseDatosAlumnos.filter(a => a.sexo === sexo);
       let html = `<h3 style="color: var(--blue-800); text-align: center; margin-bottom: 20px;">Listado de Estudiantes ${sexo === 'M' ? 'Masculinos' : 'Femeninos'}</h3>`;
-      html += '<div style="max-height: 400px; overflow-y: auto;">';
+      html += `<div style="margin-bottom:12px;"><input type="text" id="listado-estudiantes-search" placeholder="Buscar por nombre..." oninput="filtrarListadoEstudiantes()" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:13px;"></div>`;
+      html += '<div id="listado-estudiantes-container" style="max-height: 400px; overflow-y: auto;">';
       estudiantes.forEach(est => {
-          html += `<div style="padding: 8px; border-bottom: 1px solid var(--gray-100);">${est.nombre} - ${est.grado} ${est.seccion}</div>`;
+          html += `<div class="estudiante-item" style="padding: 8px; border-bottom: 1px solid var(--gray-100);">${est.nombre} - ${est.grado} ${est.seccion}</div>`;
       });
       html += '</div>';
       mostrarModalListado(html);
+  }
+
+  function filtrarListadoEstudiantes() {
+      const filtro = (document.getElementById('listado-estudiantes-search') || {}).value.toLowerCase().trim();
+      document.querySelectorAll('.estudiante-item').forEach(item => {
+          const nombre = item.textContent.toLowerCase();
+          item.style.display = (!filtro || nombre.includes(filtro)) ? 'block' : 'none';
+      });
   }
 
   function mostrarListadoAsistentes() {
