@@ -770,7 +770,7 @@
     <button id="btn-install-pwa" class="btn-nav" style="background:#0C447C; display:none;" onclick="mostrarInstallPrompt()">📥 Instalar app</button>
     <span id="install-pwa-helper" style="display:none; align-self:center; font-size:12px; color:#F8F9FA; margin-left:10px; max-width:400px;"></span>
     <button class="btn-nav" style="background:#1D9E75; color:white; font-weight:bold;" onclick="cambiarVista('docente')">✍️ Pasar Lista</button>
-    <button class="btn-nav" style="background:#45b8c9; color:white; font-weight:bold;" onclick="cambiarVista('expediente')">📋 Expediente</button>
+    <button class="btn-nav" style="background:#2b7801; color:white; font-weight:bold;" onclick="cambiarVista('expediente')">📋 Expediente</button>
     <button class="btn-nav" style="background:#8E44AD; color:white; font-weight:bold;" onclick="mostrarResumenDelDia()">📊 Ver resumen del día</button>
   </div>
 </div>
@@ -2185,11 +2185,6 @@
                   });
               }
           } catch (e) {
-              console.log('Error cargando estado de asistencia:', e);
-          }
-      }
-  }
-
   function mostrarModalPermiso(index) {
       const alumno = alumnosFiltrados[index];
       const modal = document.createElement('div');
@@ -2316,58 +2311,6 @@
               })),
               observacion_general: obsGeneral
           })
-      }).catch(e => console.log('Error enviando reporte:', e));
-
-      if (obsGeneral.trim()) {
-          fetch(SCRIPT_URL, {
-              method: 'POST', mode: 'no-cors',
-              body: JSON.stringify({
-                  tipo_post: "observacion_general",
-                  fecha: ahora.toISOString(),
-                  grado, seccion, docente,
-                  observacion: obsGeneral
-              })
-          }).catch(e => console.log('Error enviando observación:', e));
-      }
-
-      // Obtener estudiantes en peligro
-      let estudiantesPeligro = [];
-      let reprobados = [];
-      try {
-          const responsePeligro = await fetch(`${SCRIPT_URL}?tipo=estudiantes_peligro&grado=${grado}&seccion=${seccion}`);
-          estudiantesPeligro = await responsePeligro.json();
-          // Separar en reprobados (>=30) y en peligro (28-29)
-          reprobados = estudiantesPeligro.filter(e => e.conteo >= 30);
-          const enPeligro = estudiantesPeligro.filter(e => e.conteo >= 28 && e.conteo < 30);
-          estudiantesPeligro = [...reprobados, ...enPeligro];
-      } catch (e) {
-          console.log('Error obteniendo estudiantes en peligro:', e);
-      }
-
-      const pdfHtml = generarHTMLParaPDF({
-          grado, seccion, docente, fechaStr, secLimpia,
-          presentes, ausentes, permisos, masc, fem, obsGeneral, reprobados, estudiantesPeligro, personalObservaciones
-      });
-
-      const containerHTML = document.getElementById('pdf-content');
-      containerHTML.innerHTML = pdfHtml;
-
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const opt = {
-          margin: 15,
-          filename: nombreArchivo,
-          image: { type: 'jpeg', quality: 0.95 },
-          html2canvas: { scale: 1.5, useCORS: true, allowTaint: true, logging: false, imageTimeout: 15000, removeContainer: false },
-          jsPDF: { unit: 'mm', format: 'letter', orientation: orientacion },
-          pagebreak: { mode: ['css', 'legacy'] }
-      };
-
-      try {
-          window.scrollTo(0, 0);
-          if (typeof AndroidPDF !== 'undefined') {
-              const pdfBlob = await html2pdf().set(opt).from(containerHTML).outputPdf('blob');
-              const reader = new FileReader();
               reader.onloadend = function () {
                   const base64 = reader.result.split(',')[1];
                   registrarPDFGuardado(nombreArchivo, carpetaPDFUri || '', grado, '');
@@ -2687,20 +2630,6 @@
               fecha: new Date().toISOString(),
               actualizaciones
           })
-      }).catch(e => console.log('Error enviando actualización:', e));
-
-      const overlay = document.getElementById('modal-listado-dinamico');
-      if (overlay) overlay.remove();
-
-      setTimeout(() => {
-          const aviso = document.createElement('div');
-          aviso.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:99999;background:#185FA5;color:white;padding:16px 24px;border-radius:10px;font-size:14px;font-weight:bold;max-width:350px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
-          aviso.innerHTML = '📋 Cambios guardados.<br><small style="font-weight:normal;">Debe generar nuevamente el PDF para reflejar los cambios.</small>';
-          document.body.appendChild(aviso);
-          setTimeout(() => aviso.remove(), 5000);
-      }, 300);
-  }
-
   function filtrarPanelActualizarAsistencia() {
       const filtro = (document.getElementById('update-asistencia-search') || {}).value.toLowerCase().trim();
       document.querySelectorAll('.update-student-item').forEach(item => {
@@ -2843,89 +2772,6 @@
                       observacion: personalObs
                   }]
               })
-          }).catch(e => console.log('Error guardando observación personal:', e));
-      }
-
-      var modalPersonal = document.getElementById('modal-permiso-personal'); if (modalPersonal) modalPersonal.remove();
-      mostrarNotificacion('Observación personal guardada.', 'success');
-  }
-
-  async function verObservacionGrado() {
-      const grado = document.getElementById('grado-select').value;
-      const seccion = document.getElementById('seccion-select').value;
-
-      if (!grado || !seccion) {
-          alert('Seleccione un grado y sección primero.');
-          return;
-      }
-
-      const hoy = new Date();
-      const fecha = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
-
-      let html = `<h3 style="color:var(--blue-800);text-align:center;margin-bottom:10px;">📝 Observación del Grado</h3>`;
-      html += `<p style="text-align:center;font-size:12px;color:var(--gray-600);margin-bottom:15px;">${grado} ${seccion} — ${hoy.toLocaleDateString('es-ES')}</p>`;
-      html += `<div id="obs-grado-contenido" style="padding:10px;border:1px solid var(--gray-100);border-radius:8px;min-height:60px;background:#fafafa;font-size:14px;">⏳ Consultando...</div>`;
-      html += `<p style="margin-top:15px;font-size:12px;color:var(--gray-600);">Observación registrada en la observación general del PDF más reciente.</p>`;
-
-      mostrarModalListado(html);
-
-      try {
-          const url = `${SCRIPT_URL}?tipo=observacion_grado&grado=${encodeURIComponent(grado)}&seccion=${encodeURIComponent(seccion)}&fecha=${fecha}`;
-          const res = await fetch(url);
-          const data = await res.json();
-          
-          // Obtener estudiantes en peligro
-          let estudiantesPeligro = [];
-          try {
-              const resPeligro = await fetch(`${SCRIPT_URL}?tipo=estudiantes_peligro&grado=${encodeURIComponent(grado)}&seccion=${encodeURIComponent(seccion)}`);
-              estudiantesPeligro = await resPeligro.json();
-          } catch (e) {
-              console.log('Error obteniendo estudiantes en peligro:', e);
-          }
-          
-          const cont = document.getElementById('obs-grado-contenido');
-          if (cont) {
-              let htmlObs = data.observacion
-                  ? `<div style="margin-bottom:10px;"><strong>Observación General:</strong><br><em style="color:#333;">${data.observacion}</em><br><small style="color:var(--gray-600);">— ${data.docente || ''} (${data.fecha ? new Date(data.fecha).toLocaleDateString('es-ES') : ''})</small></div>`
-                  : '<div style="margin-bottom:10px;"><span style="color:var(--gray-600);">Sin observación registrada para hoy.</span></div>';
-              
-              if (estudiantesPeligro.length > 0) {
-                  htmlObs += '<div style="margin-top:10px;"><strong style="color:var(--red-600);">⚠️ Estudiantes en Riesgo:</strong><ul style="margin:5px 0 0 20px;padding:0;">';
-                  estudiantesPeligro.forEach(e => {
-                      const estado = e.conteo >= 30 ? 'REPROBADO' : 'EN PELIGRO';
-                      const colorRiesgo = e.conteo >= 30 ? 'var(--red-600)' : 'var(--amber-600)';
-                      htmlObs += `<li style="margin:4px 0; color:${colorRiesgo}; font-weight:bold;">⚠️ ${e.nombre} — ${estado} (${e.conteo} ausencias)</li>`;
-                  });
-                  htmlObs += '</ul></div>';
-              }
-              
-              cont.innerHTML = htmlObs;
-          }
-      } catch (e) {
-          const cont = document.getElementById('obs-grado-contenido');
-          if (cont) {
-              const obsLocal = (document.getElementById('observacion-general') || {}).value || '';
-              let htmlObs = obsLocal
-                  ? `<em>${obsLocal}</em><br><small style="color:var(--amber-600);">(Observación local — no enviada a la nube aún)</small>`
-                  : '<span style="color:var(--gray-600);">Sin observación local registrada.</span>';
-              
-              // Agregar estudiantes en peligro incluso en local
-              try {
-                  const resPeligro = await fetch(`${SCRIPT_URL}?tipo=estudiantes_peligro&grado=${encodeURIComponent(grado)}&seccion=${encodeURIComponent(seccion)}`);
-                  const estudiantesPeligro = await resPeligro.json();
-                  if (estudiantesPeligro.length > 0) {
-                      const mensajes = estudiantesPeligro.map(e => `<br><strong style="color:var(--red-600);">⚠ El estudiante ${e.nombre} está en peligro por inasistencia (30+ ausencias sin justificar).</strong>`).join('');
-                      htmlObs += mensajes;
-                  }
-              } catch (e2) {
-                  console.log('Error obteniendo estudiantes en peligro:', e2);
-              }
-              
-              cont.innerHTML = htmlObs;
-          }
-      }
-  }
-
   function mostrarNotificacion(mensaje, tipo) {
       const colores = { success: '#1D9E75', warning: '#F39C12', error: 'var(--red-600)', info: '#185FA5' };
       const color = colores[tipo] || colores.info;
@@ -2996,64 +2842,7 @@
   }
 
   function cargarListaPDFs() {
-      console.log("Iniciando carga de lista de PDFs...");
-      const container = document.getElementById('pdf-lista-container');
-
-      // 1. Cargar lo que tenemos en el registro local (AndroidStorage)
-      const registros = obtenerRegistrosPDF();
-      listaPDFs = [...registros].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-      listaPDFsFiltrada = [...listaPDFs];
-
-      // Renderizar lo que ya conocemos de inmediato
-      renderizarListaPDFs();
-
-      // 2. Si estamos en Android, pedir un escaneo real del almacenamiento
-      if (typeof AndroidPDF !== 'undefined' && typeof AndroidPDF.listarPDFs === 'function') {
-          console.log("Solicitando escaneo de archivos al sistema nativo...");
-          AndroidPDF.listarPDFs(carpetaPDFUri || '');
-      }
-  }
-
-  // Llamada desde Kotlin con la lista de PDFs encontrados en la carpeta
   function onListaPDFsRecibida(jsonStr) {
-      console.log("Lista de PDFs recibida desde el sistema nativo");
-      try {
-          const archivosEscaneados = JSON.parse(jsonStr); // [{nombre, uri, fecha}]
-
-          // Combinar con los registros locales existentes
-          const mapaFinal = new Map();
-
-          // Primero los escaneados (tienen la URI real del sistema)
-          archivosEscaneados.forEach(arc => {
-              mapaFinal.set(arc.nombre, {
-                  nombre: arc.nombre,
-                  uri: arc.uri,
-                  fecha: arc.fecha,
-                  grado: extraerGradoDeNombre(arc.nombre)
-              });
-          });
-
-          // Luego los locales (tienen info extra como el grado exacto si el nombre falló)
-          listaPDFs.forEach(loc => {
-              if (mapaFinal.has(loc.nombre)) {
-                  const existente = mapaFinal.get(loc.nombre);
-                  mapaFinal.set(loc.nombre, { ...existente, ...loc, uri: existente.uri || loc.uri });
-              } else {
-                  // Si no está en el escaneo pero está en registros, lo mantenemos
-                  // (podría ser un archivo recién creado que el escáner aún no ve)
-                  mapaFinal.set(loc.nombre, loc);
-              }
-          });
-
-          listaPDFs = Array.from(mapaFinal.values()).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-          listaPDFsFiltrada = [...listaPDFs];
-          renderizarListaPDFs();
-
-      } catch (e) {
-          console.error("Error al procesar lista de PDFs:", e);
-      }
-  }
-
   function extraerGradoDeNombre(nombre) {
       const gradoOpciones = ['1° General', '1° Adm. Contable', '1° S. Eléctricos', '2° General', '2° Adm. Contable', '2° Sist. Eléctricos', '3° Adm. Contable', '3° Sist. Eléctricos'];
       for (const g of gradoOpciones) {
@@ -3473,14 +3262,6 @@
       }
       const action = target.dataset.action;
       if (action === 'asistentes-hoy') {
-          console.log('Clic en asistentes-hoy');
-          mostrarAsistentesHoy();
-      } else if (action === 'ausentes-hoy') {
-          console.log('Clic en ausentes-hoy');
-          mostrarAusentesHoy();
-      }
-  });
-
   document.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') {
           if (document.getElementById('modal-inicio-login').classList.contains('open')) ejecutarLogin();
@@ -4110,148 +3891,8 @@
               renotify: true
           });
       } catch (e) {
-          console.log('Error al mostrar notificación web:', e);
-      }
-  }
-
-  async function iniciarNotificacionesWeb() {
-      const hora = obtenerHoraProgramada();
-      if (!hora) return;
-      if (!puedeUsarNotificacionesWeb()) return;
-      if (Notification.permission === 'granted') {
-          programarNotificacionWeb(hora);
-      } else if (Notification.permission === 'default') {
-          const permiso = await pedirPermisoNotificacionesWeb();
-          if (permiso) {
-              programarNotificacionWeb(hora);
-          }
-      }
-  }
-
   function mostrarAsistentesHoy() {
-      console.log('Ejecutando mostrarAsistentesHoy');
-      const hoy = new Date();
-      let reportes = todosLosReportes.filter(r => {
-          const rDate = new Date(r.fecha);
-          return rDate.getFullYear() == hoy.getFullYear() && String(rDate.getMonth() + 1).padStart(2, '0') == String(hoy.getMonth() + 1).padStart(2, '0') && String(rDate.getDate()).padStart(2, '0') == String(hoy.getDate()).padStart(2, '0');
-      });
-
-      let asistentes = [];
-      reportes.forEach(r => {
-          if (r.asistentes && Array.isArray(r.asistentes)) {
-              r.asistentes.forEach(nombre => {
-                  asistentes.push({ nombre, grado: r.grado, seccion: r.seccion });
-              });
-          }
-      });
-
-      let html = '<h3 style="color: var(--green-600); text-align: center; margin-bottom: 20px;">Listado de Estudiantes que Asistieron</h3>';
-      html += '<div style="max-height: 400px; overflow-y: auto;">';
-      if (asistentes.length === 0) {
-          html += '<div style="text-align: center; color: var(--gray-600);">No hay datos de asistencia detallados para hoy.<br><small>Los detalles solo estarán disponibles en reportes nuevos.</small></div>';
-          if (reportes.length > 0) {
-              html += '<h4 style="color: var(--blue-800); margin-top: 20px;">Resumen por Grado/Sección:</h4>';
-              reportes.forEach(r => {
-                  html += `<div style="padding: 8px; border-bottom: 1px solid var(--gray-100); background: var(--blue-50);">
-                              <strong>${r.grado} ${r.seccion}</strong> - ${r.docente}<br>
-                              Presentes: ${r.presentes || 0} (M: ${r.m || 0}, F: ${r.f || 0})
-                          </div>`;
-              });
-          }
-      } else {
-          const grupos = {};
-          asistentes.forEach(a => {
-              const key = `${a.grado} ${a.seccion}`;
-              if (!grupos[key]) grupos[key] = [];
-              grupos[key].push(a.nombre);
-          });
-          Object.keys(grupos).sort().forEach(key => {
-              html += `<div style="padding: 10px; border-bottom: 1px solid var(--gray-200); background: #F1FCF5; margin-bottom: 8px;"><strong>${key}</strong> - ${grupos[key].length} presentes</div>`;
-              grupos[key].forEach((nombre, index) => {
-                  html += `<div style="padding: 6px 10px; border-bottom: 1px solid #EAEAEA; font-size: 13px;">${index + 1}. ${nombre}</div>`;
-              });
-          });
-      }
-      html += '</div>';
-      mostrarModalListado(html);
-  }
-
   function mostrarAusentesHoy() {
-      console.log('Ejecutando mostrarAusentesHoy');
-      const hoy = new Date();
-      let reportes = todosLosReportes.filter(r => {
-          const rDate = new Date(r.fecha);
-          return rDate.getFullYear() == hoy.getFullYear() && String(rDate.getMonth() + 1).padStart(2, '0') == String(hoy.getMonth() + 1).padStart(2, '0') && String(rDate.getDate()).padStart(2, '0') == String(hoy.getDate()).padStart(2, '0');
-      });
-
-      let ausentes = [];
-      reportes.forEach(r => {
-          if (r.ausentes_lista && Array.isArray(r.ausentes_lista)) {
-              r.ausentes_lista.forEach(nombre => {
-                  ausentes.push({ nombre, grado: r.grado, seccion: r.seccion });
-              });
-          }
-      });
-
-      let html = '<h3 style="color: var(--red-600); text-align: center; margin-bottom: 20px;">Listado de Estudiantes Ausentes</h3>';
-      html += '<div style="max-height: 400px; overflow-y: auto;">';
-      if (ausentes.length === 0) {
-          html += '<div style="text-align: center; color: var(--gray-600);">No hay datos de ausencias detallados para hoy.<br><small>Los detalles solo estarán disponibles en reportes nuevos.</small></div>';
-          if (reportes.length > 0) {
-              html += '<h4 style="color: var(--red-600); margin-top: 20px;">Resumen por Grado/Sección:</h4>';
-              reportes.forEach(r => {
-                  html += `<div style="padding: 8px; border-bottom: 1px solid var(--gray-100); background: rgba(183,28,28,0.08);">
-                              <strong>${r.grado} ${r.seccion}</strong> - ${r.docente}<br>
-                              Ausentes: ${r.ausentes || 0}
-                          </div>`;
-              });
-          }
-      } else {
-          const grupos = {};
-          ausentes.forEach(a => {
-              const key = `${a.grado} ${a.seccion}`;
-              if (!grupos[key]) grupos[key] = [];
-              grupos[key].push(a.nombre);
-          });
-          Object.keys(grupos).sort().forEach(key => {
-              html += `<div style="padding: 10px; border-bottom: 1px solid var(--gray-200); background: rgba(183,28,28,0.08); margin-bottom: 8px;"><strong>${key}</strong> - ${grupos[key].length} ausentes</div>`;
-              grupos[key].forEach((nombre, index) => {
-                  html += `<div style="padding: 6px 10px; border-bottom: 1px solid #EAEAEA; font-size: 13px; background-color: #ffcccc; color: #cc0000; font-weight: bold;">${index + 1}. ${nombre}</div>`;
-              });
-          });
-      }
-      html += '</div>';
-      mostrarModalListado(html);
-  }
-
-  async function actualizarStatusDocente(docente, status) {
-      try {
-          const data = {
-              tipo_post: "update_docente_status",
-              docente: docente,
-              status: status,
-              timestamp: Date.now()  // Timestamp actual en milisegundos
-          };
-          await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(data) });
-      } catch (e) {
-          console.log('Error actualizando status:', e);
-      }
-  }
-
-  async function obtenerStatusDocentes() {
-      try {
-          const res = await fetch(SCRIPT_URL + '?tipo=docentes_status');
-          const data = await res.json();
-          docentesStatus = {};
-          data.forEach(d => {
-              docentesStatus[d.docente] = d.status;
-          });
-          actualizarListaStatus();
-      } catch (e) {
-          console.log('Error obteniendo status:', e);
-      }
-  }
-
   function actualizarListaStatus() {
       const contenedor = document.getElementById('lista-status-docentes');
       if (!contenedor) return;
@@ -4320,45 +3961,6 @@
 
   if ('serviceWorker' in navigator && window.location.protocol !== 'file:' && !esAppAndroid()) {
       navigator.serviceWorker.register('sw.js')
-          .then(reg => console.log('Service Worker registrado:', reg.scope))
-          .catch(err => console.log('Error registrando Service Worker:', err));
-  }
-
-  let deferredInstallPrompt = null;
-
-  window.addEventListener('beforeinstallprompt', (event) => {
-      event.preventDefault();
-      deferredInstallPrompt = event;
-      const installButton = document.getElementById('btn-install-pwa');
-      const installHelper = document.getElementById('install-pwa-helper');
-      if (installButton) {
-          installButton.style.display = 'block';
-      }
-      if (installHelper) {
-          installHelper.textContent = 'Pulsa el botón para instalar INMU como aplicación en tu dispositivo.';
-          installHelper.style.display = 'inline-block';
-      }
-  });
-
-  async function mostrarInstallPrompt() {
-      if (!deferredInstallPrompt) return;
-      deferredInstallPrompt.prompt();
-      const choiceResult = await deferredInstallPrompt.userChoice;
-      const installButton = document.getElementById('btn-install-pwa');
-      const installHelper = document.getElementById('install-pwa-helper');
-      if (choiceResult.outcome === 'accepted') {
-          console.log('Usuario aceptó instalar la PWA.');
-          if (installHelper) installHelper.textContent = 'La app se instalará. Si no ves nada, revisa la bandeja del navegador.';
-      } else {
-          console.log('Usuario rechazó instalar la PWA.');
-          if (installHelper) installHelper.textContent = 'Instalación cancelada. Puedes intentar nuevamente más tarde.';
-      }
-      deferredInstallPrompt = null;
-      if (installButton) {
-          installButton.style.display = 'none';
-      }
-  }
-
   function mostrarModalListado(html) {
       // Eliminar overlay previo si existe
       const previo = document.getElementById('modal-listado-dinamico');
@@ -4446,46 +4048,6 @@
 
   // --- MANEJO DE ACCIONES NATIVAS (Notificaciones) ---
   function onNativeAction(action, payloadStr) {
-      console.log("Native action received:", action, payloadStr);
-      try {
-          const payload = JSON.parse(payloadStr);
-          if (action === "PASAR_ASISTENCIA") {
-              // 1. Asegurarnos de entrar a la interfaz principal si estamos en el login
-              if (document.getElementById("modal-inicio-login").classList.contains('open') ||
-                  document.getElementById("modal-inicio-dropdown").classList.contains('open')) {
-                  const usuario = payload.docente || "invitado";
-                  desbloquearInterfazMain(usuario);
-              }
-
-              // 2. Cambiar a la vista de docente
-              cambiarVista('docente');
-
-              // 3. Rellenar campos (la carga de alumnos se disparará sola si inicializarBaseDatos ya terminó,
-              // o cuando termine ya que lee estos valores del DOM)
-              if (payload.grado) document.getElementById('grado-select').value = payload.grado;
-              if (payload.seccion) document.getElementById('seccion-select').value = payload.seccion;
-              if (payload.docente) document.getElementById('docente-nombre').value = payload.docente;
-
-              // 4. Forzar carga si ya tenemos los datos
-              if (payload.grado && payload.seccion && baseDatosAlumnos.length > 0) {
-                  cargarAlumnos();
-              }
-
-              // 5. Guardar en sesión para que persista
-              guardarSesion(payload.docente || "invitado", payload.grado, payload.seccion, payload.docente);
-          }
-      } catch (e) {
-          console.error("Error handling native action:", e);
-      }
-  }
-
-  // === FUNCIONES PARA EXPEDIENTE PERSONAL ===
-
-  let alumnosExpediente = [];
-  let alumnoSeleccionado = null;
-  let estadoSeleccionExpediente = false;
-  let alumnosFiltradosExpediente = [];
-
   function filtrarAlumnosExpediente() {
       const query = document.getElementById('buscar-alumno').value.toLowerCase().trim();
       const lista = document.getElementById('lista-alumnos-expediente');
@@ -4931,74 +4493,188 @@
       document.body.appendChild(overlay);
       overlayInformeActual = overlay;
       document.getElementById('btn-cerrar-dialogo').onclick = () => overlay.remove();
-      window.gradoInformeSeleccionado = '';
-      window.seccionInformeSeleccionada = '';
   }
 
   function generarInformeSeleccionado() {
-      window.gradoInformeSeleccionado = document.getElementById('dlg-grado-informe').value;
-      window.seccionInformeSeleccionada = document.getElementById('dlg-seccion-informe').value;
+      const grado = document.getElementById('dlg-grado-informe')?.value || '';
+      const seccion = document.getElementById('dlg-seccion-informe')?.value || '';
       if (overlayInformeActual) overlayInformeActual.remove();
-      generarInformeConParametros();
+      generarInformeConParametros(grado, seccion);
   }
 
-  async function generarInformeConParametros() {
-      let grado = window.gradoInformeSeleccionado || '';
-      let seccion = window.seccionInformeSeleccionada || '';
-      const docente = document.getElementById('docente-nombre').value.trim();
-      
-      if (!grado && !seccion) {
-          grado = 'Todos';
-          seccion = 'Todos';
-      }
-
-      const alumnosActuales = grado === 'Todos' ? baseDatosAlumnos : baseDatosAlumnos.filter(a => a.grado === grado && (!seccion || seccion === 'Todos' ? true : a.seccion === seccion));
+  async function generarInformeConParametros(grado, seccion) {
+      const docente = document.getElementById('docente-nombre')?.value || 'No registrado';
+      const finalGrado = grado || 'Todos';
+      const finalSeccion = seccion || 'Todos';
       
       const content = document.createElement('div');
       content.innerHTML = `
-          <div style="padding:20px; font-family: Arial, sans-serif; background:white;">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
-              <img src="logo2.jpg" style="height:70px; width:auto;" />
-              <div style="text-align:center; flex:1; min-width:220px;">
-                <h1 style="font-size:22px; color:#0C447C; margin:0;">INFORME DE ASISTENCIA</h1>
-                <p style="margin:4px 0 0 0; font-size:14px; color:#444;">${grado} ${seccion}</p>
-                <p style="margin:4px 0 0 0; font-size:13px; color:#666;">Docente: ${docente || 'No registrado'}</p>
-              </div>
-              <img src="logo3.jpg" style="height:70px; width:auto;" />
+          <div style="padding:20px; font-family:Arial, sans-serif; background:white;">
+            <div style="text-align:center; margin-bottom:20px;">
+              <img src="logo2.jpg" style="height:60px; margin-right:10px;" />
+              <h2 style="color:#0C447C; margin:0;">INFORME DE ASISTENCIA</h2>
+              <p>${finalGrado} - ${finalSeccion} | Docente: ${docente}</p>
             </div>
-            <div style="border:1px solid #D1D5DB; border-radius:12px; padding:16px; margin-bottom:20px; background:#F8FAFC;">
-              <p style="margin:0; font-size:14px;"><strong>Grado/Sección:</strong> ${grado} ${seccion}</p>
-              <p style="margin:6px 0 0 0; font-size:14px;"><strong>Total Alumnos:</strong> ${alumnosActuales.length}</p>
-              <p style="margin:6px 0 0 0; font-size:14px;"><strong>Fecha:</strong> ${new Date().toLocaleDateString('es-ES')}</p>
-            </div>
-            <h3 style="font-size:16px; color:#185FA5; margin-bottom:10px;">Resumen rápido</h3>
-            <div style="font-size:14px; color:#333; line-height:1.6;">
-              <p>Total de alumnos registrados: ${alumnosActuales.length}</p>
-              <p>Informe generado: ${new Date().toLocaleDateString('es-ES')} a las ${new Date().toLocaleTimeString('es-ES')}</p>
+            <div style="font-size:14px; color:#333; line-height:1.8;">
+              <p><strong>Grado:</strong>${finalGrado}</p>
+              <p><strong>Sección:</strong> ${finalSeccion}</p>
+              <p><strong>Docente:</strong> ${docente}</p>
+              <p><strong>Fecha de generación:</strong> ${new Date().toLocaleDateString('es-ES')}</p>
             </div>
           </div>
       `;
-
-      // Esperar a que las imágenes carguen
+      
       document.body.appendChild(content);
       await new Promise(resolve => setTimeout(resolve, 500));
-
+      
       const opt = {
           margin: 10,
-          filename: `Informe_${grado.replace(/\s+/g, '_')}_${seccion.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`,
+          filename: `Informe_${finalGrado.replace(/\\s+/g, '_')}_${finalSeccion}_${new Date().toISOString().split('T')[0]}.pdf`,
           image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: false, allowTaint: true, foreignObjectRendering: false },
-          jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
-          pagebreak: { mode: ['css', 'legacy'] }
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
       };
-
+      
       html2pdf().set(opt).from(content).save().finally(() => {
-          document.body.removeChild(content);
+          if (document.body.contains(content)) document.body.removeChild(content);
       });
   }
 
   let overlayAsistenciaActual = null;
 
+  function abrirDialogoGenerarAsistenciaMensual() {
+      const html = `
+          <div style="padding:20px; font-family:Arial, sans-serif;">
+            <h3 style="color:#0C447C; margin-bottom:20px;">Generar Asistencia Mensual</h3>
+            <p style="color:#666; margin-bottom:15px;">Seleccione grado y sección</p>
+            <div style="margin-bottom:15px;">
+              <label style="display:block; margin-bottom:6px; font-weight:bold;">Grado:</label>
+              <select id="dlg-grado-asistencia" style="width:100%; padding:10px;">
+                <option value="">-- Todos --</option>
+                <option value="1° General">1° General</option>
+                <option value="1° Adm. Contable">1° Adm. Contable</option>
+                <option value="2° General">2° General</option>
+                <option value="3° Adm. Contable">3° Adm. Contable</option>
+              </select>
+            </div>
+            <div style="margin-bottom:20px;">
+              <label style="display:block; margin-bottom:6px; font-weight:bold;">Sección:</label>
+              <select id="dlg-seccion-asistencia" style="width:100%; padding:10px;">
+                <option value="">-- Todos --</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+              </select>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button onclick="generarAsistenciaseleccionada()" style="flex:1; padding:10px; background:#145A32; color:white; cursor:pointer;">Generar</button>
+              <button id="btn-cerrar-asistencia" style="flex:1; padding:10px; background:#999; color:white; cursor:pointer;">Cerrar</button>
+            </div>
+          </div>
+      `;
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2500; display:flex; align-items:center; justify-content:center;';
+      const modal = document.createElement('div');
+      modal.style.cssText = 'background:white; padding:20px; border-radius:10px; width:90%; max-width:400px;';
+      modal.innerHTML = html;
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+      overlayAsistenciaActual = overlay;
+      overlay.onclick = e => { if(e.target === overlay) overlay.remove(); };
+      document.getElementById('btn-cerrar-asistencia').onclick = () => overlay.remove();
+  }
+
+  function generarAsistenciaseleccionada() {
+      const grado = document.getElementById('dlg-grado-asistencia')?.value || '';
+      const seccion = document.getElementById('dlg-seccion-asistencia')?.value || '';
+      if (overlayAsistenciaActual) overlayAsistenciaActual.remove();
+      generarAsistenciaMensualSeleccionada(grado, seccion);
+  }
+
+  async function generarAsistenciaMensualSeleccionada(grado, seccion) {
+      const docente = document.getElementById('docente-nombre')?.value || 'No registrado';
+      const finalGrado = grado || 'Todos';
+      const finalSeccion = seccion || 'Todos';
+      
+      const content = document.createElement('div');
+      content.innerHTML = `
+          <div style="padding:20px; font-family:Arial, sans-serif; background:white;">
+            <div style="text-align:center; margin-bottom:20px;">
+              <img src="logo2.jpg" style="height:60px; margin-right:10px;" />
+              <h2 style="color:#0C447C; margin:0;">ASISTENCIA MENSUAL</h2>
+              <p>${finalGrado} - ${finalSeccion}</p>
+            </div>
+            <div style="font-size:14px; color:#333;">
+              <p><strong>Mes:</strong> ${new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</p>
+              <p><strong>Docente:</strong> ${docente}</p>
+            </div>
+          </div>
+      `;
+      
+      document.body.appendChild(content);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const opt = {
+          margin: 10,
+          filename: `Asistencia_${finalGrado.replace(/\\s+/g, '_')}_${finalSeccion}_${new Date().getMonth() + 1}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+      };
+      
+      html2pdf().set(opt).from(content).save().finally(() => {
+          if (document.body.contains(content)) document.body.removeChild(content);
+      });
+  }
+  function abrirDialogoActualizarEstadoAlumno() {
+      const html = `
+          <div style="padding:20px; font-family:Arial, sans-serif;">
+            <h3 style="color:#0C447C; margin-bottom:20px;">Generar Informe</h3>
+            <p style="color:#666; margin-bottom:15px;">Seleccione grado y sección (dados en blanco se generará para TODOS)</p>
+            <div style="margin-bottom:15px;">
+              <label style="display:block; margin-bottom:6px; font-weight:bold;">Grado:</label>
+              <select id="dlg-grado-informe" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">
+                <option value="">-- Todos --</option>
+                <option value="1° General">1° General</option>
+                <option value="1° Adm. Contable">1° Adm. Contable</option>
+                <option value="1° S. Eléctricos">1° S. Eléctricos</option>
+                <option value="2° General">2° General</option>
+                <option value="2° Adm. Contable">2° Adm. Contable</option>
+                <option value="2° Sist. Eléctricos">2° Sist. Eléctricos</option>
+                <option value="3° Adm. Contable">3° Adm. Contable</option>
+                <option value="3° Sist. Eléctricos">3° Sist. Eléctricos</option>
+              </select>
+            </div>
+            <div style="margin-bottom:20px;">
+              <label style="display:block; margin-bottom:6px; font-weight:bold;">Sección:</label>
+              <select id="dlg-seccion-informe" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">
+                <option value="">-- Todos --</option>
+                <option value="A">"A"</option>
+                <option value="B">"B"</option>
+                <option value="Única">Única</option>
+              </select>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button onclick="generarInformeSeleccionado()" style="flex:1; padding:12px; background:#2E86C1; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Generar</button>
+              <button id="btn-cerrar-dialogo" style="flex:1; padding:12px; background:#999; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Cerrar</button>
+            </div>
+          </div>
+      `;
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2500; display:flex; align-items:center; justify-content:center;';
+      overlay.addEventListener('click', function(e) { if(e.target === overlay) overlay.remove(); });
+      const modal = document.createElement('div');
+      modal.style.cssText = 'background:white; padding:20px; border-radius:12px; width:90%; max-width:400px; box-shadow:0 4px 20px rgba(0,0,0,0.3);';
+      modal.onclick = e => e.stopPropagation();
+      modal.innerHTML = html;
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+      overlayInformeActual = overlay;
+      document.getElementById('btn-cerrar-dialogo').onclick = () => overlay.remove();
+      window.gradoInformeSeleccionado = '';
+      window.seccionInformeSeleccionada = '';
+  }
+
+  function generarInformeSeleccionado() {
   function abrirDialogoGenerarAsistenciaMensual() {
       const html = `
           <div style="padding:20px; font-family:Arial, sans-serif;">
@@ -5037,103 +4713,6 @@
       overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2500; display:flex; align-items:center; justify-content:center;';
       overlay.addEventListener('click', function(e) { if(e.target === overlay) overlay.remove(); });
       const modal = document.createElement('div');
-      modal.style.cssText = 'background:white; padding:20px; border-radius:12px; width:90%; max-width:400px; box-shadow:0 4px 20px rgba(0,0,0,0.3);';
-      modal.onclick = e => e.stopPropagation();
-      modal.innerHTML = html;
-      overlay.appendChild(modal);
-      document.body.appendChild(overlay);
-      overlayAsistenciaActual = overlay;
-      document.getElementById('btn-cerrar-dialogo-asistencia').onclick = () => overlay.remove();
-      window.gradoAsistenciaSeleccionado = '';
-      window.seccionAsistenciaSeleccionada = '';
-  }
-
-  function generarAsistenciaseleccionada() {
-      window.gradoAsistenciaSeleccionado = document.getElementById('dlg-grado-asistencia').value;
-      window.seccionAsistenciaSeleccionada = document.getElementById('dlg-seccion-asistencia').value;
-      if (overlayAsistenciaActual) overlayAsistenciaActual.remove();
-      generarAsistenciaMensualSeleccionada();
-  }
-
-  async function generarAsistenciaMensualSeleccionada() {
-      let grado = window.gradoAsistenciaSeleccionado || '';
-      let seccion = window.seccionAsistenciaSeleccionada || '';
-      const docente = document.getElementById('docente-nombre').value.trim();
-      
-      const ahora = new Date();
-      const mesActual = ahora.getMonth();
-      const anioActual = ahora.getFullYear();
-
-      let reportes = Array.isArray(todosLosReportes) ? todosLosReportes : [];
-      if (!reportes.length) {
-          try {
-              const response = await fetch(`${SCRIPT_URL}?tipo=reportes`);
-              reportes = await response.json();
-          } catch (e) {
-              console.error('Error cargando reportes:', e);
-              return alert('No se pudo cargar los reportes.');
-          }
-      }
-
-      const reportesMes = grado ? reportes.filter(r => {
-          const fecha = new Date(r.fecha);
-          return r.grado === grado && (!seccion ? true : r.seccion === seccion) && fecha.getMonth() === mesActual && fecha.getFullYear() === anioActual;
-      }) : reportes.filter(r => {
-          const fecha = new Date(r.fecha);
-          return fecha.getMonth() === mesActual && fecha.getFullYear() === anioActual;
-      });
-
-      if (reportesMes.length === 0) {
-          return alert('No hay datos de asistencia para el mes actual con los criterios seleccionados.');
-      }
-
-      const mesNombre = ahora.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-      const content = document.createElement('div');
-      content.innerHTML = `
-          <div style="padding:20px; font-family: Arial, sans-serif; background:white;">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
-              <img src="logo2.jpg" style="height:70px; width:auto;" />
-              <div style="text-align:center; flex:1; min-width:220px;">
-                <h1 style="font-size:22px; color:#0C447C; margin:0;">ASISTENCIA MENSUAL</h1>
-                <p style="margin:4px 0 0 0; font-size:14px; color:#444;">${grado || 'Todos'} ${seccion || 'Todos'}</p>
-                <p style="margin:4px 0 0 0; font-size:13px; color:#666;">${mesNombre}</p>
-              </div>
-              <img src="logo3.jpg" style="height:70px; width:auto;" />
-            </div>
-            <div style="border:1px solid #D1D5DB; border-radius:12px; padding:16px; margin-bottom:20px; background:#F8FAFC;">
-              <p style="margin:0; font-size:14px;"><strong>Días reportados:</strong> ${reportesMes.length}</p>
-              <p style="margin:6px 0 0 0; font-size:14px;"><strong>Total Presentes:</strong> ${reportesMes.reduce((sum, r) => sum + (parseInt(r.presentes) || 0), 0)}</p>
-              <p style="margin:6px 0 0 0; font-size:14px;"><strong>Total Ausentes:</strong> ${reportesMes.reduce((sum, r) => sum + (parseInt(r.ausentes) || 0), 0)}</p>
-              <p style="margin:6px 0 0 0; font-size:14px;"><strong>Total Permisos:</strong> ${reportesMes.reduce((sum, r) => sum + (parseInt(r.permisos) || 0), 0)}</p>
-            </div>
-            <div style="font-size:14px; color:#333;">
-              ${reportesMes.slice(0, 20).map((r, index) => `
-                <div style="margin-bottom:12px; padding:12px; border:1px solid #E5E7EB; border-radius:10px; background:#FFF; page-break-inside: avoid;">
-                  <p style="margin:0 0 6px 0;"><strong>${new Date(r.fecha).toLocaleDateString('es-ES')}</strong> — Grado: ${r.grado} ${r.seccion} — Presentes: ${r.presentes || 0}, Ausentes: ${r.ausentes || 0}, Permisos: ${r.permisos || 0}</p>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-      `;
-
-      // Esperar a que las imágenes carguen
-      document.body.appendChild(content);
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const opt = {
-          margin: 10,
-          filename: `Asistencia_Mensual_${grado.replace(/\s+/g, '_')}_${seccion.replace(/\s+/g, '_')}_${mesNombre.replace(/\s+/g, '_')}.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: false, allowTaint: true, foreignObjectRendering: false },
-          jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
-          pagebreak: { mode: ['css', 'legacy'] }
-      };
-
-      html2pdf().set(opt).from(content).save().finally(() => {
-          document.body.removeChild(content);
-      });
-  }
-
   function abrirDialogoActualizarEstadoAlumno() {
       const html = `
           <div style="padding:20px; font-family:Arial, sans-serif;">
