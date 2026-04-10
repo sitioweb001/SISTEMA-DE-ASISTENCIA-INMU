@@ -2185,6 +2185,11 @@
                   });
               }
           } catch (e) {
+              console.error('Error cargando el estado de asistencia:', e);
+          }
+      }
+  }
+
   function mostrarModalPermiso(index) {
       const alumno = alumnosFiltrados[index];
       const modal = document.createElement('div');
@@ -2252,22 +2257,32 @@
       const btn = document.getElementById('btn-pdf-generate');
 
       if (!grado || !seccion || !docente) return alert("Faltan datos: grado, sección o nombre del docente.");
-      btn.disabled = true; btn.innerText = "⏳ Generando PDF...";
+      btn.disabled = true;
+      btn.innerText = "⏳ Generando PDF...";
 
-      const presentes = [], ausentes = [], permisos = [], personalObservaciones = []; let masc = 0, fem = 0;
+      const presentes = [];
+      const ausentes = [];
+      const permisos = [];
+      const personalObservaciones = [];
+      let masc = 0;
+      let fem = 0;
+
       alumnosFiltrados.forEach((alumno, index) => {
           const chk = document.getElementById(`chk-${index}`);
           const estado = chk ? (chk.dataset.estado || (chk.checked ? 'presente' : 'ausente')) : 'presente';
           const observacionPersonal = chk ? (chk.dataset.observacionPersonal || '') : '';
           const justificante = chk ? (chk.dataset.justificante || '') : '';
+
           if (estado === 'permiso') {
               permisos.push({ ...alumno, justificante });
           } else if (chk && chk.checked) {
               presentes.push(alumno);
-              alumno.sexo === 'M' ? masc++ : fem++;
+              if (alumno.sexo === 'M') masc++;
+              else if (alumno.sexo === 'F') fem++;
           } else {
               ausentes.push(alumno);
           }
+
           if (observacionPersonal) {
               personalObservaciones.push({
                   nombre: alumno.nombre,
@@ -2286,46 +2301,72 @@
       const yyyy = ahora.getFullYear();
       const fechaArchivo = `${dd}-${mm}-${yyyy}`;
       const secLimpia = seccion.replace(/"/g, '');
-
       const docenteLimpio = docente.replace(/\./g, '').replace(/[/\\:*?"<>|]/g, '_').trim();
       const nombreBase = `Asistencia ${grado} ${secLimpia} - ${fechaArchivo} - ${docenteLimpio}`;
       const { nombreArchivo } = construirNombreArchivo(nombreBase);
+      const reprobados = [];
+      const estudiantesPeligro = [];
 
-      fetch(SCRIPT_URL, {
-          method: 'POST', mode: 'no-cors',
-          body: JSON.stringify({
-              tipo_post: "asistencia",
-              fecha: ahora.toISOString(),
-              grado, seccion, docente,
-              presentes: presentes.length,
-              ausentes: ausentes.length,
-              permisos: permisos.length,
-              m: masc, f: fem,
-              asistentes: presentes.map(a => a.nombre),
-              ausentes_lista: ausentes.map(a => a.nombre),
-              permisos_lista: permisos.map(a => ({
-                  nombre: a.nombre,
-                  sexo: a.sexo,
-                  nie: a.nie,
-                  justificante: a.justificante || ''
-              })),
-              observacion_general: obsGeneral
-          })
-              reader.onloadend = function () {
-                  const base64 = reader.result.split(',')[1];
-                  registrarPDFGuardado(nombreArchivo, carpetaPDFUri || '', grado, '');
-                  AndroidPDF.guardarBase64(base64, nombreArchivo, carpetaPDFUri || '');
-              };
-              reader.readAsDataURL(pdfBlob);
-          } else {
-              await html2pdf().set(opt).from(containerHTML).save();
-              registrarPDFGuardado(nombreArchivo, '', grado, '');
-          }
+      try {
+          const containerHTML = generarHTMLParaPDF({
+              grado,
+              seccion,
+              docente,
+              fechaStr,
+              secLimpia,
+              presentes,
+              ausentes,
+              permisos,
+              masc,
+              fem,
+              obsGeneral,
+              reprobados,
+              estudiantesPeligro,
+              personalObservaciones
+          });
+
+          await fetch(SCRIPT_URL, {
+              method: 'POST',
+              mode: 'no-cors',
+              body: JSON.stringify({
+                  tipo_post: 'asistencia',
+                  fecha: ahora.toISOString(),
+                  grado,
+                  seccion,
+                  docente,
+                  presentes: presentes.length,
+                  ausentes: ausentes.length,
+                  permisos: permisos.length,
+                  m: masc,
+                  f: fem,
+                  asistentes: presentes.map(a => a.nombre),
+                  ausentes_lista: ausentes.map(a => a.nombre),
+                  permisos_lista: permisos.map(a => ({
+                      nombre: a.nombre,
+                      sexo: a.sexo,
+                      nie: a.nie,
+                      justificante: a.justificante || ''
+                  })),
+                  observacion_general: obsGeneral
+              })
+          }).catch(() => {});
+
+          const opt = {
+              margin: 10,
+              filename: nombreArchivo,
+              image: { type: 'jpeg', quality: 0.98 },
+              html2canvas: { scale: 2, useCORS: true, allowTaint: true },
+              jsPDF: { unit: 'mm', format: 'letter', orientation: orientacion },
+              pagebreak: { mode: ['css', 'legacy'] }
+          };
+
+          await html2pdf().set(opt).from(containerHTML).save();
       } catch (error) {
-          alert("❌ Error al generar PDF: " + error.message);
+          console.error('Error generando PDF:', error);
+          alert('❌ Error al generar PDF: ' + (error.message || error));
       } finally {
           btn.disabled = false;
-          btn.innerText = "📥 Generar PDF y Guardar Reporte";
+          btn.innerText = '📥 Generar PDF y Guardar Reporte';
       }
   }
 
@@ -2623,13 +2664,19 @@
       actualizarContadoresAsistencia();
 
       fetch(SCRIPT_URL, {
-          method: 'POST', mode: 'no-cors',
+          method: 'POST',
+          mode: 'no-cors',
           body: JSON.stringify({
               tipo_post: "actualizar_asistencia",
-              grado, seccion, docente,
+              grado,
+              seccion,
+              docente,
               fecha: new Date().toISOString(),
               actualizaciones
           })
+      }).catch(() => {});
+  }
+
   function filtrarPanelActualizarAsistencia() {
       const filtro = (document.getElementById('update-asistencia-search') || {}).value.toLowerCase().trim();
       document.querySelectorAll('.update-student-item').forEach(item => {
@@ -2772,6 +2819,10 @@
                       observacion: personalObs
                   }]
               })
+          }).catch(() => {});
+      }
+  }
+
   function mostrarNotificacion(mensaje, tipo) {
       const colores = { success: '#1D9E75', warning: '#F39C12', error: 'var(--red-600)', info: '#185FA5' };
       const color = colores[tipo] || colores.info;
@@ -2842,23 +2893,70 @@
   }
 
   function cargarListaPDFs() {
+      console.log("Iniciando carga de lista de PDFs...");
+      const container = document.getElementById('pdf-lista-container');
+
+      // 1. Cargar lo que tenemos en el registro local (AndroidStorage)
+      const registros = obtenerRegistrosPDF();
+      listaPDFs = [...registros].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+      listaPDFsFiltrada = [...listaPDFs];
+
+      // Renderizar lo que ya conocemos de inmediato
+      renderizarListaPDFs();
+
+      // 2. Si estamos en Android, pedir un escaneo real del almacenamiento
+      if (typeof AndroidPDF !== 'undefined' && typeof AndroidPDF.listarPDFs === 'function') {
+          console.log("Solicitando escaneo de archivos al sistema nativo...");
+          AndroidPDF.listarPDFs(carpetaPDFUri || '');
+      }
+  }
+
+  // Llamada desde Kotlin con la lista de PDFs encontrados en la carpeta
   function onListaPDFsRecibida(jsonStr) {
+      console.log("Lista de PDFs recibida desde el sistema nativo");
+      try {
+          const archivosEscaneados = JSON.parse(jsonStr); // [{nombre, uri, fecha}]
+
+          // Combinar con los registros locales existentes
+          const mapaFinal = new Map();
+
+          // Primero los escaneados (tienen la URI real del sistema)
+          archivosEscaneados.forEach(arc => {
+              mapaFinal.set(arc.nombre, {
+                  nombre: arc.nombre,
+                  uri: arc.uri,
+                  fecha: arc.fecha,
+                  grado: extraerGradoDeNombre(arc.nombre)
+              });
+          });
+
+          // Luego los locales (tienen info extra como el grado exacto si el nombre falló)
+          listaPDFs.forEach(loc => {
+              if (mapaFinal.has(loc.nombre)) {
+                  const existente = mapaFinal.get(loc.nombre);
+                  mapaFinal.set(loc.nombre, { ...existente, ...loc, uri: existente.uri || loc.uri });
+              } else {
+                  // Si no está en el escaneo pero está en registros, lo mantenemos
+                  // (podría ser un archivo recién creado que el escáner aún no ve)
+                  mapaFinal.set(loc.nombre, loc);
+              }
+          });
+
+          listaPDFs = Array.from(mapaFinal.values()).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+          listaPDFsFiltrada = [...listaPDFs];
+          renderizarListaPDFs();
+
+      } catch (e) {
+          console.error("Error al procesar lista de PDFs:", e);
+      }
+  }
+
   function extraerGradoDeNombre(nombre) {
       const gradoOpciones = ['1° General', '1° Adm. Contable', '1° S. Eléctricos', '2° General', '2° Adm. Contable', '2° Sist. Eléctricos', '3° Adm. Contable', '3° Sist. Eléctricos'];
       for (const g of gradoOpciones) {
           if (nombre.includes(g)) return g;
       }
       return '';
-  }
-
-  function extraerFechaDeNombre(nombre) {
-      // Formato: "Asistencia Grado Secc - DD-MM-YYYY - Docente.pdf"
-      const match = nombre.match(/(\d{2}-\d{2}-\d{4})/);
-      if (match) {
-          const [d, m, y] = match[1].split('-');
-          return new Date(`${y}-${m}-${d}`);
-      }
-      return null;
   }
 
   function formatearFechaCorta(isoStr) {
@@ -3262,6 +3360,14 @@
       }
       const action = target.dataset.action;
       if (action === 'asistentes-hoy') {
+          console.log('Clic en asistentes-hoy');
+          mostrarAsistentesHoy();
+      } else if (action === 'ausentes-hoy') {
+          console.log('Clic en ausentes-hoy');
+          mostrarAusentesHoy();
+      }
+  });
+
   document.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') {
           if (document.getElementById('modal-inicio-login').classList.contains('open')) ejecutarLogin();
@@ -3891,8 +3997,149 @@
               renotify: true
           });
       } catch (e) {
+          console.log('Error al mostrar notificación web:', e);
+      }
+  }
+
+  async function iniciarNotificacionesWeb() {
+      const hora = obtenerHoraProgramada();
+      if (!hora) return;
+      if (!puedeUsarNotificacionesWeb()) return;
+      if (Notification.permission === 'granted') {
+          programarNotificacionWeb(hora);
+      } else if (Notification.permission === 'default') {
+          const permiso = await pedirPermisoNotificacionesWeb();
+          if (permiso) {
+              programarNotificacionWeb(hora);
+          }
+      }
+  }
+
   function mostrarAsistentesHoy() {
+      console.log('Ejecutando mostrarAsistentesHoy');
+      const hoy = new Date();
+      let reportes = todosLosReportes.filter(r => {
+          const rDate = new Date(r.fecha);
+          return rDate.getFullYear() == hoy.getFullYear() && String(rDate.getMonth() + 1).padStart(2, '0') == String(hoy.getMonth() + 1).padStart(2, '0') && String(rDate.getDate()).padStart(2, '0') == String(hoy.getDate()).padStart(2, '0');
+      });
+
+      let asistentes = [];
+      reportes.forEach(r => {
+          if (r.asistentes && Array.isArray(r.asistentes)) {
+              r.asistentes.forEach(nombre => {
+                  asistentes.push({ nombre, grado: r.grado, seccion: r.seccion });
+              });
+          }
+      });
+
+      let html = '<h3 style="color: var(--green-600); text-align: center; margin-bottom: 20px;">Listado de Estudiantes que Asistieron</h3>';
+      html += '<div style="max-height: 400px; overflow-y: auto;">';
+      if (asistentes.length === 0) {
+          html += '<div style="text-align: center; color: var(--gray-600);">No hay datos de asistencia detallados para hoy.<br><small>Los detalles solo estarán disponibles en reportes nuevos.</small></div>';
+          if (reportes.length > 0) {
+              html += '<h4 style="color: var(--blue-800); margin-top: 20px;">Resumen por Grado/Sección:</h4>';
+              reportes.forEach(r => {
+                  html += `<div style="padding: 8px; border-bottom: 1px solid var(--gray-100); background: var(--blue-50); margin-bottom: 8px;">
+                              <strong>${r.grado} ${r.seccion}</strong> - ${r.docente}<br>
+                              Presentes: ${r.presentes || 0} (M: ${r.m || 0}, F: ${r.f || 0})
+                          </div>`;
+              });
+          }
+      } else {
+          const grupos = {};
+          asistentes.forEach(a => {
+              const key = `${a.grado} ${a.seccion}`;
+              if (!grupos[key]) grupos[key] = [];
+              grupos[key].push(a.nombre);
+          });
+          Object.keys(grupos).sort().forEach(key => {
+              html += `<div style="padding: 10px; border-bottom: 1px solid #EAEAEA; background: #F1FCF5; margin-bottom: 8px;"><strong>${key}</strong> - ${grupos[key].length} presentes</div>`;
+              grupos[key].forEach((nombre, index) => {
+                  html += `<div style="padding: 6px 10px; border-bottom: 1px solid #EAEAEA; font-size: 13px;">${index + 1}. ${nombre}</div>`;
+              });
+          });
+      }
+      html += '</div>';
+      mostrarModalListado(html);
+  }
+
   function mostrarAusentesHoy() {
+      console.log('Ejecutando mostrarAusentesHoy');
+      const hoy = new Date();
+      let reportes = todosLosReportes.filter(r => {
+          const rDate = new Date(r.fecha);
+          return rDate.getFullYear() == hoy.getFullYear() && String(rDate.getMonth() + 1).padStart(2, '0') == String(hoy.getMonth() + 1).padStart(2, '0') && String(rDate.getDate()).padStart(2, '0') == String(hoy.getDate()).padStart(2, '0');
+      });
+
+      let ausentes = [];
+      reportes.forEach(r => {
+          if (r.ausentes_lista && Array.isArray(r.ausentes_lista)) {
+              r.ausentes_lista.forEach(nombre => {
+                  ausentes.push({ nombre, grado: r.grado, seccion: r.seccion });
+              });
+          }
+      });
+
+      let html = '<h3 style="color: var(--red-600); text-align: center; margin-bottom: 20px;">Listado de Estudiantes Ausentes</h3>';
+      html += '<div style="max-height: 400px; overflow-y: auto;">';
+      if (ausentes.length === 0) {
+          html += '<div style="text-align: center; color: var(--gray-600);">No hay datos de ausencias detallados para hoy.<br><small>Los detalles solo estarán disponibles en reportes nuevos.</small></div>';
+          if (reportes.length > 0) {
+              html += '<h4 style="color: var(--red-600); margin-top: 20px;">Resumen por Grado/Sección:</h4>';
+              reportes.forEach(r => {
+                  html += `<div style="padding: 8px; border-bottom: 1px solid var(--gray-100); background: rgba(183,28,28,0.08); margin-bottom: 8px;">
+                              <strong>${r.grado} ${r.seccion}</strong> - ${r.docente}<br>
+                              Ausentes: ${r.ausentes || 0}
+                          </div>`;
+              });
+          }
+      } else {
+          const grupos = {};
+          ausentes.forEach(a => {
+              const key = `${a.grado} ${a.seccion}`;
+              if (!grupos[key]) grupos[key] = [];
+              grupos[key].push(a.nombre);
+          });
+          Object.keys(grupos).sort().forEach(key => {
+              html += `<div style="padding: 10px; border-bottom: 1px solid var(--gray-100); background: rgba(183,28,28,0.08); margin-bottom: 8px;">
+                              <strong>${key}</strong> - ${grupos[key].length} ausentes`;
+              grupos[key].forEach((nombre, index) => {
+                  html += `<div style="padding: 6px 10px; border-bottom: 1px solid #EAEAEA; font-size: 13px; background-color: #ffcccc; color: #cc0000; font-weight: bold;">${index + 1}. ${nombre}</div>`;
+              });
+          });
+      }
+      html += '</div>';
+      mostrarModalListado(html);
+  }
+
+  async function actualizarStatusDocente(docente, status) {
+      try {
+          const data = {
+              tipo_post: "update_docente_status",
+              docente: docente,
+              status: status,
+              timestamp: Date.now()  // Timestamp actual en milisegundos
+          };
+          await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(data) });
+      } catch (e) {
+          console.log('Error actualizando status:', e);
+      }
+  }
+
+  async function obtenerStatusDocentes() {
+      try {
+          const res = await fetch(SCRIPT_URL + '?tipo=docentes_status');
+          const data = await res.json();
+          docentesStatus = {};
+          data.forEach(d => {
+              docentesStatus[d.docente] = d.status;
+          });
+          actualizarListaStatus();
+      } catch (e) {
+          console.log('Error obteniendo status:', e);
+      }
+  }
+
   function actualizarListaStatus() {
       const contenedor = document.getElementById('lista-status-docentes');
       if (!contenedor) return;
@@ -3960,7 +4207,9 @@
   });
 
   if ('serviceWorker' in navigator && window.location.protocol !== 'file:' && !esAppAndroid()) {
-      navigator.serviceWorker.register('sw.js')
+      navigator.serviceWorker.register('sw.js');
+  }
+
   function mostrarModalListado(html) {
       // Eliminar overlay previo si existe
       const previo = document.getElementById('modal-listado-dinamico');
@@ -4048,6 +4297,39 @@
 
   // --- MANEJO DE ACCIONES NATIVAS (Notificaciones) ---
   function onNativeAction(action, payloadStr) {
+      console.log("Native action received:", action, payloadStr);
+      try {
+          const payload = JSON.parse(payloadStr);
+          if (action === "PASAR_ASISTENCIA") {
+              // 1. Asegurarnos de entrar a la interfaz principal si estamos en el login
+              if (document.getElementById("modal-inicio-login").classList.contains('open') ||
+                  document.getElementById("modal-inicio-dropdown").classList.contains('open')) {
+                  const usuario = payload.docente || "invitado";
+                  desbloquearInterfazMain(usuario);
+              }
+
+              // 2. Cambiar a la vista de docente
+              cambiarVista('docente');
+
+              // 3. Rellenar campos (la carga de alumnos se disparará sola si inicializarBaseDatos ya terminó,
+              // o cuando termine ya que lee estos valores del DOM)
+              if (payload.grado) document.getElementById('grado-select').value = payload.grado;
+              if (payload.seccion) document.getElementById('seccion-select').value = payload.seccion;
+              if (payload.docente) document.getElementById('docente-nombre').value = payload.docente;
+
+              // 4. Forzar carga si ya tenemos los datos
+              if (payload.grado && payload.seccion && baseDatosAlumnos.length > 0) {
+                  cargarAlumnos();
+              }
+
+              // 5. Guardar en sesión para que persista
+              guardarSesion(payload.docente || "invitado", payload.grado, payload.seccion, payload.docente);
+          }
+      } catch (e) {
+          console.error("Error handling native action:", e);
+      }
+  }
+
   function filtrarAlumnosExpediente() {
       const query = document.getElementById('buscar-alumno').value.toLowerCase().trim();
       const lista = document.getElementById('lista-alumnos-expediente');
@@ -4625,94 +4907,7 @@
           if (document.body.contains(content)) document.body.removeChild(content);
       });
   }
-  function abrirDialogoActualizarEstadoAlumno() {
-      const html = `
-          <div style="padding:20px; font-family:Arial, sans-serif;">
-            <h3 style="color:#0C447C; margin-bottom:20px;">Generar Informe</h3>
-            <p style="color:#666; margin-bottom:15px;">Seleccione grado y sección (dados en blanco se generará para TODOS)</p>
-            <div style="margin-bottom:15px;">
-              <label style="display:block; margin-bottom:6px; font-weight:bold;">Grado:</label>
-              <select id="dlg-grado-informe" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">
-                <option value="">-- Todos --</option>
-                <option value="1° General">1° General</option>
-                <option value="1° Adm. Contable">1° Adm. Contable</option>
-                <option value="1° S. Eléctricos">1° S. Eléctricos</option>
-                <option value="2° General">2° General</option>
-                <option value="2° Adm. Contable">2° Adm. Contable</option>
-                <option value="2° Sist. Eléctricos">2° Sist. Eléctricos</option>
-                <option value="3° Adm. Contable">3° Adm. Contable</option>
-                <option value="3° Sist. Eléctricos">3° Sist. Eléctricos</option>
-              </select>
-            </div>
-            <div style="margin-bottom:20px;">
-              <label style="display:block; margin-bottom:6px; font-weight:bold;">Sección:</label>
-              <select id="dlg-seccion-informe" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">
-                <option value="">-- Todos --</option>
-                <option value="A">"A"</option>
-                <option value="B">"B"</option>
-                <option value="Única">Única</option>
-              </select>
-            </div>
-            <div style="display:flex; gap:10px;">
-              <button onclick="generarInformeSeleccionado()" style="flex:1; padding:12px; background:#2E86C1; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Generar</button>
-              <button id="btn-cerrar-dialogo" style="flex:1; padding:12px; background:#999; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Cerrar</button>
-            </div>
-          </div>
-      `;
-      const overlay = document.createElement('div');
-      overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2500; display:flex; align-items:center; justify-content:center;';
-      overlay.addEventListener('click', function(e) { if(e.target === overlay) overlay.remove(); });
-      const modal = document.createElement('div');
-      modal.style.cssText = 'background:white; padding:20px; border-radius:12px; width:90%; max-width:400px; box-shadow:0 4px 20px rgba(0,0,0,0.3);';
-      modal.onclick = e => e.stopPropagation();
-      modal.innerHTML = html;
-      overlay.appendChild(modal);
-      document.body.appendChild(overlay);
-      overlayInformeActual = overlay;
-      document.getElementById('btn-cerrar-dialogo').onclick = () => overlay.remove();
-      window.gradoInformeSeleccionado = '';
-      window.seccionInformeSeleccionada = '';
-  }
 
-  function generarInformeSeleccionado() {
-  function abrirDialogoGenerarAsistenciaMensual() {
-      const html = `
-          <div style="padding:20px; font-family:Arial, sans-serif;">
-            <h3 style="color:#0C447C; margin-bottom:20px;">Generar Asistencia Mensual</h3>
-            <p style="color:#666; margin-bottom:15px;">Seleccione grado y sección (dados en blanco se generará para TODOS)</p>
-            <div style="margin-bottom:15px;">
-              <label style="display:block; margin-bottom:6px; font-weight:bold;">Grado:</label>
-              <select id="dlg-grado-asistencia" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">
-                <option value="">-- Todos --</option>
-                <option value="1° General">1° General</option>
-                <option value="1° Adm. Contable">1° Adm. Contable</option>
-                <option value="1° S. Eléctricos">1° S. Eléctricos</option>
-                <option value="2° General">2° General</option>
-                <option value="2° Adm. Contable">2° Adm. Contable</option>
-                <option value="2° Sist. Eléctricos">2° Sist. Eléctricos</option>
-                <option value="3° Adm. Contable">3° Adm. Contable</option>
-                <option value="3° Sist. Eléctricos">3° Sist. Eléctricos</option>
-              </select>
-            </div>
-            <div style="margin-bottom:20px;">
-              <label style="display:block; margin-bottom:6px; font-weight:bold;">Sección:</label>
-              <select id="dlg-seccion-asistencia" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">
-                <option value="">-- Todos --</option>
-                <option value="A">"A"</option>
-                <option value="B">"B"</option>
-                <option value="Única">Única</option>
-              </select>
-            </div>
-            <div style="display:flex; gap:10px;">
-              <button onclick="generarAsistenciaseleccionada()" style="flex:1; padding:12px; background:#145A32; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Generar</button>
-              <button id="btn-cerrar-dialogo-asistencia" style="flex:1; padding:12px; background:#999; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Cerrar</button>
-            </div>
-          </div>
-      `;
-      const overlay = document.createElement('div');
-      overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2500; display:flex; align-items:center; justify-content:center;';
-      overlay.addEventListener('click', function(e) { if(e.target === overlay) overlay.remove(); });
-      const modal = document.createElement('div');
   function abrirDialogoActualizarEstadoAlumno() {
       const html = `
           <div style="padding:20px; font-family:Arial, sans-serif;">
