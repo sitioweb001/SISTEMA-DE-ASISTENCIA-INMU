@@ -770,6 +770,7 @@
     <button id="btn-install-pwa" class="btn-nav" style="background:#0C447C; display:none;" onclick="mostrarInstallPrompt()">📥 Instalar app</button>
     <span id="install-pwa-helper" style="display:none; align-self:center; font-size:12px; color:#F8F9FA; margin-left:10px; max-width:400px;"></span>
     <button class="btn-nav" style="background:#1D9E75; color:white; font-weight:bold;" onclick="cambiarVista('docente')">✍️ Pasar Lista</button>
+    <button class="btn-nav" style="background:#45b8c9; color:white; font-weight:bold;" onclick="cambiarVista('expediente')">📋 Expediente</button>
     <button class="btn-nav" style="background:#8E44AD; color:white; font-weight:bold;" onclick="mostrarResumenDelDia()">📊 Ver resumen del día</button>
   </div>
 </div>
@@ -855,9 +856,7 @@
           <label for="observacion-general" style="display: block; margin-bottom: 5px; font-weight: bold; color: var(--gray-700);">Observación General (opcional):</label>
           <textarea id="observacion-general" placeholder="Escriba aquí cualquier observación general sobre la asistencia del día..." style="width: 100%; height: 60px; padding: 8px; border: 1px solid var(--gray-300); border-radius: 6px; resize: vertical; font-size: 14px;"></textarea>
         </div>
-        <button class="btn-generate" id="btn-pdf-generate" onclick="generarPDF()">📥 Generar PDF y Guardar
-          Reporte</button>
-
+        <button class="btn-generate" id="btn-pdf-generate" onclick="generarPDF()">📥 Generar PDF y Guardar Reporte</button>
 
         <!-- ══ NUEVO BOTÓN VER REPORTES PDF ══ -->
         <button id="btn-ver-reportes" class="btn-ver-reportes" onclick="abrirVisorReportes()">📂 Ver Reportes PDF</button>
@@ -872,6 +871,45 @@
       <button class="btn-nav" style="background:#5F5E5A; max-width: 260px; width:100%;" onclick="pedirPasswordDocente()">👨‍🏫 Añadir Docente</button>
       <button class="btn-nav" style="background:#BA7517; max-width: 260px; width:100%;" onclick="pedirPasswordNuevo()">➕ Nuevo Alumno</button>
       <button class="btn-nav" style="background:var(--green-600); max-width: 260px; width:100%;" onclick="pedirPasswordSub()">📊 Sub-Dirección</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+ VISTA: EXPEDIENTE PERSONAL
+══════════════════════════════════════════════════════ -->
+  <div id="view-expediente" class="view-section">
+    <div class="panel">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:15px;">
+        <h2 style="color:var(--blue-800); font-size:16px; margin:0;">📋 Expediente Personal de Alumnos</h2>
+        <button onclick="cambiarVista('docente')"
+                style="padding:8px 14px; background:var(--blue-600); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:13px;">←
+          Volver</button>
+      </div>
+
+      <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom:15px;">
+        <label style="color: var(--blue-800); margin:0; font-size:16px;">📋 Buscar Alumno por Nombre o NIE:</label>
+        <div>
+          <button class="btn-action" onclick="toggleTodosExpediente()">☑️ Marcar/Desmarcar Todos</button>
+          <button onclick="inicializarBaseDatos()"
+                  style="background:none; border:none; color:var(--blue-600); cursor:pointer; font-size:12px; font-weight:bold; margin-left: 10px;">🔄 Nube</button>
+          <button onclick="seleccionarArchivoLocal()"
+                  style="background:none; border:none; color:var(--green-600); cursor:pointer; font-size:12px; font-weight:bold; margin-left: 10px;">📂 Local</button>
+        </div>
+      </div>
+      <div style="margin-bottom:12px; display:flex; gap:10px; align-items:center;">
+        <input type="text" id="buscar-alumno" placeholder="Buscar por nombre o NIE..." oninput="filtrarAlumnosExpediente()" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+        <button type="button" onclick="clearExpedienteSearch()" style="padding:10px 16px;border:1px solid #ddd;border-radius:8px;background:#f5f5f5;color:#333;font-size:13px;cursor:pointer;white-space:nowrap;">Limpiar</button>
+      </div>
+
+      <div style="margin-bottom: 20px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <button onclick="abrirModalEstadoAlumno()" style="padding: 10px 16px; background:#D35400; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">🎯 Actualizar Estado Alumno</button>
+        <button onclick="generarInforme()" style="padding: 10px 16px; background:#2E86C1; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">📝 Generar Informe</button>
+        <button onclick="generarAsistenciaMensual()" style="padding: 10px 16px; background:#145A32; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">🗓️ Asistencia Mensual</button>
+      </div>
+
+      <div id="lista-alumnos-expediente" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--gray-100); border-radius: 8px; padding: 10px;">
+        <div style="text-align: center; color: var(--gray-600);">Escribe para buscar alumnos...</div>
+      </div>
     </div>
   </div>
 
@@ -1021,6 +1059,13 @@
                     style="padding: 10px 15px; border-radius: 8px; background: var(--gray-100); color: white; font-weight: bold; border: none; cursor: pointer;">⏳</button>
           </div>
 
+          <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--gray-100);">
+            <label style="color: var(--gray-900); margin-bottom: 10px; font-size: 14px; display: block; font-weight: bold;">📊 Reportes y Gestión</label>
+            <button onclick="abrirDialogoGenerarInforme()" style="width: 100%; padding: 12px; margin-bottom: 10px; background: #2E86C1; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">📝 Generar Informe</button>
+            <button onclick="abrirDialogoGenerarAsistenciaMensual()" style="width: 100%; padding: 12px; margin-bottom: 10px; background: #145A32; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">🗓️ Generar Asistencia Mensual</button>
+            <button onclick="abrirDialogoActualizarEstadoAlumno()" style="width: 100%; padding: 12px; background: #D35400; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">🎯 Actualizar Estado Alumno</button>
+          </div>
+
           <button onclick="accederLimpieza()"
                   style="width: 100%; margin-top: 10px; padding: 12px; border-radius: 8px; border: 2px solid var(--red-600); background: white; color: var(--red-600); font-weight: bold; cursor: pointer;">
             ⚠️ Acceder a la limpieza de registros
@@ -1113,6 +1158,68 @@
         <button onclick="cerrarModal('modal-docente')" style="flex:1; padding:10px;">Cancelar</button>
         <button onclick="guardarNuevoDocente()" id="btn-save-doc"
                 style="flex:1; padding:10px; background:#5F5E5A; color:white; border:none; border-radius:6px;">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-expediente">
+    <div class="modal" style="max-width: 600px;">
+      <h3 style="color: var(--blue-800); margin-bottom: 15px; text-align: center;" id="titulo-expediente">Expediente de [Alumno]</h3>
+
+      <div style="margin-bottom: 20px;">
+        <h4 style="color: var(--gray-900); margin-bottom: 10px;">Agregar Nueva Observación</h4>
+        <textarea id="nueva-observacion" placeholder="Escribe la observación aquí..." style="width: 100%; height: 80px; padding: 10px; border: 1px solid var(--gray-300); border-radius: 8px; resize: vertical;"></textarea>
+        <button onclick="agregarObservacion()" style="margin-top: 10px; padding: 10px 20px; background: var(--green-600); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">➕ Agregar Observación</button>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <h4 style="color: var(--gray-900); margin-bottom: 10px;">Historial de Observaciones</h4>
+        <div id="historial-observaciones" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--gray-100); border-radius: 8px; padding: 10px; background: var(--gray-50);">
+          <div style="text-align: center; color: var(--gray-600);">Cargando historial...</div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button onclick="generarPDFExpediente()" style="flex: 1; min-width: 160px; padding: 12px; background: var(--blue-600); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">📄 Generar PDF</button>
+        <button onclick="cerrarModal('modal-expediente')" style="flex: 1; min-width: 160px; padding: 12px; background: var(--gray-600); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-estado-alumno">
+    <div class="modal" style="max-width: 550px;">
+      <h3 style="color: var(--blue-800); margin-bottom: 15px; text-align: center;">Actualizar Estado del Alumno</h3>
+      <div style="margin-bottom: 15px;">
+        <label style="font-weight:bold; display:block; margin-bottom:6px;">NIE del Alumno</label>
+        <input type="text" id="estado-nie" placeholder="Ej. 123456" style="width:100%; padding:10px; border:1px solid var(--gray-300); border-radius:8px; font-size:14px;" />
+      </div>
+      <div style="margin-bottom: 15px; display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div>
+          <label style="font-weight:bold; display:block; margin-bottom:6px;">Grado</label>
+          <input type="text" id="estado-grado" placeholder="Ej. 1° General" style="width:100%; padding:10px; border:1px solid var(--gray-300); border-radius:8px; font-size:14px;" />
+        </div>
+        <div>
+          <label style="font-weight:bold; display:block; margin-bottom:6px;">Sección</label>
+          <input type="text" id="estado-seccion" placeholder="Ej. A" style="width:100%; padding:10px; border:1px solid var(--gray-300); border-radius:8px; font-size:14px;" />
+        </div>
+      </div>
+      <div style="margin-bottom: 15px;">
+        <label style="font-weight:bold; display:block; margin-bottom:6px;">Estado</label>
+        <select id="estado-alumno" style="width:100%; padding:10px; border:1px solid var(--gray-300); border-radius:8px; font-size:14px;">
+          <option value="">-- Seleccione un estado --</option>
+          <option value="Activo">Activo</option>
+          <option value="En peligro">En peligro</option>
+          <option value="Reprobado">Reprobado</option>
+          <option value="Baja">Baja</option>
+        </select>
+      </div>
+      <div style="margin-bottom: 20px;">
+        <label style="font-weight:bold; display:block; margin-bottom:6px;">Observación adicional</label>
+        <textarea id="estado-observacion" placeholder="Ej. Se recomienda seguimiento individual" style="width:100%; height:80px; padding:10px; border:1px solid var(--gray-300); border-radius:8px; resize:vertical; font-size:14px;"></textarea>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button onclick="guardarEstadoAlumno()" style="flex:1; min-width:140px; padding:12px; background:#1D9E75; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">💾 Guardar Estado</button>
+        <button onclick="cerrarModal('modal-estado-alumno')" style="flex:1; min-width:140px; padding:12px; background:var(--gray-600); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">Cerrar</button>
       </div>
     </div>
   </div>
@@ -1739,6 +1846,11 @@
           const btn = document.getElementById('btn-volver-asist');
           if (btn) btn.style.display = 'block';
           cargarListaPDFs();
+      } else if (vista === 'expediente') {
+          const view = document.getElementById('view-expediente');
+          if (view) view.classList.add('view-active');
+          const btn = document.getElementById('btn-volver-asist');
+          if (btn) btn.style.display = 'block';
       } else {
           const view = document.getElementById('view-docente');
           if (view) view.classList.add('view-active');
@@ -2291,15 +2403,15 @@
   function generarHTMLParaPDF({ grado, seccion, docente, fechaStr, secLimpia, presentes, ausentes, permisos, masc, fem, obsGeneral, reprobados = [], estudiantesPeligro = [], personalObservaciones = [] }) {
       return `
 <div style="position: relative; background: white; padding: 0;">
-  <div style="position: absolute; top: 150px; left: 0; width: 100%; text-align: center; z-index: 1; opacity: 0.15;">
-    <img src="logo3.jpg" crossorigin="anonymous" style="width: 400px; height: auto;" onerror="this.style.display='none';">
+  <div style="text-align: center; padding: 20px 0; border-bottom: 2px solid #0C447C;">
+    <img src="logo3.jpg" style="height: 80px; width: auto; margin-bottom: 10px;">
+    <h1 style="color: #0C447C; font-size: 18px; margin: 10px 0 5px 0; text-transform: uppercase;">Ministerio de Educación, Ciencia y Tecnología</h1>
+    <h2 style="color: #2C2C2A; font-size: 16px; margin: 0;">Instituto Nacional de Mercedes Umaña</h2>
   </div>
   <div style="position: relative; z-index: 10; padding: 40px;">
-    <div style="text-align: center; padding-top: 100px; padding-bottom: 200px;">
-      <h1 style="color: #0C447C; font-size: 26px; margin-bottom: 10px; text-transform: uppercase;">Ministerio de Educación, Ciencia y Tecnología</h1>
-      <h2 style="color: #2C2C2A; font-size: 22px; margin-bottom: 50px; text-transform: uppercase;">Instituto Nacional de Mercedes Umaña</h2>
-      <div style="border: 2px solid #0C447C; padding: 40px; border-radius: 15px; width: 80%; margin: 0 auto;">
-        <h3 style="font-size: 24px; color: #185FA5; margin-bottom: 30px; text-transform: uppercase; border-bottom: 2px solid #185FA5; padding-bottom: 10px;">Registro de Asistencia Diario</h3>
+    <div style="text-align: center; padding-bottom: 20px;">
+      <div style="border: 2px solid #0C447C; padding: 30px; border-radius: 15px; width: 80%; margin: 0 auto;">
+        <h3 style="font-size: 24px; color: #185FA5; margin-bottom: 20px; text-transform: uppercase; border-bottom: 2px solid #185FA5; padding-bottom: 10px;">Registro de Asistencia Diario</h3>
         <div style="text-align: left; padding-left: 20px;">
           <p style="font-size: 18px; margin: 15px 0;"><strong>Grado:</strong> ${grado} &nbsp; <strong>Sección:</strong> ${seccion}</p>
           <p style="font-size: 18px; margin: 15px 0;"><strong>Docente Responsable:</strong> ${docente}</p>
@@ -2372,7 +2484,7 @@
       </div>
       ` : ''}
       <div style="text-align: center; margin-top: 50px; padding-top: 40px; border-top: 2px dashed #ddd; page-break-inside: avoid;">
-        <img src="logo5.jpg" crossorigin="anonymous" style="width: 400px; height: auto;" onerror="this.style.display='none';">
+        <img src=\"logo5.jpg\" style=\"width: 400px; height: auto;\">
       </div>
     </div>
   </div>
@@ -3192,6 +3304,7 @@
   // =========================================================================
   // FUNCIONES AUXILIARES
   // =========================================================================
+  function abrirModal(id) { document.getElementById(id).classList.add('open'); }
   function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
 
   async function guardarAlumno() {
@@ -4365,6 +4478,749 @@
           console.error("Error handling native action:", e);
       }
   }
+
+  // === FUNCIONES PARA EXPEDIENTE PERSONAL ===
+
+  let alumnosExpediente = [];
+  let alumnoSeleccionado = null;
+  let estadoSeleccionExpediente = false;
+  let alumnosFiltradosExpediente = [];
+
+  function filtrarAlumnosExpediente() {
+      const query = document.getElementById('buscar-alumno').value.toLowerCase().trim();
+      const lista = document.getElementById('lista-alumnos-expediente');
+
+      if (query.length < 2) {
+          lista.innerHTML = '<div style="text-align: center; color: var(--gray-600);">Escribe al menos 2 caracteres para buscar...</div>';
+          return;
+      }
+
+      // Filtrar alumnos locales si no hay conexión
+      if (alumnosExpediente.length === 0) {
+          fetch(SCRIPT_URL + '?tipo=alumnos')
+              .then(response => response.json())
+              .then(data => {
+                  alumnosExpediente = data;
+                  mostrarResultadosBusqueda(query);
+              })
+              .catch(error => {
+                  console.error('Error cargando alumnos:', error);
+                  lista.innerHTML = '<div style="text-align: center; color: var(--red-600);">Error de conexión. Verifica tu internet.</div>';
+              });
+      } else {
+          mostrarResultadosBusqueda(query);
+      }
+  }
+
+  function mostrarResultadosBusqueda(query) {
+      const lista = document.getElementById('lista-alumnos-expediente');
+      alumnosFiltradosExpediente = alumnosExpediente.filter(alumno =>
+          alumno.nombre.toLowerCase().includes(query) ||
+          alumno.nie.toString().includes(query)
+      );
+
+      if (alumnosFiltradosExpediente.length === 0) {
+          lista.innerHTML = '<div style="text-align: center; color: var(--gray-600);">No se encontraron alumnos con ese criterio.</div>';
+          return;
+      }
+
+      lista.innerHTML = alumnosFiltradosExpediente.map((alumno, idx) => `
+          <div style="padding: 10px; border-bottom: 1px solid var(--gray-100); border-radius: 6px; margin-bottom: 5px; background: white; display: flex; align-items: center; gap: 10px;">
+              <input type="checkbox" id="chk-exp-${idx}" style="cursor: pointer;" onchange="">
+              <div style="flex: 1; cursor: pointer;" onclick="abrirExpediente('${alumno.nie}')">
+                  <strong>${alumno.nombre}</strong><br>
+                  <small style="color: var(--gray-600);">NIE: ${alumno.nie} | Grado: ${alumno.grado} ${alumno.seccion}</small>
+              </div>
+          </div>
+      `).join('');
+  }
+
+  function abrirExpediente(nie) {
+      alumnoSeleccionado = alumnosExpediente.find(a => a.nie == nie);
+      if (!alumnoSeleccionado) return;
+
+      document.getElementById('titulo-expediente').textContent = `Expediente de ${alumnoSeleccionado.nombre}`;
+      document.getElementById('nueva-observacion').value = '';
+      cargarHistorialObservaciones(nie);
+      abrirModal('modal-expediente');
+  }
+
+  function cargarHistorialObservaciones(nie) {
+      const contenedor = document.getElementById('historial-observaciones');
+      contenedor.innerHTML = '<div style="text-align: center; color: var(--gray-600);">Cargando historial...</div>';
+
+      fetch(SCRIPT_URL + '?tipo=obtener_observaciones&nie=' + nie)
+          .then(response => response.json())
+          .then(data => {
+              if (data.length === 0) {
+                  contenedor.innerHTML = '<div style="text-align: center; color: var(--gray-600);">No hay observaciones registradas.</div>';
+              } else {
+                  contenedor.innerHTML = data.map(obs => `
+                      <div style="margin-bottom: 10px; padding: 8px; background: white; border-radius: 6px; border-left: 4px solid var(--blue-600);">
+                          <small style="color: var(--gray-600);">${obs.fecha} - ${obs.docente}</small><br>
+                          ${obs.observacion}
+                      </div>
+                  `).join('');
+              }
+          })
+          .catch(error => {
+              console.error('Error cargando observaciones:', error);
+              contenedor.innerHTML = '<div style="text-align: center; color: var(--red-600);">Error cargando historial.</div>';
+          });
+  }
+
+  function agregarObservacion() {
+      const observacion = document.getElementById('nueva-observacion').value.trim();
+      if (!observacion) {
+          alert('Por favor escribe una observación.');
+          return;
+      }
+
+      const docente = document.getElementById('docente-nombre').value.trim() || 'Desconocido';
+      const payload = {
+          tipo_post: 'agregar_observacion',
+          nie: alumnoSeleccionado.nie,
+          observacion: observacion,
+          docente: docente,
+          fecha: new Date().toLocaleDateString('es-ES')
+      };
+
+      fetch(SCRIPT_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+          body: JSON.stringify(payload)
+      })
+      .then(() => {
+          document.getElementById('nueva-observacion').value = '';
+          cargarHistorialObservaciones(alumnoSeleccionado.nie);
+          alert('Observación agregada correctamente.');
+      })
+      .catch(error => {
+          console.error('Error agregando observación:', error);
+          alert('Error de conexión. ' + (error.message || '')); 
+      });
+  }
+
+  function clearExpedienteSearch() {
+      const input = document.getElementById('buscar-alumno');
+      if (input) {
+          input.value = '';
+          filtrarAlumnosExpediente();
+      }
+  }
+
+  function toggleTodosExpediente() {
+      estadoSeleccionExpediente = !estadoSeleccionExpediente;
+      alumnosFiltradosExpediente.forEach((a, i) => {
+          const checkbox = document.getElementById(`chk-exp-${i}`);
+          if (checkbox) checkbox.checked = estadoSeleccionExpediente;
+      });
+  }
+
+  function generarPDFExpediente() {
+      if (!alumnoSeleccionado) return;
+      const docente = document.getElementById('docente-nombre').value.trim() || 'No registrado';
+      const fechaStr = new Date().toLocaleDateString('es-ES');
+      const element = document.createElement('div');
+      element.innerHTML = `
+          <div style="padding: 25px; font-family: Arial, sans-serif; background: white;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+              <img src="logo2.jpg" style="height:70px; width:auto;" />
+              <div style="text-align:center; flex:1; min-width:220px;">
+                <h1 style="font-size:22px; color:#0C447C; margin:0;">EXPEDIENTE PERSONAL</h1>
+                <p style="margin:4px 0 0 0; font-size:14px; color:#444;">Instituto Nacional de Mercedes Umaña</p>
+                <p style="margin:4px 0 0 0; font-size:13px; color:#666;">Ministerio de Educación  Ciencia y Tecnología</p>
+              </div>
+              <img src="logo3.jpg" style="height:70px; width:auto;" />
+            </div>
+            <div style="border:1px solid #D1D5DB; padding:18px; border-radius:12px; margin-bottom:24px; background:#F8FAFC;">
+              <p style="margin:0; font-size:14px;"><strong>Alumno:</strong> ${alumnoSeleccionado.nombre}</p>
+              <p style="margin:6px 0 0 0; font-size:14px;"><strong>NIE:</strong> ${alumnoSeleccionado.nie}</p>
+              <p style="margin:6px 0 0 0; font-size:14px;"><strong>Grado / Sección:</strong> ${alumnoSeleccionado.grado} ${alumnoSeleccionado.seccion}</p>
+              <p style="margin:6px 0 0 0; font-size:14px;"><strong>Docente:</strong> ${docente}</p>
+              <p style="margin:6px 0 0 0; font-size:14px;"><strong>Fecha:</strong> ${fechaStr}</p>
+            </div>
+            <h3 style="font-size:18px; color:#185FA5; margin-bottom:12px;">Historial de Observaciones</h3>
+            <div id="pdf-observaciones" style="font-size:14px; line-height:1.6; color:#333; min-height:80px;">
+              Cargando historial de observaciones...
+            </div>
+          </div>
+      `;
+
+      fetch(SCRIPT_URL + '?tipo=obtener_observaciones&nie=' + encodeURIComponent(alumnoSeleccionado.nie))
+          .then(response => response.json())
+          .then(data => {
+              const obsDiv = element.querySelector('#pdf-observaciones');
+              if (data.length === 0) {
+                  obsDiv.innerHTML = '<p style="margin:0; color:#666;">No hay observaciones registradas.</p>';
+              } else {
+                  obsDiv.innerHTML = data.map(obs => `
+                      <div style="margin-bottom: 12px; padding: 12px; border-left: 4px solid #0C447C; background: #F4F7FC; border-radius: 8px;">
+                          <p style="margin:0 0 6px 0; font-size:13px; color:#555;"><strong>${obs.fecha}</strong> - ${obs.docente}</p>
+                          <p style="margin:0; font-size:14px; color:#1D1D1D;">${obs.observacion}</p>
+                      </div>
+                  `).join('');
+              }
+
+              document.body.appendChild(element);
+              setTimeout(() => {
+                  const opt = {
+                      margin: 10,
+                      filename: `Expediente_${alumnoSeleccionado.nombre.replace(/\s+/g, '_')}.pdf`,
+                      image: { type: 'jpeg', quality: 0.98 },
+                      html2canvas: { scale: 2, useCORS: false, allowTaint: true, foreignObjectRendering: false },
+                      jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
+                      pagebreak: { mode: ['css', 'legacy'] }
+                  };
+
+                  html2pdf().set(opt).from(element).save().finally(() => {
+                      if (document.body.contains(element)) document.body.removeChild(element);
+                  });
+              }, 500);
+          })
+          .catch(error => {
+              console.error('Error generando PDF:', error);
+              alert('Error generando PDF.');
+          });
+  }
+
+  function abrirModalEstadoAlumno() {
+      const modal = document.getElementById('modal-estado-alumno');
+      if (!modal) return;
+      const nieInput = document.getElementById('estado-nie');
+      const gradoInput = document.getElementById('estado-grado');
+      const seccionInput = document.getElementById('estado-seccion');
+      const estadoSelect = document.getElementById('estado-alumno');
+      const observacionInput = document.getElementById('estado-observacion');
+
+      if (alumnoSeleccionado) {
+          nieInput.value = alumnoSeleccionado.nie || '';
+          gradoInput.value = alumnoSeleccionado.grado || '';
+          seccionInput.value = alumnoSeleccionado.seccion || '';
+      } else {
+          nieInput.value = '';
+          gradoInput.value = document.getElementById('grado-select') ? document.getElementById('grado-select').value : '';
+          seccionInput.value = document.getElementById('seccion-select') ? document.getElementById('seccion-select').value : '';
+      }
+      estadoSelect.value = '';
+      observacionInput.value = '';
+      modal.classList.add('open');
+  }
+
+  function guardarEstadoAlumno() {
+      const nie = document.getElementById('estado-nie').value.trim();
+      const grado = document.getElementById('estado-grado').value.trim();
+      const seccion = document.getElementById('estado-seccion').value.trim();
+      const estado = document.getElementById('estado-alumno').value;
+      const observacion = document.getElementById('estado-observacion').value.trim();
+      const docente = document.getElementById('docente-nombre').value.trim() || 'Desconocido';
+
+      if (!nie) return alert('Por favor ingrese el NIE del alumno.');
+      if (!grado || !seccion) return alert('Por favor ingrese grado y sección.');
+      if (!estado) return alert('Por favor seleccione un estado.');
+
+      const payload = {
+          tipo_post: 'guardar_estado_alumno',
+          fecha: new Date().toLocaleDateString('es-ES'),
+          nie: nie,
+          nombre: alumnoSeleccionado && alumnoSeleccionado.nie == nie ? alumnoSeleccionado.nombre : '',
+          grado: grado,
+          seccion: seccion,
+          estado: estado,
+          docente: docente,
+          observacion: observacion
+      };
+
+      fetch(SCRIPT_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+          body: JSON.stringify(payload)
+      })
+      .then(() => {
+          alert('Estado del alumno registrado correctamente.');
+          cerrarModal('modal-estado-alumno');
+      })
+      .catch(error => {
+          console.error('Error guardando estado del alumno:', error);
+          alert('Error de conexión al guardar el estado del alumno.');
+      });
+  }
+
+  async function generarInforme() {
+      const grado = document.getElementById('grado-select').value;
+      const seccion = document.getElementById('seccion-select').value;
+      const docente = document.getElementById('docente-nombre').value.trim();
+      if (!grado || !seccion || !docente) return alert('Seleccione grado, sección y escriba el nombre del docente para generar el informe.');
+
+      const alumnos = alumnosFiltrados || [];
+      const presentes = [];
+      const ausentes = [];
+      const permisos = [];
+
+      alumnos.forEach((alumno, index) => {
+          const chk = document.getElementById(`chk-${index}`);
+          const estado = chk ? (chk.dataset.estado || (chk.checked ? 'presente' : 'ausente')) : 'ausente';
+          if (estado === 'permiso') {
+              permisos.push(alumno);
+          } else if (estado === 'presente') {
+              presentes.push(alumno);
+          } else {
+              ausentes.push(alumno);
+          }
+      });
+
+      const fechaStr = new Date().toLocaleDateString('es-ES');
+      const content = document.createElement('div');
+      content.innerHTML = `
+          <div style="padding:20px; font-family: Arial, sans-serif; background:white;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
+              <img src="logo2.svg" crossorigin="anonymous" style="height:70px; width:auto;" onerror="this.src='logo2.jpg'; this.onerror=null;" />
+              <div style="text-align:center; flex:1; min-width:220px;">
+                <h1 style="font-size:22px; color:#0C447C; margin:0;">INFORME DE ASISTENCIA</h1>
+                <p style="margin:4px 0 0 0; font-size:14px; color:#444;">${grado} ${seccion}</p>
+                <p style="margin:4px 0 0 0; font-size:13px; color:#666;">Docente: ${docente}</p>
+                <p style="margin:4px 0 0 0; font-size:13px; color:#666;">Fecha: ${fechaStr}</p>
+              </div>
+              <img src="logo3.jpg" crossorigin="anonymous" style="height:70px; width:auto;" onerror="this.style.display='none';" />
+            </div>
+            <div style="border:1px solid #D1D5DB; border-radius:12px; padding:16px; margin-bottom:20px; background:#F8FAFC;">
+              <p style="margin:0; font-size:14px;"><strong>Total Alumnos:</strong> ${alumnos.length}</p>
+              <p style="margin:6px 0 0 0; font-size:14px;"><strong>Presentes:</strong> ${presentes.length}</p>
+              <p style="margin:6px 0 0 0; font-size:14px;"><strong>Ausentes:</strong> ${ausentes.length}</p>
+              <p style="margin:6px 0 0 0; font-size:14px;"><strong>Permisos:</strong> ${permisos.length}</p>
+            </div>
+            <h3 style="font-size:16px; color:#185FA5; margin-bottom:10px;">Resumen rápido</h3>
+            <div style="font-size:14px; color:#333; line-height:1.6;">
+              <p>Presentes: ${presentes.map(a => a.nombre).slice(0, 10).join(', ') || 'Ninguno'}${presentes.length > 10 ? '...' : ''}</p>
+              <p>Ausentes: ${ausentes.map(a => a.nombre).slice(0, 10).join(', ') || 'Ninguno'}${ausentes.length > 10 ? '...' : ''}</p>
+              <p>Permisos: ${permisos.map(a => a.nombre).slice(0, 10).join(', ') || 'Ninguno'}${permisos.length > 10 ? '...' : ''}</p>
+            </div>
+          </div>
+      `;
+
+      const opt = {
+          margin: 10,
+          filename: `Informe_${grado.replace(/\s+/g, '_')}_${seccion}_${fechaStr.replace(/\//g, '-')}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, allowTaint: true },
+          jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
+          pagebreak: { mode: ['css', 'legacy'] }
+      };
+
+      html2pdf().set(opt).from(content).save();
+  }
+
+  async function generarAsistenciaMensual() {
+      const grado = document.getElementById('grado-select').value;
+      const seccion = document.getElementById('seccion-select').value;
+      const docente = document.getElementById('docente-nombre').value.trim();
+      if (!grado || !seccion) return alert('Seleccione grado y sección para generar la asistencia mensual.');
+
+      const ahora = new Date();
+      const mesActual = ahora.getMonth();
+      const anioActual = ahora.getFullYear();
+
+      let reportes = Array.isArray(todosLosReportes) ? todosLosReportes : [];
+      if (!reportes.length) {
+          try {
+              const response = await fetch(`${SCRIPT_URL}?tipo=reportes`);
+              reportes = await response.json();
+          } catch (e) {
+              console.error('Error cargando reportes:', e);
+              return alert('No se pudo cargar los reportes para generar el informe mensual.');
+          }
+      }
+
+      const reportesMes = reportes.filter(r => {
+          const fecha = new Date(r.fecha);
+          return r.grado === grado && r.seccion === seccion && fecha.getMonth() === mesActual && fecha.getFullYear() === anioActual;
+      });
+
+      if (reportesMes.length === 0) {
+          return alert('No hay datos de asistencia para el mes actual en este grado y sección.');
+      }
+
+      const mesNombre = ahora.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+      const content = document.createElement('div');
+      content.innerHTML = `
+          <div style="padding:20px; font-family: Arial, sans-serif; background:white;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
+              <img src="logo2.svg" crossorigin="anonymous" style="height:70px; width:auto;" onerror="this.src='logo2.jpg'; this.onerror=null;" />
+              <div style="text-align:center; flex:1; min-width:220px;">
+                <h1 style="font-size:22px; color:#0C447C; margin:0;">ASISTENCIA MENSUAL</h1>
+                <p style="margin:4px 0 0 0; font-size:14px; color:#444;">${grado} ${seccion}</p>
+                <p style="margin:4px 0 0 0; font-size:13px; color:#666;">${mesNombre}</p>
+                <p style="margin:4px 0 0 0; font-size:13px; color:#666;">Docente: ${docente || 'No registrado'}</p>
+              </div>
+              <img src="logo3.jpg" crossorigin="anonymous" style="height:70px; width:auto;" onerror="this.style.display='none';" />
+            </div>
+            <div style="border:1px solid #D1D5DB; border-radius:12px; padding:16px; margin-bottom:20px; background:#F8FAFC;">
+              <p style="margin:0; font-size:14px;"><strong>Días reportados:</strong> ${reportesMes.length}</p>
+              <p style="margin:6px 0 0 0; font-size:14px;"><strong>Total Presentes:</strong> ${reportesMes.reduce((sum, r) => sum + (parseInt(r.presentes) || 0), 0)}</p>
+              <p style="margin:6px 0 0 0; font-size:14px;"><strong>Total Ausentes:</strong> ${reportesMes.reduce((sum, r) => sum + (parseInt(r.ausentes) || 0), 0)}</p>
+              <p style="margin:6px 0 0 0; font-size:14px;"><strong>Total Permisos:</strong> ${reportesMes.reduce((sum, r) => sum + (parseInt(r.permisos) || 0), 0)}</p>
+            </div>
+            <div style="font-size:14px; color:#333;">
+              ${reportesMes.map((r, index) => `
+                <div style="margin-bottom:12px; padding:12px; border:1px solid #E5E7EB; border-radius:10px; background:#FFF; page-break-inside: avoid;">
+                  <p style="margin:0 0 6px 0;"><strong>${new Date(r.fecha).toLocaleDateString('es-ES')}</strong> — Presentes: ${r.presentes || 0}, Ausentes: ${r.ausentes || 0}, Permisos: ${r.permisos || 0}</p>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+      `;
+
+      const opt = {
+          margin: 10,
+          filename: `Asistencia_Mensual_${grado.replace(/\s+/g, '_')}_${seccion}_${mesNombre.replace(/\s+/g, '_')}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, allowTaint: true },
+          jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
+          pagebreak: { mode: ['css', 'legacy'] }
+      };
+
+      html2pdf().set(opt).from(content).save();
+  }
+
+  let overlayInformeActual = null;
+
+  function abrirDialogoGenerarInforme() {
+      const html = `
+          <div style="padding:20px; font-family:Arial, sans-serif;">
+            <h3 style="color:#0C447C; margin-bottom:20px;">Generar Informe</h3>
+            <p style="color:#666; margin-bottom:15px;">Seleccione grado y sección (dados en blanco se generará para TODOS)</p>
+            <div style="margin-bottom:15px;">
+              <label style="display:block; margin-bottom:6px; font-weight:bold;">Grado:</label>
+              <select id="dlg-grado-informe" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">
+                <option value="">-- Todos --</option>
+                <option value="1° General">1° General</option>
+                <option value="1° Adm. Contable">1° Adm. Contable</option>
+                <option value="1° S. Eléctricos">1° S. Eléctricos</option>
+                <option value="2° General">2° General</option>
+                <option value="2° Adm. Contable">2° Adm. Contable</option>
+                <option value="2° Sist. Eléctricos">2° Sist. Eléctricos</option>
+                <option value="3° Adm. Contable">3° Adm. Contable</option>
+                <option value="3° Sist. Eléctricos">3° Sist. Eléctricos</option>
+              </select>
+            </div>
+            <div style="margin-bottom:20px;">
+              <label style="display:block; margin-bottom:6px; font-weight:bold;">Sección:</label>
+              <select id="dlg-seccion-informe" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">
+                <option value="">-- Todos --</option>
+                <option value="A">"A"</option>
+                <option value="B">"B"</option>
+                <option value="Única">Única</option>
+              </select>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button onclick="generarInformeSeleccionado()" style="flex:1; padding:12px; background:#2E86C1; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Generar</button>
+              <button id="btn-cerrar-dialogo" style="flex:1; padding:12px; background:#999; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Cerrar</button>
+            </div>
+          </div>
+      `;
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2500; display:flex; align-items:center; justify-content:center;';
+      overlay.addEventListener('click', function(e) { if(e.target === overlay) overlay.remove(); });
+      const modal = document.createElement('div');
+      modal.style.cssText = 'background:white; padding:20px; border-radius:12px; width:90%; max-width:400px; box-shadow:0 4px 20px rgba(0,0,0,0.3);';
+      modal.onclick = e => e.stopPropagation();
+      modal.innerHTML = html;
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+      overlayInformeActual = overlay;
+      document.getElementById('btn-cerrar-dialogo').onclick = () => overlay.remove();
+      window.gradoInformeSeleccionado = '';
+      window.seccionInformeSeleccionada = '';
+  }
+
+  function generarInformeSeleccionado() {
+      window.gradoInformeSeleccionado = document.getElementById('dlg-grado-informe').value;
+      window.seccionInformeSeleccionada = document.getElementById('dlg-seccion-informe').value;
+      if (overlayInformeActual) overlayInformeActual.remove();
+      generarInformeConParametros();
+  }
+
+  async function generarInformeConParametros() {
+      let grado = window.gradoInformeSeleccionado || '';
+      let seccion = window.seccionInformeSeleccionada || '';
+      const docente = document.getElementById('docente-nombre').value.trim();
+      
+      if (!grado && !seccion) {
+          grado = 'Todos';
+          seccion = 'Todos';
+      }
+
+      const alumnosActuales = grado === 'Todos' ? baseDatosAlumnos : baseDatosAlumnos.filter(a => a.grado === grado && (!seccion || seccion === 'Todos' ? true : a.seccion === seccion));
+      
+      const content = document.createElement('div');
+      content.innerHTML = `
+          <div style="padding:20px; font-family: Arial, sans-serif; background:white;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
+              <img src="logo2.jpg" style="height:70px; width:auto;" />
+              <div style="text-align:center; flex:1; min-width:220px;">
+                <h1 style="font-size:22px; color:#0C447C; margin:0;">INFORME DE ASISTENCIA</h1>
+                <p style="margin:4px 0 0 0; font-size:14px; color:#444;">${grado} ${seccion}</p>
+                <p style="margin:4px 0 0 0; font-size:13px; color:#666;">Docente: ${docente || 'No registrado'}</p>
+              </div>
+              <img src="logo3.jpg" style="height:70px; width:auto;" />
+            </div>
+            <div style="border:1px solid #D1D5DB; border-radius:12px; padding:16px; margin-bottom:20px; background:#F8FAFC;">
+              <p style="margin:0; font-size:14px;"><strong>Grado/Sección:</strong> ${grado} ${seccion}</p>
+              <p style="margin:6px 0 0 0; font-size:14px;"><strong>Total Alumnos:</strong> ${alumnosActuales.length}</p>
+              <p style="margin:6px 0 0 0; font-size:14px;"><strong>Fecha:</strong> ${new Date().toLocaleDateString('es-ES')}</p>
+            </div>
+            <h3 style="font-size:16px; color:#185FA5; margin-bottom:10px;">Resumen rápido</h3>
+            <div style="font-size:14px; color:#333; line-height:1.6;">
+              <p>Total de alumnos registrados: ${alumnosActuales.length}</p>
+              <p>Informe generado: ${new Date().toLocaleDateString('es-ES')} a las ${new Date().toLocaleTimeString('es-ES')}</p>
+            </div>
+          </div>
+      `;
+
+      // Esperar a que las imágenes carguen
+      document.body.appendChild(content);
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const opt = {
+          margin: 10,
+          filename: `Informe_${grado.replace(/\s+/g, '_')}_${seccion.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: false, allowTaint: true, foreignObjectRendering: false },
+          jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
+          pagebreak: { mode: ['css', 'legacy'] }
+      };
+
+      html2pdf().set(opt).from(content).save().finally(() => {
+          document.body.removeChild(content);
+      });
+  }
+
+  let overlayAsistenciaActual = null;
+
+  function abrirDialogoGenerarAsistenciaMensual() {
+      const html = `
+          <div style="padding:20px; font-family:Arial, sans-serif;">
+            <h3 style="color:#0C447C; margin-bottom:20px;">Generar Asistencia Mensual</h3>
+            <p style="color:#666; margin-bottom:15px;">Seleccione grado y sección (dados en blanco se generará para TODOS)</p>
+            <div style="margin-bottom:15px;">
+              <label style="display:block; margin-bottom:6px; font-weight:bold;">Grado:</label>
+              <select id="dlg-grado-asistencia" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">
+                <option value="">-- Todos --</option>
+                <option value="1° General">1° General</option>
+                <option value="1° Adm. Contable">1° Adm. Contable</option>
+                <option value="1° S. Eléctricos">1° S. Eléctricos</option>
+                <option value="2° General">2° General</option>
+                <option value="2° Adm. Contable">2° Adm. Contable</option>
+                <option value="2° Sist. Eléctricos">2° Sist. Eléctricos</option>
+                <option value="3° Adm. Contable">3° Adm. Contable</option>
+                <option value="3° Sist. Eléctricos">3° Sist. Eléctricos</option>
+              </select>
+            </div>
+            <div style="margin-bottom:20px;">
+              <label style="display:block; margin-bottom:6px; font-weight:bold;">Sección:</label>
+              <select id="dlg-seccion-asistencia" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">
+                <option value="">-- Todos --</option>
+                <option value="A">"A"</option>
+                <option value="B">"B"</option>
+                <option value="Única">Única</option>
+              </select>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button onclick="generarAsistenciaseleccionada()" style="flex:1; padding:12px; background:#145A32; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Generar</button>
+              <button id="btn-cerrar-dialogo-asistencia" style="flex:1; padding:12px; background:#999; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Cerrar</button>
+            </div>
+          </div>
+      `;
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2500; display:flex; align-items:center; justify-content:center;';
+      overlay.addEventListener('click', function(e) { if(e.target === overlay) overlay.remove(); });
+      const modal = document.createElement('div');
+      modal.style.cssText = 'background:white; padding:20px; border-radius:12px; width:90%; max-width:400px; box-shadow:0 4px 20px rgba(0,0,0,0.3);';
+      modal.onclick = e => e.stopPropagation();
+      modal.innerHTML = html;
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+      overlayAsistenciaActual = overlay;
+      document.getElementById('btn-cerrar-dialogo-asistencia').onclick = () => overlay.remove();
+      window.gradoAsistenciaSeleccionado = '';
+      window.seccionAsistenciaSeleccionada = '';
+  }
+
+  function generarAsistenciaseleccionada() {
+      window.gradoAsistenciaSeleccionado = document.getElementById('dlg-grado-asistencia').value;
+      window.seccionAsistenciaSeleccionada = document.getElementById('dlg-seccion-asistencia').value;
+      if (overlayAsistenciaActual) overlayAsistenciaActual.remove();
+      generarAsistenciaMensualSeleccionada();
+  }
+
+  async function generarAsistenciaMensualSeleccionada() {
+      let grado = window.gradoAsistenciaSeleccionado || '';
+      let seccion = window.seccionAsistenciaSeleccionada || '';
+      const docente = document.getElementById('docente-nombre').value.trim();
+      
+      const ahora = new Date();
+      const mesActual = ahora.getMonth();
+      const anioActual = ahora.getFullYear();
+
+      let reportes = Array.isArray(todosLosReportes) ? todosLosReportes : [];
+      if (!reportes.length) {
+          try {
+              const response = await fetch(`${SCRIPT_URL}?tipo=reportes`);
+              reportes = await response.json();
+          } catch (e) {
+              console.error('Error cargando reportes:', e);
+              return alert('No se pudo cargar los reportes.');
+          }
+      }
+
+      const reportesMes = grado ? reportes.filter(r => {
+          const fecha = new Date(r.fecha);
+          return r.grado === grado && (!seccion ? true : r.seccion === seccion) && fecha.getMonth() === mesActual && fecha.getFullYear() === anioActual;
+      }) : reportes.filter(r => {
+          const fecha = new Date(r.fecha);
+          return fecha.getMonth() === mesActual && fecha.getFullYear() === anioActual;
+      });
+
+      if (reportesMes.length === 0) {
+          return alert('No hay datos de asistencia para el mes actual con los criterios seleccionados.');
+      }
+
+      const mesNombre = ahora.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+      const content = document.createElement('div');
+      content.innerHTML = `
+          <div style="padding:20px; font-family: Arial, sans-serif; background:white;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
+              <img src="logo2.jpg" style="height:70px; width:auto;" />
+              <div style="text-align:center; flex:1; min-width:220px;">
+                <h1 style="font-size:22px; color:#0C447C; margin:0;">ASISTENCIA MENSUAL</h1>
+                <p style="margin:4px 0 0 0; font-size:14px; color:#444;">${grado || 'Todos'} ${seccion || 'Todos'}</p>
+                <p style="margin:4px 0 0 0; font-size:13px; color:#666;">${mesNombre}</p>
+              </div>
+              <img src="logo3.jpg" style="height:70px; width:auto;" />
+            </div>
+            <div style="border:1px solid #D1D5DB; border-radius:12px; padding:16px; margin-bottom:20px; background:#F8FAFC;">
+              <p style="margin:0; font-size:14px;"><strong>Días reportados:</strong> ${reportesMes.length}</p>
+              <p style="margin:6px 0 0 0; font-size:14px;"><strong>Total Presentes:</strong> ${reportesMes.reduce((sum, r) => sum + (parseInt(r.presentes) || 0), 0)}</p>
+              <p style="margin:6px 0 0 0; font-size:14px;"><strong>Total Ausentes:</strong> ${reportesMes.reduce((sum, r) => sum + (parseInt(r.ausentes) || 0), 0)}</p>
+              <p style="margin:6px 0 0 0; font-size:14px;"><strong>Total Permisos:</strong> ${reportesMes.reduce((sum, r) => sum + (parseInt(r.permisos) || 0), 0)}</p>
+            </div>
+            <div style="font-size:14px; color:#333;">
+              ${reportesMes.slice(0, 20).map((r, index) => `
+                <div style="margin-bottom:12px; padding:12px; border:1px solid #E5E7EB; border-radius:10px; background:#FFF; page-break-inside: avoid;">
+                  <p style="margin:0 0 6px 0;"><strong>${new Date(r.fecha).toLocaleDateString('es-ES')}</strong> — Grado: ${r.grado} ${r.seccion} — Presentes: ${r.presentes || 0}, Ausentes: ${r.ausentes || 0}, Permisos: ${r.permisos || 0}</p>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+      `;
+
+      // Esperar a que las imágenes carguen
+      document.body.appendChild(content);
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const opt = {
+          margin: 10,
+          filename: `Asistencia_Mensual_${grado.replace(/\s+/g, '_')}_${seccion.replace(/\s+/g, '_')}_${mesNombre.replace(/\s+/g, '_')}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: false, allowTaint: true, foreignObjectRendering: false },
+          jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
+          pagebreak: { mode: ['css', 'legacy'] }
+      };
+
+      html2pdf().set(opt).from(content).save().finally(() => {
+          document.body.removeChild(content);
+      });
+  }
+
+  function abrirDialogoActualizarEstadoAlumno() {
+      const html = `
+          <div style="padding:20px; font-family:Arial, sans-serif;">
+            <h3 style="color:#0C447C; margin-bottom:20px;">Actualizar Estado del Alumno</h3>
+            <div style="margin-bottom:15px;">
+              <label style="display:block; margin-bottom:6px; font-weight:bold;">NIE:</label>
+              <input type="text" id="dlg-nie-estado" placeholder="Ej. 123456" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; font-size:14px;" />
+            </div>
+            <div style="margin-bottom:15px;">
+              <label style="display:block; margin-bottom:6px; font-weight:bold;">Grado:</label>
+              <input type="text" id="dlg-grado-estado" placeholder="Ej. 1° General" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; font-size:14px;" />
+            </div>
+            <div style="margin-bottom:15px;">
+              <label style="display:block; margin-bottom:6px; font-weight:bold;">Sección:</label>
+              <input type="text" id="dlg-seccion-estado" placeholder="Ej. A" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; font-size:14px;" />
+            </div>
+            <div style="margin-bottom:15px;">
+              <label style="display:block; margin-bottom:6px; font-weight:bold;">Estado:</label>
+              <select id="dlg-estado-alumno" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">
+                <option value="">-- Seleccione estado --</option>
+                <option value="Activo">Activo</option>
+                <option value="En peligro">En peligro</option>
+                <option value="Reprobado">Reprobado</option>
+                <option value="Baja">Baja</option>
+              </select>
+            </div>
+            <div style="margin-bottom:20px;">
+              <label style="display:block; margin-bottom:6px; font-weight:bold;">Observación:</label>
+              <textarea id="dlg-observacion-estado" placeholder="Observación adicional..." style="width:100%; height:80px; padding:10px; border:1px solid #ddd; border-radius:6px; resize:vertical; font-size:14px;"></textarea>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button onclick="guardarEstadoAlumnoDesdeDialogo()" style="flex:1; padding:12px; background:#D35400; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Guardar</button>
+              <button id="btn-cerrar-dialogo-estado" style="flex:1; padding:12px; background:#999; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Cerrar</button>
+            </div>
+          </div>
+      `;
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2500; display:flex; align-items:center; justify-content:center;';
+      overlay.addEventListener('click', function(e) { if(e.target === overlay) overlay.remove(); });
+      const modal = document.createElement('div');
+      modal.style.cssText = 'background:white; padding:20px; border-radius:12px; width:90%; max-width:450px; box-shadow:0 4px 20px rgba(0,0,0,0.3);';
+      modal.onclick = e => e.stopPropagation();
+      modal.innerHTML = html;
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+      document.getElementById('btn-cerrar-dialogo-estado').onclick = () => overlay.remove();
+  }
+
+  function guardarEstadoAlumnoDesdeDialogo() {
+      const nie = document.getElementById('dlg-nie-estado').value.trim();
+      const grado = document.getElementById('dlg-grado-estado').value.trim();
+      const seccion = document.getElementById('dlg-seccion-estado').value.trim();
+      const estado = document.getElementById('dlg-estado-alumno').value;
+      const observacion = document.getElementById('dlg-observacion-estado').value.trim();
+      const docente = document.getElementById('docente-nombre').value.trim() || 'Desconocido';
+
+      if (!nie) return alert('Por favor ingrese el NIE del alumno.');
+      if (!grado || !seccion) return alert('Por favor ingrese grado y sección.');
+      if (!estado) return alert('Por favor seleccione un estado.');
+
+      const payload = {
+          tipo_post: 'guardar_estado_alumno',
+          fecha: new Date().toLocaleDateString('es-ES'),
+          nie: nie,
+          grado: grado,
+          seccion: seccion,
+          estado: estado,
+          docente: docente,
+          observacion: observacion
+      };
+
+      fetch(SCRIPT_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+          body: JSON.stringify(payload)
+      })
+      .then(() => {
+          alert('Estado del alumno registrado correctamente.');
+          document.querySelector('[style*="position:fixed"][style*="z-index:2500"]').remove();
+      })
+      .catch(error => {
+          console.error('Error guardando estado del alumno:', error);
+          alert('Error de conexión al guardar el estado del alumno.');
+      });
+  }
+
 </script>
 </body>
 
