@@ -1425,16 +1425,16 @@
           if (installHelper) installHelper.style.display = 'none';
       }
   }
-
-  let baseDatosAlumnos = [];
-  let docentesStatus = {}; // Estados de docentes: online/offline
-  let carpetaPDFUri = null;
-  let baseDatosDocentes = [];
-  let alumnosFiltrados = [];
-  let estadoSeleccion = true;
-  let sistemaEnMantenimiento = true;
-  let todosLosReportes = [];
-  let loginRequerido = true;
+let baseDatosAlumnos = [];
+let docentesStatus = {}; // Estados de docentes: online/offline
+let carpetaPDFUri = null;
+let baseDatosDocentes = [];
+let alumnosFiltrados = [];
+let alumnosExpediente = [];              // ← AGREGAR ESTA LÍNEA
+let alumnosFiltradosExpediente = [];     // ← AGREGAR ESTA LÍNEA
+let alumnoSeleccionado = null;           // ← AGREGAR ESTA LÍNEA
+let estadoSeleccionExpediente = false;   // ← AGREGAR ESTA LÍNEA
+let estadoSeleccion = true;
   window.usuarioActual = '';
 
   // ── Variables del visor PDF ──────────────────────────────────────
