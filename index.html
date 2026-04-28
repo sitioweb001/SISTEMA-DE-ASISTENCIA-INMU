@@ -1255,9 +1255,15 @@
   const PASS_LOGIN = "89";
   const PASS_ADMIN = "747-8";
 
-  function normalizarTexto(valor) {
-      return String(valor || '').trim().replace(/^\"+|\"+$/g, '').replace(/\"/g, '').trim();
-  }
+function normalizarTexto(valor) {
+  return String(valor || '')
+    .trim()
+    .toLowerCase()                 // ✅ igual que backend
+    .normalize('NFD')              // ✅ normaliza Unicode
+    .replace(/[\u0300-\u036f]/g, '') // ✅ quita tildes
+    .replace(/^\"+|\"+$/g, '')
+    .replace(/\"/g, '');
+}
 
   function esAppAndroid() {
       return typeof AndroidStorage !== 'undefined' && AndroidStorage && typeof AndroidStorage.get === 'function';
