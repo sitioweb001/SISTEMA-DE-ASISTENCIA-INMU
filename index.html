@@ -647,7 +647,7 @@
         min-width: 45px;
         text-align: center;
     }
-
+  
   /* ═══════════════ ASISTENCIA AUTÓNOMA QR ═══════════════ */
   .btn-qr-autonoma {
     width: 100%; padding: 14px;
@@ -668,8 +668,15 @@
   .qr-btn-gen { background:#f39c12; color:#1a1a2e; }
   .qr-btn-scan { background:#2ecc71; color:#1a1a2e; }
   .qr-btn-cam { background:#555; color:white; }
-  #panel-generar-qr, #panel-leer-qr { display:none; flex-direction:column; align-items:center; flex:1; overflow-y:auto; padding:12px; }
-  #panel-generar-qr.activo, #panel-leer-qr.activo { display:flex; }
+  #panel-generar-qr { display:none; flex-direction:column; align-items:center; flex:1; overflow-y:auto; padding:12px; }
+  #panel-generar-qr.activo { display:flex; }
+  /* El panel de escaneo NO scrollea — tiene dos zonas internas */
+  #panel-leer-qr { display:none; flex-direction:column; align-items:center; flex:1; overflow:hidden; padding:0; }
+  #panel-leer-qr.activo { display:flex; }
+  /* Zona superior: fija, no crece */
+  #qr-zona-fija { display:flex; flex-direction:column; align-items:center; width:100%; flex-shrink:0; padding:10px 0 6px; overflow:hidden; }
+  /* Zona inferior: lista con scroll propio */
+  #qr-zona-lista { flex:1; width:100%; overflow-y:auto; padding:0 12px 12px; box-sizing:border-box; }
   .qr-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; width:100%; max-width:700px; }
   .qr-card { background:white; border:2px solid #0C447C; border-radius:10px; padding:10px; text-align:center; color:#1a1a2e; }
   .qr-card img { width:120px; height:120px; }
@@ -687,16 +694,16 @@
   @keyframes slideInQR { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
   .qr-escaneado-nombre { flex:1; color:#eee; font-size:13px; }
   .badge-presente { background:#2ecc71; color:#1a1a2e; font-size:10px; font-weight:bold; padding:2px 7px; border-radius:10px; }
-  </style>
+</style>
 </head>
 
 <body>
 
 <div id="fallback-loading" style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#fff; color:#333; font-family:Arial, sans-serif; z-index:100000; padding:20px; text-align:center;">
-  <div>
-    <div style="font-size:24px; font-weight:bold; margin-bottom:10px;">Cargando aplicación...</div>
-    <div style="font-size:14px; color:#555;">Conectando con el servidor. Si demora más de 10 segundos, es posible que no haya conexión a internet.</div>
-  </div>
+    <div>
+        <div style="font-size:24px; font-weight:bold; margin-bottom:10px;">Cargando aplicación...</div>
+        <div style="font-size:14px; color:#555;">Conectando con el servidor. Si demora más de 10 segundos, es posible que no haya conexión a internet.</div>
+    </div>
 </div>
 
 <div id="pantalla-mantenimiento">
@@ -858,12 +865,12 @@
         </div>
       </div>
       <div style="margin-bottom:12px; display:flex; gap:10px; align-items:center;">
-        <input type="text" id="student-list-search" placeholder="Buscar por nombre o NIE..." oninput="filtrarStudentList()" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
-        <button type="button" onclick="clearStudentListSearch()" style="padding:10px 16px;border:1px solid #ddd;border-radius:8px;background:#f5f5f5;color:#333;font-size:13px;cursor:pointer;white-space:nowrap;">Limpiar</button>
+          <input type="text" id="student-list-search" placeholder="Buscar por nombre o NIE..." oninput="filtrarStudentList()" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+          <button type="button" onclick="clearStudentListSearch()" style="padding:10px 16px;border:1px solid #ddd;border-radius:8px;background:#f5f5f5;color:#333;font-size:13px;cursor:pointer;white-space:nowrap;">Limpiar</button>
       </div>
       <div style="margin-bottom: 25px;">
-        <button onclick="abrirPanelActualizarAsistencia()"
-                style="background:none; border:none; color:#ff00e1; cursor:pointer; font-size:25px; font-weight:bold;">🔄 Actualizar asistencia</button>
+          <button onclick="abrirPanelActualizarAsistencia()"
+                  style="background:none; border:none; color:#ff00e1; cursor:pointer; font-size:25px; font-weight:bold;">🔄 Actualizar asistencia</button>
       </div>
       <div class="student-list" id="tabla-alumnos">
         <div style="padding: 20px; text-align: center; color: var(--gray-600);">⏳ Conectando a la base de
@@ -903,7 +910,7 @@
         <button id="btn-ver-reportes" class="btn-ver-reportes" onclick="abrirVisorReportes()">📂 Ver Reportes PDF</button>
         <button class="btn-qr-autonoma" onclick="abrirQRAutonomo()">📷 Asistencia Autónoma QR</button>
         <button onclick="generarYCompartirPDF()"
-                style="width:100%;padding:14px;background:linear-gradient(135deg,#8E44AD,#a259c4);color:white;border:none;border-radius:10px;font-size:14px;font-weight:bold;cursor:pointer;margin-bottom:10px;transition:all 0.3s;text-transform:uppercase;">
+          style="width:100%;padding:14px;background:linear-gradient(135deg,#8E44AD,#a259c4);color:white;border:none;border-radius:10px;font-size:14px;font-weight:bold;cursor:pointer;margin-bottom:10px;transition:all 0.3s;text-transform:uppercase;">
           📤 Generar PDF y Compartir
         </button>
       </div>
@@ -2828,7 +2835,7 @@
           const url = `${SCRIPT_URL}?tipo=observacion_grado&grado=${encodeURIComponent(grado)}&seccion=${encodeURIComponent(seccion)}&fecha=${fecha}`;
           const res = await fetch(url);
           const data = await res.json();
-
+          
           // Obtener estudiantes en peligro
           let estudiantesPeligro = [];
           try {
@@ -2837,13 +2844,13 @@
           } catch (e) {
               console.log('Error obteniendo estudiantes en peligro:', e);
           }
-
+          
           const cont = document.getElementById('obs-grado-contenido');
           if (cont) {
               let htmlObs = data.observacion
                   ? `<div style="margin-bottom:10px;"><strong>Observación General:</strong><br><em style="color:#333;">${data.observacion}</em><br><small style="color:var(--gray-600);">— ${data.docente || ''} (${data.fecha ? new Date(data.fecha).toLocaleDateString('es-ES') : ''})</small></div>`
                   : '<div style="margin-bottom:10px;"><span style="color:var(--gray-600);">Sin observación registrada para hoy.</span></div>';
-
+              
               if (estudiantesPeligro.length > 0) {
                   htmlObs += '<div style="margin-top:10px;"><strong style="color:var(--red-600);">⚠️ Estudiantes en Riesgo:</strong><ul style="margin:5px 0 0 20px;padding:0;">';
                   estudiantesPeligro.forEach(e => {
@@ -2853,7 +2860,7 @@
                   });
                   htmlObs += '</ul></div>';
               }
-
+              
               cont.innerHTML = htmlObs;
           }
       } catch (e) {
@@ -2863,7 +2870,7 @@
               let htmlObs = obsLocal
                   ? `<em>${obsLocal}</em><br><small style="color:var(--amber-600);">(Observación local — no enviada a la nube aún)</small>`
                   : '<span style="color:var(--gray-600);">Sin observación local registrada.</span>';
-
+              
               // Agregar estudiantes en peligro incluso en local
               try {
                   const resPeligro = await fetch(`${SCRIPT_URL}?tipo=estudiantes_peligro&grado=${encodeURIComponent(grado)}&seccion=${encodeURIComponent(seccion)}`);
@@ -2875,7 +2882,7 @@
               } catch (e2) {
                   console.log('Error obteniendo estudiantes en peligro:', e2);
               }
-
+              
               cont.innerHTML = htmlObs;
           }
       }
@@ -3375,7 +3382,7 @@
 
           let html = '<table style="width:100%; border-collapse:collapse; font-size:13px;">';
           html += '<tr style="background:var(--blue-50); border-bottom:1px solid var(--blue-800);"><th>Nombre</th><th>Sexo</th><th>NIE</th></tr>';
-
+          
           lista.forEach(a => {
               const nombre = typeof a === 'string' ? a : a.nombre;
               const sexo = (typeof a === 'string' ? '' : a.sexo) || '';
@@ -3637,7 +3644,7 @@
           const data = await response.json();
           const justificantes = Array.isArray(data.justificantes) ? data.justificantes : [];
           const faltas = Number(data.faltas_totales) || 0;
-
+          
           // Determinar estado del estudiante
           let estadoHtml = '';
           let colorEstado = '#333';
@@ -5876,7 +5883,7 @@ var qrcode = function() {
  out.writeString('GIF87a');
  out.writeShort(_width);
  out.writeShort(_height);
- out.writeByte(0x80);
+ out.writeByte(0x80); 
  out.writeByte(0);
  out.writeByte(0);
  out.writeByte(0x00);
@@ -6066,7 +6073,7 @@ var qrcode = function() {
 	else
 		root["jsQR"] = factory();
 })(typeof self !== 'undefined' ? self : this, function() {
-return (function(modules) {
+return (function(modules) { 
  	var installedModules = {};
  	function __webpack_require__(moduleId) {
  		if(installedModules[moduleId]) {
@@ -6141,7 +6148,7 @@ exports.BitMatrix = BitMatrix;
 Object.defineProperty(exports, "__esModule", { value: true });
 var GenericGFPoly_1 = __webpack_require__(2);
 function addOrSubtractGF(a, b) {
- return a ^ b;
+ return a ^ b; 
 }
 exports.addOrSubtractGF = addOrSubtractGF;
 var GenericGF = (function () {
@@ -6156,7 +6163,7 @@ var GenericGF = (function () {
  this.expTable[i] = x;
  x = x * 2;
  if (x >= this.size) {
- x = (x ^ this.primitive) & (this.size - 1);
+ x = (x ^ this.primitive) & (this.size - 1); 
  }
  }
  for (var i = 0; i < this.size - 1; i++) {
@@ -6556,9 +6563,9 @@ var DATA_MASKS = [
 function buildFunctionPatternMask(version) {
  var dimension = 17 + 4 * version.versionNumber;
  var matrix = BitMatrix_1.BitMatrix.createEmpty(dimension, dimension);
- matrix.setRegion(0, 0, 9, 9, true);
- matrix.setRegion(dimension - 8, 0, 8, 9, true);
- matrix.setRegion(0, dimension - 8, 9, 8, true);
+ matrix.setRegion(0, 0, 9, 9, true); 
+ matrix.setRegion(dimension - 8, 0, 8, 9, true); 
+ matrix.setRegion(0, dimension - 8, 9, 8, true); 
  for (var _i = 0, _a = version.alignmentPatternCenters; _i < _a.length; _i++) {
  var x = _a[_i];
  for (var _b = 0, _c = version.alignmentPatternCenters; _b < _c.length; _b++) {
@@ -6568,11 +6575,11 @@ function buildFunctionPatternMask(version) {
  }
  }
  }
- matrix.setRegion(6, 9, 1, dimension - 17, true);
- matrix.setRegion(9, 6, dimension - 17, 1, true);
+ matrix.setRegion(6, 9, 1, dimension - 17, true); 
+ matrix.setRegion(9, 6, dimension - 17, 1, true); 
  if (version.versionNumber > 6) {
- matrix.setRegion(dimension - 11, 0, 3, 6, true);
- matrix.setRegion(0, dimension - 11, 6, 3, true);
+ matrix.setRegion(dimension - 11, 0, 3, 6, true); 
+ matrix.setRegion(0, dimension - 11, 6, 3, true); 
  }
  return matrix;
 }
@@ -6585,7 +6592,7 @@ function readCodewords(matrix, version, formatInfo) {
  var bitsRead = 0;
  var readingUp = true;
  for (var columnIndex = dimension - 1; columnIndex > 0; columnIndex -= 2) {
- if (columnIndex === 6) {
+ if (columnIndex === 6) { 
  columnIndex--;
  }
  for (var i = 0; i < dimension; i++) {
@@ -6599,7 +6606,7 @@ function readCodewords(matrix, version, formatInfo) {
  bit = !bit;
  }
  currentByte = pushBit(bit, currentByte);
- if (bitsRead === 8) {
+ if (bitsRead === 8) { 
  codewords.push(currentByte);
  bitsRead = 0;
  currentByte = 0;
@@ -6614,7 +6621,7 @@ function readCodewords(matrix, version, formatInfo) {
 function readVersion(matrix) {
  var dimension = matrix.height;
  var provisionalVersion = Math.floor((dimension - 17) / 4);
- if (provisionalVersion <= 6) {
+ if (provisionalVersion <= 6) { 
  return version_1.VERSIONS[provisionalVersion - 1];
  }
  var topRightVersionBits = 0;
@@ -6654,21 +6661,21 @@ function readVersion(matrix) {
 function readFormatInformation(matrix) {
  var topLeftFormatInfoBits = 0;
  for (var x = 0; x <= 8; x++) {
- if (x !== 6) {
+ if (x !== 6) { 
  topLeftFormatInfoBits = pushBit(matrix.get(x, 8), topLeftFormatInfoBits);
  }
  }
  for (var y = 7; y >= 0; y--) {
- if (y !== 6) {
+ if (y !== 6) { 
  topLeftFormatInfoBits = pushBit(matrix.get(8, y), topLeftFormatInfoBits);
  }
  }
  var dimension = matrix.height;
  var topRightBottomRightFormatInfoBits = 0;
- for (var y = dimension - 1; y >= dimension - 7; y--) {
+ for (var y = dimension - 1; y >= dimension - 7; y--) { 
  topRightBottomRightFormatInfoBits = pushBit(matrix.get(8, y), topRightBottomRightFormatInfoBits);
  }
- for (var x = dimension - 8; x < dimension; x++) {
+ for (var x = dimension - 8; x < dimension; x++) { 
  topRightBottomRightFormatInfoBits = pushBit(matrix.get(x, 8), topRightBottomRightFormatInfoBits);
  }
  var bestDifference = Infinity;
@@ -6683,7 +6690,7 @@ function readFormatInformation(matrix) {
  bestFormatInfo = formatInfo;
  bestDifference = difference;
  }
- if (topLeftFormatInfoBits !== topRightBottomRightFormatInfoBits) {
+ if (topLeftFormatInfoBits !== topRightBottomRightFormatInfoBits) { 
  difference = numBitsDiffering(topRightBottomRightFormatInfoBits, bits);
  if (difference < bestDifference) {
  bestFormatInfo = formatInfo;
@@ -14168,7 +14175,7 @@ function findErrorMagnitudes(field, errorEvaluator, errorLocations) {
 function decode(bytes, twoS) {
  var outputBytes = new Uint8ClampedArray(bytes.length);
  outputBytes.set(bytes);
- var field = new GenericGF_1.default(0x011D, 256, 0);
+ var field = new GenericGF_1.default(0x011D, 256, 0); 
  var poly = new GenericGFPoly_1.default(field, outputBytes);
  var syndromeCoefficients = new Uint8ClampedArray(twoS);
  var error = false;
@@ -15520,7 +15527,7 @@ var BitMatrix_1 = __webpack_require__(0);
 function squareToQuadrilateral(p1, p2, p3, p4) {
  var dx3 = p1.x - p2.x + p3.x - p4.x;
  var dy3 = p1.y - p2.y + p3.y - p4.y;
- if (dx3 === 0 && dy3 === 0) {
+ if (dx3 === 0 && dy3 === 0) { 
  return {
  a11: p2.x - p1.x,
  a12: p2.y - p1.y,
@@ -15641,7 +15648,7 @@ function reorderFinderPatterns(pattern1, pattern2, pattern3) {
  return { bottomLeft: bottomLeft, topLeft: topLeft, topRight: topRight };
 }
 function computeDimension(topLeft, topRight, bottomLeft, matrix) {
- var moduleSize = (sum(countBlackWhiteRun(topLeft, bottomLeft, matrix, 5)) / 7 +
+ var moduleSize = (sum(countBlackWhiteRun(topLeft, bottomLeft, matrix, 5)) / 7 + 
  sum(countBlackWhiteRun(topLeft, topRight, matrix, 5)) / 7 +
  sum(countBlackWhiteRun(bottomLeft, topLeft, matrix, 5)) / 7 +
  sum(countBlackWhiteRun(topRight, topLeft, matrix, 5)) / 7) / 4;
@@ -15722,7 +15729,7 @@ function countBlackWhiteRun(origin, end, matrix, length) {
  var run = end.x - origin.x;
  var towardsEnd = countBlackWhiteRunTowardsPoint(origin, end, matrix, Math.ceil(length / 2));
  var awayFromEnd = countBlackWhiteRunTowardsPoint(origin, { x: origin.x - run, y: origin.y - rise }, matrix, Math.ceil(length / 2));
- var middleValue = towardsEnd.shift() + awayFromEnd.shift() - 1;
+ var middleValue = towardsEnd.shift() + awayFromEnd.shift() - 1; 
  return (_a = awayFromEnd.concat(middleValue)).concat.apply(_a, towardsEnd);
 }
 function scoreBlackWhiteRun(sequence, ratios) {
@@ -15811,12 +15818,12 @@ function locate(matrix) {
  Math.abs(scans[2] - 3 * averageFinderPatternBlocksize) < 3 * averageFinderPatternBlocksize &&
  Math.abs(scans[3] - averageFinderPatternBlocksize) < averageFinderPatternBlocksize &&
  Math.abs(scans[4] - averageFinderPatternBlocksize) < averageFinderPatternBlocksize &&
- !v;
+ !v; 
  var averageAlignmentPatternBlocksize = sum(scans.slice(-3)) / 3;
  var validAlignmentPattern = Math.abs(scans[2] - averageAlignmentPatternBlocksize) < averageAlignmentPatternBlocksize &&
  Math.abs(scans[3] - averageAlignmentPatternBlocksize) < averageAlignmentPatternBlocksize &&
  Math.abs(scans[4] - averageAlignmentPatternBlocksize) < averageAlignmentPatternBlocksize &&
- v;
+ v; 
  if (validFinderPattern) {
  var endX_1 = x - scans[3] - scans[4];
  var startX_1 = endX_1 - scans[2];
@@ -15867,7 +15874,7 @@ function locate(matrix) {
  finderPatternQuads.push.apply(finderPatternQuads, activeFinderPatternQuads.filter(function (q) { return q.bottom.y - q.top.y >= 2; }));
  alignmentPatternQuads.push.apply(alignmentPatternQuads, activeAlignmentPatternQuads);
  var finderPatternGroups = finderPatternQuads
- .filter(function (q) { return q.bottom.y - q.top.y >= 2; })
+ .filter(function (q) { return q.bottom.y - q.top.y >= 2; }) 
  .map(function (q) {
  var x = (q.top.startX + q.top.endX + q.bottom.startX + q.bottom.endX) / 4;
  var y = (q.top.y + q.bottom.y + 1) / 2;
@@ -15879,7 +15886,7 @@ function locate(matrix) {
  var score = scorePattern({ x: Math.round(x), y: Math.round(y) }, [1, 1, 3, 1, 1], matrix);
  return { score: score, x: x, y: y, size: size };
  })
- .filter(function (q) { return !!q; })
+ .filter(function (q) { return !!q; }) 
  .sort(function (a, b) { return a.score - b.score; })
  .map(function (point, i, finderPatterns) {
  if (i > MAX_FINDERPATTERNS_TO_SEARCH) {
@@ -15895,7 +15902,7 @@ function locate(matrix) {
  var score = point.score + otherPoints[0].score + otherPoints[1].score;
  return { points: [point].concat(otherPoints.slice(0, 2)), score: score };
  })
- .filter(function (q) { return !!q; })
+ .filter(function (q) { return !!q; }) 
  .sort(function (a, b) { return a.score - b.score; });
  if (finderPatternGroups.length === 0) {
  return null;
@@ -16552,6 +16559,64 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     }
   }
 
+  // ── Buscador manual de alumno (para registrar sin QR) ─────────────────────
+  function qrManualBuscar() {
+    const input = document.getElementById('qr-manual-buscar');
+    const contenedor = document.getElementById('qr-manual-resultados');
+    const texto = (input ? input.value : '').trim().toLowerCase();
+
+    if (!texto) {
+      contenedor.style.display = 'none';
+      contenedor.innerHTML = '';
+      return;
+    }
+
+    const resultados = qrAlumnos.filter(a =>
+      (a.nombre || '').toLowerCase().includes(texto) ||
+      String(a.nie).includes(texto)
+    ).slice(0, 8); // máximo 8 resultados para no saturar
+
+    if (!resultados.length) {
+      contenedor.style.display = 'block';
+      contenedor.innerHTML = '<div style="padding:10px;color:#aaa;font-size:13px;text-align:center;">Sin resultados</div>';
+      return;
+    }
+
+    contenedor.style.display = 'block';
+    contenedor.innerHTML = resultados.map(a => {
+      const nie = String(a.nie);
+      const yaRegistrado = qrEscaneados.has(nie);
+      const colorBorde = yaRegistrado ? '#2ecc71' : '#f39c12';
+      const etiqueta = yaRegistrado
+        ? '<span style="font-size:10px;background:#2ecc71;color:#000;border-radius:4px;padding:1px 5px;margin-left:6px;">✓ Presente</span>'
+        : '<span style="font-size:10px;background:#f39c12;color:#000;border-radius:4px;padding:1px 5px;margin-left:6px;">Pendiente</span>';
+      return `<div onclick="qrManualRegistrar('${nie}')"
+        style="display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-left:3px solid ${colorBorde};
+               transition:background 0.15s;"
+        onmouseover="this.style.background='rgba(255,255,255,0.06)'"
+        onmouseout="this.style.background='transparent'">
+        <div style="flex:1;min-width:0;">
+          <div style="color:#fff;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            ${a.nombre}${etiqueta}
+          </div>
+          <div style="color:#aaa;font-size:11px;margin-top:2px;">NIE: ${nie} &nbsp;·&nbsp; ${a.grado || ''} ${a.seccion || ''}</div>
+        </div>
+        <span style="font-size:20px;">${yaRegistrado ? '✅' : '👆'}</span>
+      </div>`;
+    }).join('<div style="height:1px;background:rgba(255,255,255,0.06);margin:0 12px;"></div>');
+  }
+
+  function qrManualRegistrar(nie) {
+    // Limpiar el buscador
+    const input = document.getElementById('qr-manual-buscar');
+    const contenedor = document.getElementById('qr-manual-resultados');
+    if (input) input.value = '';
+    if (contenedor) { contenedor.style.display = 'none'; contenedor.innerHTML = ''; }
+
+    // Reusar la misma lógica del escáner
+    procesarNieEscaneado(nie);
+  }
+
 </script>
 
 <!-- ═══════════════════════════════════════════
@@ -16607,31 +16672,54 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 
   <!-- PANEL: LEER QR -->
   <div id="panel-leer-qr">
-    <div id="qr-video-container">
-      <video id="qr-video" playsinline autoplay muted></video>
-      <div id="qr-overlay-frame"><div id="qr-scan-line"></div></div>
-    </div>
-    <div id="qr-estado-scan">Apunte el QR del estudiante hacia la cámara</div>
-    <div style="display:flex;gap:8px;padding:0 12px 10px;width:100%;max-width:480px;flex-wrap:wrap;">
-      <button class="qr-btn qr-btn-cam" style="flex:1;" onclick="girarCamaraQR()">🔄 Girar cámara</button>
-      <button class="qr-btn" style="flex:1;background:#e74c3c;color:white;" onclick="marcarTodosAusentes()">✗ Ausentes restantes</button>
-      <button class="qr-btn" style="flex:1;background:#185FA5;color:white;" onclick="generarPDFDesdeQR()">📥 Generar PDF</button>
-    </div>
-    <div style="display:flex;gap:12px;padding:0 12px;width:100%;max-width:480px;margin-bottom:8px;">
-      <div style="flex:1;background:rgba(46,204,113,0.15);border-radius:8px;padding:8px;text-align:center;border:1px solid #2ecc71;">
-        <div style="color:#2ecc71;font-size:22px;font-weight:bold;" id="qr-cnt-presentes">0</div>
-        <div style="color:#ccc;font-size:11px;">Presentes</div>
+
+    <!-- ── ZONA FIJA: video + controles (siempre visible) ── -->
+    <div id="qr-zona-fija">
+      <div id="qr-video-container" style="max-width:480px;width:100%;padding:0 12px;box-sizing:border-box;">
+        <video id="qr-video" playsinline autoplay muted></video>
+        <div id="qr-overlay-frame"><div id="qr-scan-line"></div></div>
       </div>
-      <div style="flex:1;background:rgba(231,76,60,0.15);border-radius:8px;padding:8px;text-align:center;border:1px solid #e74c3c;">
-        <div style="color:#e74c3c;font-size:22px;font-weight:bold;" id="qr-cnt-pendientes">0</div>
-        <div style="color:#ccc;font-size:11px;">Pendientes</div>
+      <div id="qr-estado-scan">Apunte el QR del estudiante hacia la cámara</div>
+      <div style="display:flex;gap:8px;padding:0 12px 8px;width:100%;max-width:480px;flex-wrap:wrap;box-sizing:border-box;">
+        <button class="qr-btn qr-btn-cam" style="flex:1;" onclick="girarCamaraQR()">🔄 Girar cámara</button>
+        <button class="qr-btn" style="flex:1;background:#e74c3c;color:white;" onclick="marcarTodosAusentes()">✗ Ausentes restantes</button>
+        <button class="qr-btn" style="flex:1;background:#185FA5;color:white;" onclick="generarPDFDesdeQR()">📥 Generar PDF</button>
       </div>
-      <div style="flex:1;background:rgba(0,212,255,0.15);border-radius:8px;padding:8px;text-align:center;border:1px solid #00d4ff;">
-        <div style="color:#00d4ff;font-size:22px;font-weight:bold;" id="qr-cnt-total">0</div>
-        <div style="color:#ccc;font-size:11px;">Total</div>
+      <!-- Buscador manual -->
+      <div style="padding:0 12px 8px;width:100%;max-width:480px;box-sizing:border-box;">
+        <div style="display:flex;gap:6px;align-items:center;background:#1e2a45;border-radius:10px;padding:6px 10px;border:1px solid #2a3a5a;">
+          <span style="font-size:16px;">🔍</span>
+          <input id="qr-manual-buscar" type="text" placeholder="Buscar alumno por nombre o NIE..."
+                 oninput="qrManualBuscar()"
+                 style="flex:1;background:transparent;border:none;outline:none;color:#fff;font-size:13px;min-width:0;" />
+          <button onclick="document.getElementById('qr-manual-buscar').value='';qrManualBuscar();"
+                  style="background:none;border:none;color:#aaa;font-size:16px;cursor:pointer;padding:0;line-height:1;">✕</button>
+        </div>
+        <div id="qr-manual-resultados"
+             style="margin-top:6px;display:none;background:#1e2a45;border-radius:10px;border:1px solid #2a3a5a;max-height:160px;overflow-y:auto;"></div>
       </div>
+      <!-- Contadores -->
+      <div style="display:flex;gap:10px;padding:0 12px 8px;width:100%;max-width:480px;box-sizing:border-box;">
+        <div style="flex:1;background:rgba(46,204,113,0.15);border-radius:8px;padding:7px;text-align:center;border:1px solid #2ecc71;">
+          <div style="color:#2ecc71;font-size:20px;font-weight:bold;" id="qr-cnt-presentes">0</div>
+          <div style="color:#ccc;font-size:11px;">Presentes</div>
+        </div>
+        <div style="flex:1;background:rgba(231,76,60,0.15);border-radius:8px;padding:7px;text-align:center;border:1px solid #e74c3c;">
+          <div style="color:#e74c3c;font-size:20px;font-weight:bold;" id="qr-cnt-pendientes">0</div>
+          <div style="color:#ccc;font-size:11px;">Pendientes</div>
+        </div>
+        <div style="flex:1;background:rgba(0,212,255,0.15);border-radius:8px;padding:7px;text-align:center;border:1px solid #00d4ff;">
+          <div style="color:#00d4ff;font-size:20px;font-weight:bold;" id="qr-cnt-total">0</div>
+          <div style="color:#ccc;font-size:11px;">Total</div>
+        </div>
+      </div>
+    </div><!-- /qr-zona-fija -->
+
+    <!-- ── ZONA SCROLLEABLE: lista de escaneados ── -->
+    <div id="qr-zona-lista">
+      <div id="qr-lista-escaneados"></div>
     </div>
-    <div id="qr-lista-escaneados"></div>
+
   </div>
 
 </div>
