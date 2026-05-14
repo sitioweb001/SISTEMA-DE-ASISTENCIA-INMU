@@ -384,13 +384,20 @@
         /* FORMULARIOS Y TABLAS */
         .filters {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px 18px;
+            margin: 0 auto 20px auto;
+            max-width: 760px;
+            align-items: end;
+            justify-content: center;
+        }
+
+        .filters > div {
+            width: 100%;
         }
 
         .notas-materia-filter {
-            max-width: 320px;
+            max-width: none;
             width: 100%;
             margin: 0;
             text-align: left;
@@ -418,6 +425,11 @@
             border-radius: 8px;
             font-size: 14px;
             outline: none;
+        }
+
+        /* Materia: evitar que parezca "cortada" (mejor legibilidad del texto seleccionado) */
+        #docente-materia {
+            font-size: 13px;
         }
 
         .student-list {
@@ -451,6 +463,21 @@
 
         .student-row.ausente {
             background-color: rgba(226, 75, 74, 0.12);
+        }
+
+        /* Barra de acciones (lista de estudiantes) */
+        .acciones-asistencia {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            justify-content: center;
+            flex-basis: 100%;
+        }
+
+        #controles-lista-alumnos {
+            width: 100%;
+            justify-content: center;
         }
 
         .permiso-btn {
@@ -581,7 +608,7 @@
             inset: 0;
             background: rgba(0, 0, 0, 0.6);
             z-index: 1000;
-            align-items: flex-start;
+            align-items: center;
             justify-content: center;
             overflow-y: auto;
             padding: 20px 10px;
@@ -604,6 +631,20 @@
             -webkit-overflow-scrolling: touch;
             touch-action: pan-y;
             overscroll-behavior: contain;
+        }
+
+        /* Login / Menú alternativo: más delgado como antes */
+        #modal-inicio-dropdown .modal {
+            width: 90%;
+            max-width: 420px;
+            max-height: none;
+            overflow-y: visible;
+            margin: 20px auto;
+        }
+
+        /* Modales con listas largas: mejor anclados arriba para que el scroll sea natural */
+        #modal-asignar-materia.modal-overlay {
+            align-items: flex-start;
         }
 
         #modal-inicio-login .modal {
@@ -834,9 +875,9 @@
         }
 
         .pdf-viewer-btn {
-            background: rgba(255, 255, 255, 0.12);
-            border: none;
-            color: white;
+            background: var(--blue-600);
+            border: 1px solid rgba(0,0,0,0.08);
+            color: #ffffff;
             padding: 8px 12px;
             border-radius: 6px;
             cursor: pointer;
@@ -847,9 +888,7 @@
             gap: 5px;
         }
 
-        .pdf-viewer-btn:hover {
-            background: rgba(255, 255, 255, 0.25);
-        }
+        .pdf-viewer-btn:hover { filter: brightness(0.95); }
 
         .pdf-viewer-btn.rojo {
             background: var(--red-600);
@@ -1101,6 +1140,8 @@
             /* Filtros apilados */
             .filters { grid-template-columns: 1fr; gap: 8px; }
             .notas-materia-filter { max-width: 100%; }
+            .acciones-asistencia { justify-content: center; }
+            #controles-lista-alumnos { justify-content: center; }
 
             /* Tabla de alumnos desplazable horizontalmente */
             .student-list { overflow-x: auto; overflow-y: hidden; }
@@ -1490,9 +1531,9 @@
             </div>
 
             <div class="panel">
-                <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom:15px;">
-                    <label style="color: var(--blue-800); margin:0; font-size:16px;">Lista de Estudiantes</label>
-                    <div>
+                <div style="display:flex; justify-content: space-between; align-items: center; flex-wrap:wrap; gap:10px; margin-bottom:15px;">
+                    <label style="color: var(--blue-800); margin:0; font-size:16px; flex:1; min-width:220px;">Lista de Estudiantes</label>
+                    <div class="acciones-asistencia">
                         <button class="btn-action" onclick="toggleTodos()">☑️ Marcar/Desmarcar Todos</button>
                         <button class="btn-action" onclick="inicializarBaseDatos()" style="color:var(--blue-600);border-color:#93c5fd;background:#eff6ff;">🔄 Nube</button>
                         <button class="btn-action" onclick="seleccionarArchivoLocal()" style="color:#16a34a;border-color:#86efac;background:#f0fdf4;">📂 Local</button>
@@ -3725,7 +3766,7 @@
 
             select.innerHTML = ordenadas.map(asg => {
                 const clave = getClaveMateriaAsignacion(asg);
-                const texto = `${getEtiquetaAsignacion(asg)} · ${asg.grado} ${asg.seccion} · ${asg.escala}`;
+                const texto = `${getEtiquetaAsignacion(asg)}`;
                 return `<option value="${escHtmlMateria(clave)}" data-grado="${escHtmlMateria(asg.grado)}" data-seccion="${escHtmlMateria(asg.seccion)}" data-materia="${escHtmlMateria(asg.materia)}" data-especialidad="${escHtmlMateria(asg.especialidad || '')}" data-tipo-materia="${escHtmlMateria(asg.tipo_materia)}" data-escala="${escHtmlMateria(asg.escala)}">${escHtmlMateria(texto)}</option>`;
             }).join('');
 
@@ -3744,7 +3785,7 @@
             }
             if (tipoSel) tipoSel.value = materiaActiva.escala;
             if (info) {
-                info.textContent = `Grado: ${materiaActiva.grado} ${materiaActiva.seccion} | Escala: ${materiaActiva.escala}${materiaActiva.especialidad ? ` | Especialidad: ${materiaActiva.especialidad}` : ''}`;
+                info.textContent = `Materia: ${materiaActiva.materia}${materiaActiva.especialidad ? ` (${materiaActiva.especialidad})` : ''} | Grado: ${materiaActiva.grado} ${materiaActiva.seccion} | Escala: ${materiaActiva.escala}`;
             }
             try {
                 const docente = (document.getElementById('docente-nombre') || {}).value || '';
