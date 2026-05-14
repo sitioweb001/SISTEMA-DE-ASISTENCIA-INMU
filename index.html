@@ -581,10 +581,11 @@
             inset: 0;
             background: rgba(0, 0, 0, 0.6);
             z-index: 1000;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
             overflow-y: auto;
             padding: 20px 10px;
+            overscroll-behavior: contain;
         }
 
         .modal-overlay.open {
@@ -601,6 +602,8 @@
             margin: 20px auto;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
+            overscroll-behavior: contain;
         }
 
         #modal-inicio-login .modal {
@@ -617,6 +620,7 @@
         .modal #lista-docentes-linea {
             -webkit-overflow-scrolling: touch;
             touch-action: pan-y;
+            overscroll-behavior: contain;
         }
 
         .web-logo-container {
@@ -5011,6 +5015,7 @@
                 actualizarBtnGuardar(true);
             }
             setEstadoGuardado('pendiente');
+            programarAutoGuardadoNotas();
             _actualizarResumenNotas();
         }
 
@@ -5082,7 +5087,27 @@
             }
         }
 
-        function guardarCambiosNotas() {
+        let _autoSaveNotasTimer = null;
+        let _autoSyncNotasTimer = null;
+
+        function programarAutoGuardadoNotas() {
+            // Autosave por grado/sección/materia (debounce)
+            clearTimeout(_autoSaveNotasTimer);
+            _autoSaveNotasTimer = setTimeout(() => {
+                guardarCambiosNotas({ silent: true, sync: false });
+            }, 900);
+
+            // Sincronización al backend con menos frecuencia
+            clearTimeout(_autoSyncNotasTimer);
+            _autoSyncNotasTimer = setTimeout(() => {
+                guardarCambiosNotas({ silent: true, sync: true });
+            }, 3500);
+        }
+
+        function guardarCambiosNotas(opts) {
+            opts = opts || {};
+            const silent = !!opts.silent;
+            const sync = opts.sync !== false;
             const grado   = document.getElementById('grado-select')?.value || '';
             const seccion = document.getElementById('seccion-select')?.value || '';
             const key     = getNotasStorageKey(grado, seccion, notasTipoActual);
@@ -5091,11 +5116,11 @@
             try {
                 localStorage.setItem(key, JSON.stringify(notasData));
             } catch(e) { console.warn('localStorage no disponible:', e); }
-            sincronizarNotasGrupoAppsScript(grado, seccion, notasTipoActual);
+            if (sync) sincronizarNotasGrupoAppsScript(grado, seccion, notasTipoActual);
             notasCambiadas = false;
             actualizarBtnGuardar(false);
             setTimeout(() => setEstadoGuardado('guardado'), 600);
-            if (typeof mostrarNotificacion === 'function') {
+            if (!silent && typeof mostrarNotificacion === 'function') {
                 mostrarNotificacion('✓ Notas guardadas localmente', 'success');
             }
         }
@@ -5176,6 +5201,35 @@
         // ════════════════════════════════════════════════════════════
         // EXPORTAR NOTAS A XLS — Usa la plantilla oficial exacta
         // ════════════════════════════════════════════════════════════
+        async function obtenerPlantillaNotasBytes(grado, seccion) {
+            // Preferir plantilla local del repo (la del ejemplo del Mineducyt).
+            const candidatos = [
+                'plantilla_notas.xls',
+                '2° ADM CONT 2025  LENGUAJE Y LITERATURA.xls'
+            ];
+            for (const ruta of candidatos) {
+                try {
+                    const resp = await fetch(encodeURI(ruta), { cache: 'no-cache' });
+                    if (resp && resp.ok) return new Uint8Array(await resp.arrayBuffer());
+                } catch (_) { /* ignore */ }
+            }
+
+            // Fallback: plantilla embebida por grado|sección (si existe)
+            try {
+                const key = (grado || '') + '|' + (seccion || '');
+                const b64 = (typeof PLANTILLAS_XLS_B64 !== 'undefined' && PLANTILLAS_XLS_B64)
+                    ? (PLANTILLAS_XLS_B64[key] || PLANTILLAS_XLS_B64[Object.keys(PLANTILLAS_XLS_B64)[0]])
+                    : null;
+                if (!b64) return null;
+                const binStr = atob(b64);
+                const bytes = new Uint8Array(binStr.length);
+                for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+                return bytes;
+            } catch (_) {
+                return null;
+            }
+        }
+
         async function exportarNotasXLSX() {
             if (typeof XLSX === 'undefined') {
                 alert('⚠ La librería Excel no cargó. Verifica tu conexión a internet.');
@@ -5211,14 +5265,8 @@
             btn.innerHTML = '⏳ Generando Excel ' + tipoMateria + '...';
 
             try {
-                // Buscar plantilla base para este grado
-                const key = grado + '|' + seccion;
-                const b64 = PLANTILLAS_XLS_B64[key] || PLANTILLAS_XLS_B64[Object.keys(PLANTILLAS_XLS_B64)[0]];
-
-                // Decodificar base64 a ArrayBuffer
-                const binStr  = atob(b64);
-                const bytes   = new Uint8Array(binStr.length);
-                for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+                const bytes = await obtenerPlantillaNotasBytes(grado, seccion);
+                if (!bytes) throw new Error('No se encontró la plantilla Excel base.');
 
                 // Leer con SheetJS (soporta .xls nativo)
                 const wb = XLSX.read(bytes, { type: 'array', cellStyles: true, bookSST: true });
@@ -5231,7 +5279,7 @@
                 ws['Q5'] = { v: materia, t:'s' };
                 // X5 = profesor
                 ws['X5'] = { v: `Profesor: ${docente}`, t:'s' };
-                ws['AK5'] = { v: `Escala ${tipoMateria}`, t:'s' };
+                // La plantilla oficial no trae una celda fija para la escala; no se fuerza aquí para no romper el formato.
 
                 // ── Escribir alumnos a partir de fila 10 con sus notas ──
                 const alumnos = alumnosFiltrados || [];
@@ -5256,22 +5304,40 @@
                     ws[addr].s.border = bordeDelgado;
                 };
 
+                function setCellValue(addr, v, t) {
+                    if (!ws[addr]) ws[addr] = { v: '', t: 's' };
+                    // no pisar fórmula de plantilla
+                    if (ws[addr].f) return;
+                    ws[addr].v = v;
+                    ws[addr].t = t || (typeof v === 'number' ? 'n' : 's');
+                }
+
                 // Helper número entero con borde
                 const setI = (col, val, r) => {
-                    if (val === '' || val === null || val === undefined) { aplicarBorde(col+r); return; }
+                    const addr = col + r;
+                    if (val === '' || val === null || val === undefined) { aplicarBorde(addr); setCellValue(addr, '', 's'); return; }
                     const n = Math.round(parseFloat(val) || 0);
-                    ws[col+r] = { v: n, t: 'n', z: '0', s: { border: bordeDelgado } };
+                    aplicarBorde(addr);
+                    setCellValue(addr, n, 'n');
+                    ws[addr].z = '0';
                 };
 
                 // Helper número decimal con borde
                 const setN = (col, val, r) => {
-                    if (val === '' || val === null || val === undefined) { aplicarBorde(col+r); return; }
-                    ws[col+r] = { v: parseFloat(val) || 0, t: 'n', z: '0.00', s: { border: bordeDelgado } };
+                    const addr = col + r;
+                    if (val === '' || val === null || val === undefined) { aplicarBorde(addr); setCellValue(addr, '', 's'); return; }
+                    const n = parseFloat(val);
+                    if (isNaN(n)) { aplicarBorde(addr); setCellValue(addr, '', 's'); return; }
+                    aplicarBorde(addr);
+                    setCellValue(addr, Math.min(escalaMax, Math.max(0, n)), 'n');
+                    ws[addr].z = '0.00';
                 };
 
                 // Helper string con borde
                 const setS = (col, val, r) => {
-                    ws[col+r] = { v: String(val || ''), t: 's', s: { border: bordeDelgado } };
+                    const addr = col + r;
+                    aplicarBorde(addr);
+                    setCellValue(addr, String(val || ''), 's');
                 };
 
                 // Helper promedio coloreado con borde
@@ -5291,8 +5357,57 @@
                     };
                 };
 
+                // Para filas que no existen en la plantilla (más alumnos), crear bordes + fórmulas oficiales.
+                const asegurarFilaPlantilla = (r) => {
+                    const cols = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','AA','AB','AC','AD','AE','AF','AG','AH','AI','AJ','AK'];
+                    cols.forEach(c => aplicarBorde(c + r));
+
+                    const asegurarFormula = (addr, f) => {
+                        if (ws[addr] && ws[addr].f) return;
+                        // si la celda existe pero no tiene fórmula, la respetamos
+                        if (ws[addr] && ws[addr].v !== undefined && ws[addr].v !== null && ws[addr].v !== '') return;
+                        ws[addr] = {
+                            t: 'n',
+                            f,
+                            v: 0,
+                            z: '0.00',
+                            s: { border: bordeDelgado }
+                        };
+                    };
+
+                    // P1 (raw: E,G,I) ponderado: F,H,J prom: K
+                    asegurarFormula('F' + r, `E${r}*0.35`);
+                    asegurarFormula('H' + r, `G${r}*0.35`);
+                    asegurarFormula('J' + r, `I${r}*0.3`);
+                    asegurarFormula('K' + r, `F${r}+H${r}+J${r}`);
+
+                    // P2 (raw: L,N,P) ponderado: M,O,Q prom: R
+                    asegurarFormula('M' + r, `L${r}*0.35`);
+                    asegurarFormula('O' + r, `N${r}*0.35`);
+                    asegurarFormula('Q' + r, `P${r}*0.3`);
+                    asegurarFormula('R' + r, `M${r}+O${r}+Q${r}`);
+
+                    // P3 (raw: S,U,W) ponderado: T,V,X prom: Y
+                    asegurarFormula('T' + r, `S${r}*0.35`);
+                    asegurarFormula('V' + r, `U${r}*0.35`);
+                    asegurarFormula('X' + r, `W${r}*0.3`);
+                    asegurarFormula('Y' + r, `T${r}+V${r}+X${r}`);
+
+                    // P4 (raw: Z,AB,AD) ponderado: AA,AC,AE prom: AF
+                    asegurarFormula('AA' + r, `Z${r}*0.35`);
+                    asegurarFormula('AC' + r, `AB${r}*0.35`);
+                    asegurarFormula('AE' + r, `AD${r}*0.3`);
+                    asegurarFormula('AF' + r, `AA${r}+AC${r}+AE${r}`);
+
+                    // Prom institucional / final (celdas de la plantilla)
+                    asegurarFormula('AG' + r, `VALUE((K${r}+R${r}+Y${r}+AF${r})/4)`);
+                    asegurarFormula('AH' + r, `ROUND(AG${r},1)`);
+                    asegurarFormula('AJ' + r, `IF(AI${r}<=0,AH${r},(AH${r}+AI${r})/2)`);
+                };
+
                 alumnos.forEach((alumno, idx) => {
                     const r = 10 + idx;
+                    asegurarFilaPlantilla(r);
 
                     setI('A', idx + 1, r);
                     setS('B', String(alumno.nie || ''), r);
@@ -5304,46 +5419,27 @@
                     const p1 = nd.p1 || {}; const p2 = nd.p2 || {};
                     const p3 = nd.p3 || {}; const p4 = nd.p4 || {};
 
-                    // Período 1: E=act1 raw, F=act1×0.35, G=act2 raw, H=act2×0.35, I=act3 raw, J=act3×0.30, K=promedio
-                    setN('E', p1.a1, r); setN('F', p1.a1 !== '' ? (parseFloat(p1.a1)||0)*0.35 : '', r);
-                    setN('G', p1.a2, r); setN('H', p1.a2 !== '' ? (parseFloat(p1.a2)||0)*0.35 : '', r);
-                    setN('I', p1.a3, r); setN('J', p1.a3 !== '' ? (parseFloat(p1.a3)||0)*0.30 : '', r);
-                    setProm('K', p1.prom, r);
+                    // La plantilla oficial calcula ponderaciones y promedios con fórmulas.
+                    // Solo llenamos las celdas "raw" (E,G,I / L,N,P / S,U,W / Z,AB,AD).
+                    setN('E', p1.a1, r);
+                    setN('G', p1.a2, r);
+                    setN('I', p1.a3, r);
 
-                    // Período 2: L,M,N,O,P,Q,R
-                    setN('L', p2.a1, r); setN('M', p2.a1 !== '' ? (parseFloat(p2.a1)||0)*0.35 : '', r);
-                    setN('N', p2.a2, r); setN('O', p2.a2 !== '' ? (parseFloat(p2.a2)||0)*0.35 : '', r);
-                    setN('P', p2.a3, r); setN('Q', p2.a3 !== '' ? (parseFloat(p2.a3)||0)*0.30 : '', r);
-                    setProm('R', p2.prom, r);
+                    setN('L', p2.a1, r);
+                    setN('N', p2.a2, r);
+                    setN('P', p2.a3, r);
 
-                    // Período 3: S,T,U,V,W,X,Y
-                    setN('S', p3.a1, r); setN('T', p3.a1 !== '' ? (parseFloat(p3.a1)||0)*0.35 : '', r);
-                    setN('U', p3.a2, r); setN('V', p3.a2 !== '' ? (parseFloat(p3.a2)||0)*0.35 : '', r);
-                    setN('W', p3.a3, r); setN('X', p3.a3 !== '' ? (parseFloat(p3.a3)||0)*0.30 : '', r);
-                    setProm('Y', p3.prom, r);
+                    setN('S', p3.a1, r);
+                    setN('U', p3.a2, r);
+                    setN('W', p3.a3, r);
 
-                    // Período 4: Z,AA,AB,AC,AD,AE,AF
-                    setN('Z', p4.a1, r); setN('AA', p4.a1 !== '' ? (parseFloat(p4.a1)||0)*0.35 : '', r);
-                    setN('AB', p4.a2, r); setN('AC', p4.a2 !== '' ? (parseFloat(p4.a2)||0)*0.35 : '', r);
-                    setN('AD', p4.a3, r); setN('AE', p4.a3 !== '' ? (parseFloat(p4.a3)||0)*0.30 : '', r);
-                    setProm('AF', p4.prom, r);
-
-                    // Promedios institucional y final (sobre la escala seleccionada)
-                    const proms = [p1.prom, p2.prom, p3.prom, p4.prom]
-                        .filter(p => p !== '' && p !== null && p !== undefined)
-                        .map(p => parseFloat(p) || 0);
-                    if (proms.length) {
-                        const promInst = Math.min(escalaMax, proms.reduce((a,b)=>a+b,0) / 4);
-                        setProm('AG', promInst, r);
-                        setProm('AH', promInst, r);
-                        setProm('AJ', promInst, r);
-                    } else {
-                        aplicarBorde('AG'+r); aplicarBorde('AH'+r); aplicarBorde('AJ'+r);
-                    }
+                    setN('Z',  p4.a1, r);
+                    setN('AB', p4.a2, r);
+                    setN('AD', p4.a3, r);
                 });
 
                 // Actualizar el rango de la hoja
-                const totalRows = 9 + alumnos.length + 10;
+                const totalRows = Math.max(40, 9 + alumnos.length + 12);
                 ws['!ref'] = `A1:AK${totalRows}`;
 
                 // ── Descargar el archivo ──
@@ -5351,14 +5447,17 @@
                 const gradoLimpio  = grado.replace(/[°\s"]/g,'_').replace(/__+/g,'_').replace(/^_|_$/g,'');
                 const nombreArch   = `${gradoLimpio}_${secLimpia}_${anio}_${materia.replace(/\s/g,'_')}_${tipoMateria}.xlsx`;
 
-                // ── Ancho de columnas (wch = caracteres — SheetJS xlsx lo respeta) ──
-                ws['!cols'] = [];
-                for (let ci = 0; ci < 38; ci++) {
-                    if      (ci === 0) ws['!cols'][ci] = { wch: 4.11 };   // A: Nº
-                    else if (ci === 1) ws['!cols'][ci] = { wch: 9.55 };   // B: NIE
-                    else if (ci === 2) ws['!cols'][ci] = { wch: 36.33 };  // C: Nombre
-                    else if (ci === 3) ws['!cols'][ci] = { wch: 3.89 };   // D: Sexo
-                    else               ws['!cols'][ci] = { wch: 5.30 };   // E–AK: notas ← 5.30 chars exacto
+                // ── Ancho de columnas ──
+                // Preferir las columnas de la plantilla. Solo si no existen, usar un fallback.
+                if (!ws['!cols'] || !ws['!cols'].length) {
+                    ws['!cols'] = [];
+                    for (let ci = 0; ci < 38; ci++) {
+                        if      (ci === 0) ws['!cols'][ci] = { wch: 4.11 };   // A: Nº
+                        else if (ci === 1) ws['!cols'][ci] = { wch: 9.55 };   // B: NIE
+                        else if (ci === 2) ws['!cols'][ci] = { wch: 36.33 };  // C: Nombre
+                        else if (ci === 3) ws['!cols'][ci] = { wch: 3.89 };   // D: Sexo
+                        else               ws['!cols'][ci] = { wch: 5.30 };   // E–AK
+                    }
                 }
 
                 if (typeof AndroidPDF !== 'undefined') {
@@ -5442,57 +5541,85 @@
             try {
                 const arrayBuffer = await archivoImportarSeleccionado.arrayBuffer();
                 const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
+                const sheetName = (workbook.SheetNames || []).find(n => (n || '').toString().toLowerCase().includes('plantilla')) || workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
                 
-                // Convertir a JSON (la fila 10 es donde empiezan los alumnos según exportarNotasXLSX)
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                
-                // Buscar dónde empiezan los datos (fila 9 en índice 0)
-                let inicioAlumnos = -1;
-                for (let i = 0; i < Math.min(15, jsonData.length); i++) {
-                    const fila = jsonData[i];
-                    if (fila && fila[2] && (fila[2].toString().toLowerCase().includes('nombre') || 
-                        (fila[1] && fila[1].toString().toLowerCase() === 'nie'))) {
-                        inicioAlumnos = i + 1;
+                // Convertir a JSON (matriz). `defval` evita `undefined` y mantiene índices.
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+
+                const norm = (v) => (v || '').toString().trim().toLowerCase();
+
+                // Detectar fila de encabezados (donde estén NIE y NOMBRE)
+                let headerRow = -1;
+                let colNie = 1, colNombre = 2; // defaults: B y C
+                for (let i = 0; i < Math.min(25, jsonData.length); i++) {
+                    const fila = jsonData[i] || [];
+                    const idxNie = fila.findIndex(c => norm(c) === 'nie');
+                    const idxNom = fila.findIndex(c => norm(c).includes('nombre'));
+                    if (idxNie >= 0 && idxNom >= 0) {
+                        headerRow = i;
+                        colNie = idxNie;
+                        colNombre = idxNom;
                         break;
                     }
                 }
-                if (inicioAlumnos === -1) inicioAlumnos = 9; // Default: fila 10 (índice 9)
+
+                // Buscar primera fila real de alumnos (después del encabezado y sus subfilas)
+                let inicioAlumnos = (headerRow >= 0) ? headerRow + 1 : 0;
+                const esNieValido = (v) => {
+                    const s = (v || '').toString().trim();
+                    return /^\d{4,}$/.test(s);
+                };
+                for (let i = inicioAlumnos; i < jsonData.length; i++) {
+                    const fila = jsonData[i] || [];
+                    const nieC = fila[colNie];
+                    const nomC = fila[colNombre];
+                    if (esNieValido(nieC) && norm(nomC)) { inicioAlumnos = i; break; }
+                }
 
                 const notasExtraidas = [];
                 const tipoMateria = getTipoMateriaNotas();
                 const escalaMax = getEscalaNotasMax();
 
-                // Columnas esperadas (según exportarNotasXLSX):
-                // B=NIE(1), C=Nombre(2), Q=Periodo1 promedio, etc.
-                for (let i = inicioAlumnos; i < jsonData.length; i++) {
-                    const fila = jsonData[i];
-                    if (!fila || !fila[2]) break; // Fin de datos
-                    
-                    const nie = (fila[1] || '').toString().trim();
-                    const nombre = (fila[2] || '').toString().trim();
-                    
-                    if (!nie || !nombre) continue;
+                const parseN = (v) => {
+                    if (v === '' || v === null || v === undefined) return '';
+                    const n = parseFloat(v);
+                    if (isNaN(n)) return '';
+                    return Math.min(escalaMax, Math.max(0, n));
+                };
 
-                    // Columnas de notas (aprox. Q=16, S=18, U=20 para P1, etc.)
-                    // Estructura: P1_cuaderno(~17), P1_integradora(~19), P1_examen(~21)
-                    //            P2_cuaderno(~23), P2_integradora(~25), P2_examen(~27)
-                    //            P3_cuaderno(~29), P3_integradora(~31), P3_examen(~33)
-                    //            P4_cuaderno(~35), P4_integradora(~37), P4_examen(~39)
-                    
-                    const p1_cuaderno = parseFloat(fila[17]) || '';
-                    const p1_integradora = parseFloat(fila[19]) || '';
-                    const p1_examen = parseFloat(fila[21]) || '';
-                    const p2_cuaderno = parseFloat(fila[23]) || '';
-                    const p2_integradora = parseFloat(fila[25]) || '';
-                    const p2_examen = parseFloat(fila[27]) || '';
-                    const p3_cuaderno = parseFloat(fila[29]) || '';
-                    const p3_integradora = parseFloat(fila[31]) || '';
-                    const p3_examen = parseFloat(fila[33]) || '';
-                    const p4_cuaderno = parseFloat(fila[35]) || '';
-                    const p4_integradora = parseFloat(fila[37]) || '';
-                    const p4_examen = parseFloat(fila[39]) || '';
+                // Columnas esperadas (plantilla oficial):
+                // raw P1: E,G,I | P2: L,N,P | P3: S,U,W | P4: Z,AB,AD
+                const idx = {
+                    p1: [4, 6, 8],
+                    p2: [11, 13, 15],
+                    p3: [18, 20, 22],
+                    p4: [25, 27, 29]
+                };
+
+                let blanks = 0;
+                for (let i = inicioAlumnos; i < jsonData.length; i++) {
+                    const fila = jsonData[i] || [];
+                    const nie = (fila[colNie] || '').toString().trim();
+                    const nombre = (fila[colNombre] || '').toString().trim();
+
+                    if (!nie && !nombre) { blanks++; if (blanks >= 10) break; continue; }
+                    blanks = 0;
+
+                    if (!esNieValido(nie) || !nombre) continue;
+
+                    const p1_cuaderno = parseN(fila[idx.p1[0]]);
+                    const p1_integradora = parseN(fila[idx.p1[1]]);
+                    const p1_examen = parseN(fila[idx.p1[2]]);
+                    const p2_cuaderno = parseN(fila[idx.p2[0]]);
+                    const p2_integradora = parseN(fila[idx.p2[1]]);
+                    const p2_examen = parseN(fila[idx.p2[2]]);
+                    const p3_cuaderno = parseN(fila[idx.p3[0]]);
+                    const p3_integradora = parseN(fila[idx.p3[1]]);
+                    const p3_examen = parseN(fila[idx.p3[2]]);
+                    const p4_cuaderno = parseN(fila[idx.p4[0]]);
+                    const p4_integradora = parseN(fila[idx.p4[1]]);
+                    const p4_examen = parseN(fila[idx.p4[2]]);
 
                     notasExtraidas.push({
                         nie, nombre,
