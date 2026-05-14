@@ -328,5 +328,5 @@ Flujo:
 
 ## 10) Notas de seguridad (recomendado)
 
-- Las claves maestras/admin no deberían quedar en claro si el proyecto se publica.
+- Las claves maestras/admin no SE DARA POR ACA.
 - Para producción: mover controles a backend con usuarios/roles, o restringir el Web App a dominio/cuentas autorizadas.
