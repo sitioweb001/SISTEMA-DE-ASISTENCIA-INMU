@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-4<html lang="es">
+<html lang="es">
 
 <head>
     <meta charset="UTF-8">
@@ -3794,7 +3794,11 @@
             } catch (e) {}
             const grado = (document.getElementById('grado-select') || {}).value || '';
             const seccion = (document.getElementById('seccion-select') || {}).value || '';
-            if (grado && seccion) cargarNotasGuardadas(grado, seccion);
+            if (grado && seccion) {
+                cargarNotasGuardadas(grado, seccion);
+                const materiaClave = materiaActiva?.clave || '';
+                prefetchNotasRemotas(grado, seccion, materiaClave, notasTipoActual);
+            }
             if (document.getElementById('modal-notas-periodo')?.style.display === 'block') renderTablaNotas();
         }
 
@@ -4784,6 +4788,30 @@
         let notasData = {};          // { nie: { p1:{a1,a2,a3,prom}, p2:{...}, ... } }
         let notasCambiadas = false;  // flag para el parpadeo
         let notasTipoActual = '0-10';
+        let _notasRemotasPrefetchPromise = null;
+        let _notasRemotasPrefetchKey = '';
+
+        function getNotasPrefetchKey(grado, seccion, materiaClave, escala) {
+            return `${grado}||${seccion}||${materiaClave}||${escala}`;
+        }
+
+        function prefetchNotasRemotas(grado, seccion, materiaClave, escala) {
+            const key = getNotasPrefetchKey(grado, seccion, materiaClave, escala);
+            if (_notasRemotasPrefetchKey === key && _notasRemotasPrefetchPromise) {
+                return _notasRemotasPrefetchPromise;
+            }
+            if (_notasRemotasPrefetchKey !== key) {
+                _notasRemotasPrefetchPromise = null;
+            }
+            _notasRemotasPrefetchKey = key;
+            _notasRemotasPrefetchPromise = obtenerNotasRemotas(grado, seccion, materiaClave, escala)
+                .catch(err => {
+                    console.warn('Prefetch notas remotas falló:', err);
+                    _notasRemotasPrefetchPromise = null;
+                    return [];
+                });
+            return _notasRemotasPrefetchPromise;
+        }
 
         function getTipoMateriaNotas() {
             const materiaActiva = getMateriaDocenteActiva();
@@ -4879,6 +4907,8 @@
                 alert('⚠ No hay alumnos cargados para este grado/sección.');
                 return;
             }
+            const materiaClave = getMateriaDocenteActiva()?.clave || '';
+            prefetchNotasRemotas(grado, seccion, materiaClave, tipoMateria);
 
             // Inicializar notasData si no existe para estos alumnos
             alumnosFiltrados.forEach(a => {
@@ -4907,9 +4937,9 @@
             if (window._autoGuardadoInterval) clearInterval(window._autoGuardadoInterval);
             window._autoGuardadoInterval = setInterval(() => {
                 if (notasCambiadas) guardarCambiosNotas();
-            }, 2000);
+            }, 2002);
             iniciarAutoRefrescoNotas();
-            actualizarNotasDesdeRemoto({ force: true });
+            actualizarNotasDesdeRemoto({ force: true, usePrefetch: true });
         }
 
         function cerrarPanelNotas() {
@@ -5236,7 +5266,15 @@
             }
             setEstadoGuardado('guardando');
             try {
-                var filas = await obtenerNotasRemotas(grado, seccion, materiaActiva.clave || '', getTipoMateriaNotas());
+                var usePrefetch = !!opts.usePrefetch;
+                var prefetched = null;
+                if (usePrefetch && _notasRemotasPrefetchKey === getNotasPrefetchKey(grado, seccion, materiaActiva.clave || '', getTipoMateriaNotas())) {
+                    prefetched = _notasRemotasPrefetchPromise;
+                }
+                var filas = prefetched ? await prefetched : await obtenerNotasRemotas(grado, seccion, materiaActiva.clave || '', getTipoMateriaNotas());
+                if (usePrefetch && !prefetched) {
+                    prefetchNotasRemotas(grado, seccion, materiaActiva.clave || '', getTipoMateriaNotas());
+                }
                 var nuevaData = construirNotasDataDesdeRemoto(filas);
                 var mergedData = {};
                 alumnosFiltrados.forEach(function(alumno) {
@@ -5331,8 +5369,10 @@
             }
         }
 
-        function sincronizarNotasGrupoAppsScript(grado, seccion, tipoMateria) {
-            if (!grado || !seccion || typeof SCRIPT_URL === 'undefined' || !Array.isArray(alumnosFiltrados)) return;
+        async function sincronizarNotasGrupoAppsScript(grado, seccion, tipoMateria) {
+            if (!grado || !seccion || typeof SCRIPT_URL === 'undefined' || !Array.isArray(alumnosFiltrados)) {
+                return Promise.reject(new Error('Sin datos para sincronizar notas'));
+            }
             const materiaActiva = getMateriaDocenteActiva();
             const payload = {
                 tipo_post: 'guardar_notas_grupo',
@@ -5361,14 +5401,33 @@
                     };
                 })
             };
-            return fetch(SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                body: JSON.stringify(payload)
-            }).catch(err => {
-                console.warn('No se pudo sincronizar notas con Apps Script:', err);
-                throw err;
-            });
+            const body = JSON.stringify(payload);
+            async function intentarEnvio(mode, headers) {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode,
+                    headers,
+                    body
+                });
+                if (response.type === 'opaque') {
+                    return response;
+                }
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+                return response;
+            }
+            try {
+                return await intentarEnvio('cors', { 'Content-Type': 'application/json' });
+            } catch (err) {
+                console.warn('Sincronización CORS falló, intentando no-cors:', err);
+                try {
+                    return await intentarEnvio('no-cors');
+                } catch (secondErr) {
+                    console.warn('No se pudo sincronizar notas con Apps Script:', secondErr);
+                    throw secondErr;
+                }
+            }
         }
 
         function setEstadoGuardado(estado) {
@@ -5399,6 +5458,10 @@
                     Object.assign(notasData, parsed);
                 }
             } catch(e) {}
+            const materiaActiva = getMateriaDocenteActiva();
+            if (materiaActiva) {
+                prefetchNotasRemotas(grado, seccion, materiaActiva.clave || '', notasTipoActual);
+            }
         }
 
 
