@@ -1,4 +1,4 @@
-const CACHE_NAME = 'asistencia-inmu-pwa-v2';
+const CACHE_NAME = 'asistencia-inmu-pwa-v3';
 const URLS_TO_CACHE = [
   './index.html',
   './manifest.json',
@@ -7,9 +7,9 @@ const URLS_TO_CACHE = [
   './vendor/html2pdf.bundle.min.js',
   './vendor/xlsx.full.min.js',
   './vendor/pdf.min.js',
-  './vendor/pdf.worker.min.js'
+  './vendor/pdf.worker.min.js',
+  './firebase-notas.js'
 ];
-
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -17,7 +17,6 @@ self.addEventListener('install', event => {
       .then(() => self.skipWaiting())
   );
 });
-
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => Promise.all(
@@ -27,7 +26,6 @@ self.addEventListener('activate', event => {
   );
   self.clients.claim();
 });
-
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
