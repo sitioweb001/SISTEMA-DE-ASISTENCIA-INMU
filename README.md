@@ -865,8 +865,7 @@ Este proyecto se desarrolla con fines:
 - Académicos
 - Innovación tecnológica
 
-> Antes de publicar el repositorio, revisar y eliminar credenciales, claves administrativas, URLs privadas o datos sensibles.
-
+LA LICENCIA SE PROPOCIONA POR INSTITUCION.
 ---
 
 ## 🙌 Créditos
