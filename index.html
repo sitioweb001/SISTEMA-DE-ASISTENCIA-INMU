@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+}<!DOCTYPE html>
 <html lang="es">
 
 <head>
@@ -12,7 +12,7 @@
     <link rel="icon" href="logo.jpg" type="image/jpeg">
     <link rel="apple-touch-icon" href="logo.jpg">
     <title>Registro de Asistencia — INMU</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="vendor/html2pdf.bundle.min.js"></script>
     <style>
 :root {
             --blue-800: #0C447C;
@@ -1343,7 +1343,7 @@
 
 </style>
     <!-- SheetJS para exportar Excel -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="vendor/xlsx.full.min.js"></script>
 </head>
 
 <body>
@@ -2372,7 +2372,7 @@
     </div>
 
     <!-- PDF.js CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="vendor/pdf.min.js"></script>
 
     <!-- ═══════════════════════════════════════════
      MODAL: ASISTENCIA AUTÓNOMA QR
@@ -2541,7 +2541,7 @@
 
 // Configurar workerSrc de PDF.js
         if (typeof pdfjsLib !== 'undefined') {
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js';
         }
 
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxKnxasl94QOwaLx2QZMDNnfNG8NTtnWg1agE9shf9cyeYeP1PsgtUjbu4X94lXRSIM/exec";
