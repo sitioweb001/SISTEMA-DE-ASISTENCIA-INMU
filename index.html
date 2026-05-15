@@ -5223,6 +5223,7 @@
                 var registro = {
                     materia_clave: (fila.materia_clave || fila.clave || '').toString().trim(),
                     asignatura: (fila.asignatura || fila.materia || '').toString().trim(),
+                    especialidad: (fila.especialidad || '').toString().trim(),
                     p1: construirPeriodo('p1'),
                     p2: construirPeriodo('p2'),
                     p3: construirPeriodo('p3'),
@@ -5232,6 +5233,20 @@
                 data[nie].push(registro);
             });
             return data;
+        }
+
+        function normalizarTextoMateria(valor) {
+            return normalizarTexto(valor)
+                .replace(/[^a-z0-9]+/g, ' ')
+                .trim();
+        }
+
+        function coincideMateria(remoteValor, localValor) {
+            var remoteNorm = normalizarTextoMateria(remoteValor);
+            var localNorm = normalizarTextoMateria(localValor);
+            if (!remoteNorm || !localNorm) return false;
+            if (remoteNorm === localNorm) return true;
+            return remoteNorm.includes(localNorm) || localNorm.includes(remoteNorm);
         }
 
         async function obtenerNotasRemotas(grado, seccion, materiaClave, escala) {
@@ -5321,10 +5336,29 @@
                         var actMateria = (materiaActiva && materiaActiva.materia) ? materiaActiva.materia : '';
                         // Preferir coincidencia exacta de clave normalizada
                         remoteAlumnoRec = arr.find(r => normalizarTexto(r.materia_clave || '') === normalizarTexto(actClave));
-                        // Si no, intentar por nombre de asignatura
-                        if (!remoteAlumnoRec) remoteAlumnoRec = arr.find(r => normalizarTexto(r.asignatura || '') === normalizarTexto(actMateria));
-                        // Si sigue sin, tomar la primera disponible
-                        if (!remoteAlumnoRec) remoteAlumnoRec = arr[0];
+                        // Si la clave no coincide exactamente, intentar coincidencia libre sobre clave
+                        if (!remoteAlumnoRec && actClave) {
+                            var actClaveNorm = normalizarTextoMateria(actClave);
+                            remoteAlumnoRec = arr.find(r => {
+                                var remoteClaveNorm = normalizarTextoMateria(r.materia_clave || '');
+                                return remoteClaveNorm && actClaveNorm && (remoteClaveNorm.includes(actClaveNorm) || actClaveNorm.includes(remoteClaveNorm));
+                            });
+                        }
+                        // Si no hay coincidencia por clave, intentar por nombre de asignatura completo o similar
+                        if (!remoteAlumnoRec) {
+                            remoteAlumnoRec = arr.find(r => coincideMateria(r.asignatura || '', actMateria));
+                        }
+                        // Si hay especialidad, intentar emparejar asignatura + especialidad
+                        if (!remoteAlumnoRec && actMateria && materiaActiva.especialidad) {
+                            var actAsignaturaEspecial = actMateria + ' ' + materiaActiva.especialidad;
+                            remoteAlumnoRec = arr.find(r => coincideMateria(r.asignatura || '', actAsignaturaEspecial) || coincideMateria(r.especialidad || '', materiaActiva.especialidad));
+                        }
+                        // Siguiente intento: comparar con la clave como texto libre y con la asignatura
+                        if (!remoteAlumnoRec && actMateria) {
+                            remoteAlumnoRec = arr.find(r => coincideMateria(r.materia_clave || '', actMateria));
+                        }
+                        // Si sigue sin, tomar la primera disponible cuando solo hay un candidato
+                        if (!remoteAlumnoRec && arr.length === 1) remoteAlumnoRec = arr[0];
                     }
                     var remoteAlumno = remoteAlumnoRec || {
                         p1: {a1:'', a2:'', a3:'', prom:''},
