@@ -5143,11 +5143,11 @@
                 guardarCambiosNotas({ silent: true, sync: false });
             }, 900);
 
-            // Sincronización al backend con menos frecuencia
+            // Sincronización al backend en cuanto haya estabilidad de edición
             clearTimeout(_autoSyncNotasTimer);
             _autoSyncNotasTimer = setTimeout(() => {
                 guardarCambiosNotas({ silent: true, sync: true });
-            }, 3500);
+            }, 1200);
         }
 
         function iniciarAutoRefrescoNotas() {
@@ -5238,18 +5238,37 @@
             try {
                 var filas = await obtenerNotasRemotas(grado, seccion, materiaActiva.clave || '', getTipoMateriaNotas());
                 var nuevaData = construirNotasDataDesdeRemoto(filas);
+                var mergedData = {};
                 alumnosFiltrados.forEach(function(alumno) {
                     var nie = String(alumno.nie);
-                    if (!nuevaData[nie]) {
-                        nuevaData[nie] = {
-                            p1: {a1:'', a2:'', a3:'', prom:''},
-                            p2: {a1:'', a2:'', a3:'', prom:''},
-                            p3: {a1:'', a2:'', a3:'', prom:''},
-                            p4: {a1:'', a2:'', a3:'', prom:''}
+                    var localAlumno = notasData[nie] || {
+                        p1: {a1:'', a2:'', a3:'', prom:''},
+                        p2: {a1:'', a2:'', a3:'', prom:''},
+                        p3: {a1:'', a2:'', a3:'', prom:''},
+                        p4: {a1:'', a2:'', a3:'', prom:''}
+                    };
+                    var remoteAlumno = nuevaData[nie] || {
+                        p1: {a1:'', a2:'', a3:'', prom:''},
+                        p2: {a1:'', a2:'', a3:'', prom:''},
+                        p3: {a1:'', a2:'', a3:'', prom:''},
+                        p4: {a1:'', a2:'', a3:'', prom:''}
+                    };
+                    function mergePeriodo(localPer, remotePer) {
+                        return {
+                            a1: remotePer.a1 !== '' ? remotePer.a1 : localPer.a1,
+                            a2: remotePer.a2 !== '' ? remotePer.a2 : localPer.a2,
+                            a3: remotePer.a3 !== '' ? remotePer.a3 : localPer.a3,
+                            prom: remotePer.prom !== '' ? remotePer.prom : localPer.prom
                         };
                     }
+                    mergedData[nie] = {
+                        p1: mergePeriodo(localAlumno.p1, remoteAlumno.p1),
+                        p2: mergePeriodo(localAlumno.p2, remoteAlumno.p2),
+                        p3: mergePeriodo(localAlumno.p3, remoteAlumno.p3),
+                        p4: mergePeriodo(localAlumno.p4, remoteAlumno.p4)
+                    };
                 });
-                notasData = nuevaData;
+                notasData = mergedData;
                 try {
                     localStorage.setItem(getNotasStorageKey(grado, seccion, notasTipoActual), JSON.stringify(notasData));
                 } catch (e) {}
@@ -5292,12 +5311,23 @@
             try {
                 localStorage.setItem(key, JSON.stringify(notasData));
             } catch(e) { console.warn('localStorage no disponible:', e); }
-            if (sync) sincronizarNotasGrupoAppsScript(grado, seccion, notasTipoActual);
+            var syncPromise = Promise.resolve();
+            if (sync) {
+                syncPromise = Promise.resolve(sincronizarNotasGrupoAppsScript(grado, seccion, notasTipoActual));
+            }
             notasCambiadas = false;
             actualizarBtnGuardar(false);
             setTimeout(() => setEstadoGuardado('guardado'), 600);
             if (!silent && typeof mostrarNotificacion === 'function') {
-                mostrarNotificacion('✓ Notas guardadas localmente', 'success');
+                if (sync) {
+                    syncPromise.then(function() {
+                        mostrarNotificacion('✓ Notas guardadas y enviadas a la nube', 'success');
+                    }).catch(function() {
+                        mostrarNotificacion('✓ Guardado local, pero no se pudo enviar a la nube', 'warning');
+                    });
+                } else {
+                    mostrarNotificacion('✓ Notas guardadas localmente', 'success');
+                }
             }
         }
 
@@ -5331,11 +5361,14 @@
                     };
                 })
             };
-            fetch(SCRIPT_URL, {
+            return fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
                 body: JSON.stringify(payload)
-            }).catch(err => console.warn('No se pudo sincronizar notas con Apps Script:', err));
+            }).catch(err => {
+                console.warn('No se pudo sincronizar notas con Apps Script:', err);
+                throw err;
+            });
         }
 
         function setEstadoGuardado(estado) {
