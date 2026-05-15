@@ -5363,7 +5363,9 @@
             const sync = opts.sync !== false;
             const grado   = document.getElementById('grado-select')?.value || '';
             const seccion = document.getElementById('seccion-select')?.value || '';
-            const key     = getNotasStorageKey(grado, seccion, notasTipoActual);
+            const tipoMateria = getTipoMateriaNotas();
+            notasTipoActual = tipoMateria;
+            const key     = getNotasStorageKey(grado, seccion, tipoMateria);
             // Show saving state
             setEstadoGuardado('guardando');
             try {
@@ -5371,22 +5373,33 @@
             } catch(e) { console.warn('localStorage no disponible:', e); }
             var syncPromise = Promise.resolve();
             if (sync) {
-                syncPromise = Promise.resolve(sincronizarNotasGrupoAppsScript(grado, seccion, notasTipoActual));
+                syncPromise = Promise.resolve(sincronizarNotasGrupoAppsScript(grado, seccion, tipoMateria));
             }
-            notasCambiadas = false;
-            actualizarBtnGuardar(false);
-            setTimeout(() => setEstadoGuardado('guardado'), 600);
-            if (!silent && typeof mostrarNotificacion === 'function') {
-                if (sync) {
-                    syncPromise.then(function() {
-                        mostrarNotificacion('✓ Notas guardadas y enviadas a la nube', 'success');
-                    }).catch(function() {
-                        mostrarNotificacion('✓ Guardado local, pero no se pudo enviar a la nube', 'warning');
-                    });
-                } else {
+            if (!sync) {
+                notasCambiadas = false;
+                actualizarBtnGuardar(false);
+                setTimeout(() => setEstadoGuardado('guardado'), 600);
+                if (!silent && typeof mostrarNotificacion === 'function') {
                     mostrarNotificacion('✓ Notas guardadas localmente', 'success');
                 }
+                return;
             }
+            syncPromise.then(function() {
+                notasCambiadas = false;
+                actualizarBtnGuardar(false);
+                setTimeout(() => setEstadoGuardado('guardado'), 600);
+                if (!silent && typeof mostrarNotificacion === 'function') {
+                    mostrarNotificacion('✓ Notas guardadas y enviadas a la nube', 'success');
+                }
+            }).catch(function(err) {
+                notasCambiadas = true;
+                actualizarBtnGuardar(true);
+                setEstadoGuardado('pendiente');
+                console.warn('Error al sincronizar notas:', err);
+                if (!silent && typeof mostrarNotificacion === 'function') {
+                    mostrarNotificacion('✓ Guardado local, pero no se pudo enviar a la nube', 'warning');
+                }
+            });
         }
 
         async function sincronizarNotasGrupoAppsScript(grado, seccion, tipoMateria) {
