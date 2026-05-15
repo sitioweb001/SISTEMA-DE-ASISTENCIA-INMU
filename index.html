@@ -5202,6 +5202,9 @@
             return isNaN(numero) ? '' : numero;
         }
 
+        // Construye un mapa de NIE -> array de registros remotos.
+        // Cada registro incluye `materia_clave` y `asignatura` para permitir
+        // elegir la fila remota correcta cuando hay múltiples materias.
         function construirNotasDataDesdeRemoto(filas) {
             var data = {};
             filas.forEach(function(fila) {
@@ -5217,12 +5220,16 @@
                     }
                     return { a1: a1, a2: a2, a3: a3, prom: prom };
                 }
-                data[nie] = {
+                var registro = {
+                    materia_clave: (fila.materia_clave || fila.clave || '').toString().trim(),
+                    asignatura: (fila.asignatura || fila.materia || '').toString().trim(),
                     p1: construirPeriodo('p1'),
                     p2: construirPeriodo('p2'),
                     p3: construirPeriodo('p3'),
                     p4: construirPeriodo('p4')
                 };
+                data[nie] = data[nie] || [];
+                data[nie].push(registro);
             });
             return data;
         }
@@ -5305,7 +5312,21 @@
                         p3: {a1:'', a2:'', a3:'', prom:''},
                         p4: {a1:'', a2:'', a3:'', prom:''}
                     };
-                    var remoteAlumno = nuevaData[nie] || {
+                    // nuevaData ahora es NIE -> array de registros. Elegimos el registro
+                    // que coincida por materia_clave o por asignatura (nombre), o el primero.
+                    var remoteAlumnoRec = null;
+                    var arr = nuevaData[nie] || [];
+                    if (arr.length) {
+                        var actClave = (materiaActiva && materiaActiva.clave) ? materiaActiva.clave : '';
+                        var actMateria = (materiaActiva && materiaActiva.materia) ? materiaActiva.materia : '';
+                        // Preferir coincidencia exacta de clave normalizada
+                        remoteAlumnoRec = arr.find(r => normalizarTexto(r.materia_clave || '') === normalizarTexto(actClave));
+                        // Si no, intentar por nombre de asignatura
+                        if (!remoteAlumnoRec) remoteAlumnoRec = arr.find(r => normalizarTexto(r.asignatura || '') === normalizarTexto(actMateria));
+                        // Si sigue sin, tomar la primera disponible
+                        if (!remoteAlumnoRec) remoteAlumnoRec = arr[0];
+                    }
+                    var remoteAlumno = remoteAlumnoRec || {
                         p1: {a1:'', a2:'', a3:'', prom:''},
                         p2: {a1:'', a2:'', a3:'', prom:''},
                         p3: {a1:'', a2:'', a3:'', prom:''},
