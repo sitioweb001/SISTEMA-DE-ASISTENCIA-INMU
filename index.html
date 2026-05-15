@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+4<html lang="es">
 
 <head>
     <meta charset="UTF-8">
@@ -4908,6 +4908,8 @@
             window._autoGuardadoInterval = setInterval(() => {
                 if (notasCambiadas) guardarCambiosNotas();
             }, 2000);
+            iniciarAutoRefrescoNotas();
+            actualizarNotasDesdeRemoto({ force: true });
         }
 
         function cerrarPanelNotas() {
@@ -4919,6 +4921,7 @@
                 }
             }
             if (window._autoGuardadoInterval) { clearInterval(window._autoGuardadoInterval); window._autoGuardadoInterval = null; }
+            detenerAutoRefrescoNotas();
             document.getElementById('modal-notas-periodo').style.display = 'none';
             notasCambiadas = false;
             actualizarBtnGuardar(false);
@@ -5130,6 +5133,8 @@
 
         let _autoSaveNotasTimer = null;
         let _autoSyncNotasTimer = null;
+        let _autoRefrescarNotasTimer = null;
+        let _refreshNotasEnProgreso = false;
 
         function programarAutoGuardadoNotas() {
             // Autosave por grado/sección/materia (debounce)
@@ -5143,6 +5148,136 @@
             _autoSyncNotasTimer = setTimeout(() => {
                 guardarCambiosNotas({ silent: true, sync: true });
             }, 3500);
+        }
+
+        function iniciarAutoRefrescoNotas() {
+            if (_autoRefrescarNotasTimer) clearInterval(_autoRefrescarNotasTimer);
+            _autoRefrescarNotasTimer = setInterval(() => {
+                if (document.getElementById('modal-notas-periodo')?.style.display === 'block') {
+                    actualizarNotasDesdeRemoto();
+                }
+            }, 4500);
+        }
+
+        function detenerAutoRefrescoNotas() {
+            if (_autoRefrescarNotasTimer) {
+                clearInterval(_autoRefrescarNotasTimer);
+                _autoRefrescarNotasTimer = null;
+            }
+        }
+
+        function parseNotaRemota(valor) {
+            if (valor === undefined || valor === null || valor === '') return '';
+            var numero = Number(valor);
+            return isNaN(numero) ? '' : numero;
+        }
+
+        function construirNotasDataDesdeRemoto(filas) {
+            var data = {};
+            filas.forEach(function(fila) {
+                var nie = String(fila.nie || '').trim();
+                if (!nie) return;
+                function construirPeriodo(prefijo) {
+                    var a1 = parseNotaRemota(fila[prefijo + '_cuaderno']);
+                    var a2 = parseNotaRemota(fila[prefijo + '_integradora']);
+                    var a3 = parseNotaRemota(fila[prefijo + '_examen']);
+                    var prom = '';
+                    if (a1 !== '' || a2 !== '' || a3 !== '') {
+                        prom = (Number(a1 || 0) * 0.35) + (Number(a2 || 0) * 0.35) + (Number(a3 || 0) * 0.30);
+                    }
+                    return { a1: a1, a2: a2, a3: a3, prom: prom };
+                }
+                data[nie] = {
+                    p1: construirPeriodo('p1'),
+                    p2: construirPeriodo('p2'),
+                    p3: construirPeriodo('p3'),
+                    p4: construirPeriodo('p4')
+                };
+            });
+            return data;
+        }
+
+        async function obtenerNotasRemotas(grado, seccion, materiaClave, escala) {
+            if (!grado || !seccion || !SCRIPT_URL) return [];
+            var url = SCRIPT_URL + '?tipo=notas&grado=' + encodeURIComponent(grado)
+                + '&seccion=' + encodeURIComponent(seccion)
+                + '&materia_clave=' + encodeURIComponent(materiaClave || '')
+                + '&escala=' + encodeURIComponent(escala || getTipoMateriaNotas());
+            try {
+                var data = await gasGet(url, 15000);
+                return Array.isArray(data) ? data : [];
+            } catch (err) {
+                console.warn('No se pudo obtener notas remotas:', err);
+                return [];
+            }
+        }
+
+        async function actualizarNotasDesdeRemoto(opts) {
+            opts = opts || {};
+            var force = !!opts.force;
+            if (_refreshNotasEnProgreso) return;
+            if (notasCambiadas && !force) return;
+            var grado = document.getElementById('grado-select')?.value || '';
+            var seccion = document.getElementById('seccion-select')?.value || '';
+            var materiaActiva = getMateriaDocenteActiva();
+            if (!grado || !seccion || !materiaActiva) return;
+            if (notasCambiadas && force) {
+                if (typeof mostrarNotificacion === 'function') {
+                    mostrarNotificacion('Hay cambios sin guardar. Guarda antes de refrescar para evitar pérdidas.', 'warning');
+                }
+                return;
+            }
+            _refreshNotasEnProgreso = true;
+            var btn = document.getElementById('btn-refrescar-notas');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '⏳ Actualizando...';
+                btn.style.opacity = '0.6';
+            }
+            setEstadoGuardado('guardando');
+            try {
+                var filas = await obtenerNotasRemotas(grado, seccion, materiaActiva.clave || '', getTipoMateriaNotas());
+                var nuevaData = construirNotasDataDesdeRemoto(filas);
+                alumnosFiltrados.forEach(function(alumno) {
+                    var nie = String(alumno.nie);
+                    if (!nuevaData[nie]) {
+                        nuevaData[nie] = {
+                            p1: {a1:'', a2:'', a3:'', prom:''},
+                            p2: {a1:'', a2:'', a3:'', prom:''},
+                            p3: {a1:'', a2:'', a3:'', prom:''},
+                            p4: {a1:'', a2:'', a3:'', prom:''}
+                        };
+                    }
+                });
+                notasData = nuevaData;
+                try {
+                    localStorage.setItem(getNotasStorageKey(grado, seccion, notasTipoActual), JSON.stringify(notasData));
+                } catch (e) {}
+                if (document.getElementById('modal-notas-periodo')?.style.display === 'block') {
+                    renderTablaNotas();
+                }
+                if (!notasCambiadas) {
+                    setEstadoGuardado('guardado');
+                }
+                if (opts.force && typeof mostrarNotificacion === 'function') {
+                    mostrarNotificacion('Notas actualizadas desde la nube.', 'success');
+                }
+            } catch (error) {
+                if (opts.force && typeof mostrarNotificacion === 'function') {
+                    mostrarNotificacion('No se pudo actualizar notas remotas.', 'warning');
+                }
+            } finally {
+                _refreshNotasEnProgreso = false;
+                if (btn) {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.textContent = '🔄 Refrescar';
+                }
+            }
+        }
+
+        function forzarActualizarNotasRemotas() {
+            actualizarNotasDesdeRemoto({ force: true });
         }
 
         function guardarCambiosNotas(opts) {
@@ -21176,6 +21311,10 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
           <button id="btn-guardar-notas" onclick="guardarCambiosNotas()"
             style="flex:2;min-width:180px;padding:13px;border:none;border-radius:10px;font-size:14px;font-weight:bold;cursor:pointer;color:white;background:linear-gradient(135deg,#1D9E75,#27ae60);transition:all 0.3s;">
             💾 Guardar Cambios
+          </button>
+          <button id="btn-refrescar-notas" onclick="forzarActualizarNotasRemotas()"
+            style="flex:1;min-width:150px;padding:13px;border:none;border-radius:10px;font-size:14px;font-weight:bold;cursor:pointer;color:white;background:linear-gradient(135deg,#0C4A6E,#2563EB);transition:all 0.3s;">
+            🔄 Refrescar
           </button>
           <button id="btn-importar-notas" onclick="abrirModalImportarNotas()"
             style="flex:1;min-width:150px;padding:13px;border:none;border-radius:10px;font-size:14px;font-weight:bold;cursor:pointer;color:white;background:linear-gradient(135deg,#7C3AED,#a855f7);transition:all 0.3s;">
