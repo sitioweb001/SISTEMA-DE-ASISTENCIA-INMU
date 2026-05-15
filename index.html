@@ -5229,15 +5229,35 @@
 
         async function obtenerNotasRemotas(grado, seccion, materiaClave, escala) {
             if (!grado || !seccion || !SCRIPT_URL) return [];
-            var url = SCRIPT_URL + '?tipo=notas&grado=' + encodeURIComponent(grado)
+            var base = SCRIPT_URL + '?tipo=notas&grado=' + encodeURIComponent(grado)
                 + '&seccion=' + encodeURIComponent(seccion)
-                + '&materia_clave=' + encodeURIComponent(materiaClave || '')
                 + '&escala=' + encodeURIComponent(escala || getTipoMateriaNotas());
+            var urlWithClave = base + '&materia_clave=' + encodeURIComponent(materiaClave || '');
             try {
-                var data = await gasGet(url, 15000);
+                var data = await gasGet(urlWithClave, 15000);
+                // Si no devolvió nada pero se pidió una materia_clave, intentar sin filtro de materia
+                if ((!Array.isArray(data) || data.length === 0) && materiaClave) {
+                    console.warn('No se encontraron notas usando materia_clave, reintentando sin clave');
+                    try {
+                        var data2 = await gasGet(base, 15000);
+                        return Array.isArray(data2) ? data2 : [];
+                    } catch (err2) {
+                        console.warn('Fallback sin materia_clave falló:', err2);
+                        return [];
+                    }
+                }
                 return Array.isArray(data) ? data : [];
             } catch (err) {
                 console.warn('No se pudo obtener notas remotas:', err);
+                // Intentar fallback sin materia_clave
+                if (materiaClave) {
+                    try {
+                        var data3 = await gasGet(base, 15000);
+                        return Array.isArray(data3) ? data3 : [];
+                    } catch (err3) {
+                        console.warn('Fallback sin materia_clave falló:', err3);
+                    }
+                }
                 return [];
             }
         }
