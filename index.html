@@ -2552,11 +2552,6 @@
         }
 
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxKnxasl94QOwaLx2QZMDNnfNG8NTtnWg1agE9shf9cyeYeP1PsgtUjbu4X94lXRSIM/exec";
-
-        // ── Firebase-Notas v2.0 activo — ver firebase-notas.js ──
-        // Las funciones de notas (obtenerNotasRemotas, guardarCambiosNotas,
-        // sincronizarNotasGrupoAppsScript) han sido reemplazadas por Firebase.
-        // El resto del sistema sigue usando el GAS/Google Sheets original.
         const PASS_LOGIN = "89";
         const PASS_ADMIN = "747-8";
 
@@ -20135,17 +20130,7 @@
                 html += '</div>';
             });
 
-            html += '</div>
-    <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!-- FIREBASE — Módulo de Notas en Tiempo Real (SICA-INMU v2.0)    -->
-    <!-- Agrega sincronización en tiempo real sin recargar la página.   -->
-    <!-- Ver INSTRUCCIONES_FIREBASE.md para configuración.              -->
-    <!-- ═══════════════════════════════════════════════════════════════ -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="firebase-notas.js"></script>
-    <!-- ═══════════════════════════════════════════════════════════════ -->
-</body></html>';
+            html += '</div></body></html>';
             const w = window.open('', '_blank');
             if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 800); }
             else { alert('Active las ventanas emergentes para imprimir.'); }
@@ -21881,12 +21866,10 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
 })();
 </script>
 
-<!-- Firebase SDK (módulo de notas en tiempo real) -->
+<!-- Firebase — Notas en Tiempo Real -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase-notas.js"></script>
-
-</body>
 
 </body>
 
