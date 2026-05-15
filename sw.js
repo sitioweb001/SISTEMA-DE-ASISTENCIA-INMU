@@ -1,8 +1,13 @@
-const CACHE_NAME = 'asistencia-inmu-pwa-v1';
+const CACHE_NAME = 'asistencia-inmu-pwa-v2';
 const URLS_TO_CACHE = [
   './index.html',
   './manifest.json',
-  './logo.jpg'
+  './logo.jpg',
+  './plantilla_notas.xls',
+  './vendor/html2pdf.bundle.min.js',
+  './vendor/xlsx.full.min.js',
+  './vendor/pdf.min.js',
+  './vendor/pdf.worker.min.js'
 ];
 
 self.addEventListener('install', event => {
