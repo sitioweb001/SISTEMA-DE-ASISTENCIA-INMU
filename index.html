@@ -1467,6 +1467,8 @@
         <div class="btn-group-nav">
             <button class="btn-nav" style="background:#F39C12; color:white; font-weight:bold;"
                 onclick="mostrarNotificaciones()">🔔 Notificaciones</button>
+            <button class="btn-nav" style="background:#1565C0; color:white; font-weight:bold;"
+                onclick="abrirModalInformeAsistencia()">📊 Informe Asistencia</button>
             <button class="btn-nav" style="background:#0E73D4; color:white; font-weight:bold;"
                 onclick="cambiarVista('informes')">📄 Informes</button>
             <button class="btn-nav" id="btn-copiar-portal" style="background:#4A5568; color:white; font-weight:bold;"
@@ -4291,7 +4293,13 @@
             let html = `<div class="student-row student-header">
           <div class="checkbox-wrapper">✓</div>
           <div>Nombre del Estudiante</div>
-          <div>Sexo</div><div>NIE</div><div>Teléfono</div><div>Permiso</div><div style="text-align:center;">Portal</div>
+          <div>Sexo</div><div>NIE</div><div>Teléfono</div><div>Permiso</div><div style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px;">
+          Portal
+          <button id="btn-auto-portal" onclick="toggleAutoPortal(event)" title="Activar actualización automática del portal en tiempo real"
+            style="font-size:9px;padding:2px 5px;border-radius:5px;border:none;cursor:pointer;font-weight:700;background:#d1fae5;color:#065f46;white-space:nowrap;line-height:1.3;">
+            🔄 Auto
+          </button>
+        </div>
       </div>`;
 
             alumnosVisibles.forEach((alumno, i) => {
@@ -5209,9 +5217,6 @@
             return isNaN(numero) ? '' : numero;
         }
 
-        // Construye un mapa de NIE -> array de registros remotos.
-        // Cada registro incluye `materia_clave` y `asignatura` para permitir
-        // elegir la fila remota correcta cuando hay múltiples materias.
         function construirNotasDataDesdeRemoto(filas) {
             var data = {};
             filas.forEach(function(fila) {
@@ -5227,33 +5232,14 @@
                     }
                     return { a1: a1, a2: a2, a3: a3, prom: prom };
                 }
-                var registro = {
-                    materia_clave: (fila.materia_clave || fila.clave || '').toString().trim(),
-                    asignatura: (fila.asignatura || fila.materia || '').toString().trim(),
-                    especialidad: (fila.especialidad || '').toString().trim(),
+                data[nie] = {
                     p1: construirPeriodo('p1'),
                     p2: construirPeriodo('p2'),
                     p3: construirPeriodo('p3'),
                     p4: construirPeriodo('p4')
                 };
-                data[nie] = data[nie] || [];
-                data[nie].push(registro);
             });
             return data;
-        }
-
-        function normalizarTextoMateria(valor) {
-            return normalizarTexto(valor)
-                .replace(/[^a-z0-9]+/g, ' ')
-                .trim();
-        }
-
-        function coincideMateria(remoteValor, localValor) {
-            var remoteNorm = normalizarTextoMateria(remoteValor);
-            var localNorm = normalizarTextoMateria(localValor);
-            if (!remoteNorm || !localNorm) return false;
-            if (remoteNorm === localNorm) return true;
-            return remoteNorm.includes(localNorm) || localNorm.includes(remoteNorm);
         }
 
         async function obtenerNotasRemotas(grado, seccion, materiaClave, escala) {
@@ -5334,40 +5320,7 @@
                         p3: {a1:'', a2:'', a3:'', prom:''},
                         p4: {a1:'', a2:'', a3:'', prom:''}
                     };
-                    // nuevaData ahora es NIE -> array de registros. Elegimos el registro
-                    // que coincida por materia_clave o por asignatura (nombre), o el primero.
-                    var remoteAlumnoRec = null;
-                    var arr = nuevaData[nie] || [];
-                    if (arr.length) {
-                        var actClave = (materiaActiva && materiaActiva.clave) ? materiaActiva.clave : '';
-                        var actMateria = (materiaActiva && materiaActiva.materia) ? materiaActiva.materia : '';
-                        // Preferir coincidencia exacta de clave normalizada
-                        remoteAlumnoRec = arr.find(r => normalizarTexto(r.materia_clave || '') === normalizarTexto(actClave));
-                        // Si la clave no coincide exactamente, intentar coincidencia libre sobre clave
-                        if (!remoteAlumnoRec && actClave) {
-                            var actClaveNorm = normalizarTextoMateria(actClave);
-                            remoteAlumnoRec = arr.find(r => {
-                                var remoteClaveNorm = normalizarTextoMateria(r.materia_clave || '');
-                                return remoteClaveNorm && actClaveNorm && (remoteClaveNorm.includes(actClaveNorm) || actClaveNorm.includes(remoteClaveNorm));
-                            });
-                        }
-                        // Si no hay coincidencia por clave, intentar por nombre de asignatura completo o similar
-                        if (!remoteAlumnoRec) {
-                            remoteAlumnoRec = arr.find(r => coincideMateria(r.asignatura || '', actMateria));
-                        }
-                        // Si hay especialidad, intentar emparejar asignatura + especialidad
-                        if (!remoteAlumnoRec && actMateria && materiaActiva.especialidad) {
-                            var actAsignaturaEspecial = actMateria + ' ' + materiaActiva.especialidad;
-                            remoteAlumnoRec = arr.find(r => coincideMateria(r.asignatura || '', actAsignaturaEspecial) || coincideMateria(r.especialidad || '', materiaActiva.especialidad));
-                        }
-                        // Siguiente intento: comparar con la clave como texto libre y con la asignatura
-                        if (!remoteAlumnoRec && actMateria) {
-                            remoteAlumnoRec = arr.find(r => coincideMateria(r.materia_clave || '', actMateria));
-                        }
-                        // Si sigue sin, tomar la primera disponible cuando solo hay un candidato
-                        if (!remoteAlumnoRec && arr.length === 1) remoteAlumnoRec = arr[0];
-                    }
-                    var remoteAlumno = remoteAlumnoRec || {
+                    var remoteAlumno = nuevaData[nie] || {
                         p1: {a1:'', a2:'', a3:'', prom:''},
                         p2: {a1:'', a2:'', a3:'', prom:''},
                         p3: {a1:'', a2:'', a3:'', prom:''},
@@ -5425,9 +5378,7 @@
             const sync = opts.sync !== false;
             const grado   = document.getElementById('grado-select')?.value || '';
             const seccion = document.getElementById('seccion-select')?.value || '';
-            const tipoMateria = getTipoMateriaNotas();
-            notasTipoActual = tipoMateria;
-            const key     = getNotasStorageKey(grado, seccion, tipoMateria);
+            const key     = getNotasStorageKey(grado, seccion, notasTipoActual);
             // Show saving state
             setEstadoGuardado('guardando');
             try {
@@ -5435,33 +5386,22 @@
             } catch(e) { console.warn('localStorage no disponible:', e); }
             var syncPromise = Promise.resolve();
             if (sync) {
-                syncPromise = Promise.resolve(sincronizarNotasGrupoAppsScript(grado, seccion, tipoMateria));
+                syncPromise = Promise.resolve(sincronizarNotasGrupoAppsScript(grado, seccion, notasTipoActual));
             }
-            if (!sync) {
-                notasCambiadas = false;
-                actualizarBtnGuardar(false);
-                setTimeout(() => setEstadoGuardado('guardado'), 600);
-                if (!silent && typeof mostrarNotificacion === 'function') {
+            notasCambiadas = false;
+            actualizarBtnGuardar(false);
+            setTimeout(() => setEstadoGuardado('guardado'), 600);
+            if (!silent && typeof mostrarNotificacion === 'function') {
+                if (sync) {
+                    syncPromise.then(function() {
+                        mostrarNotificacion('✓ Notas guardadas y enviadas a la nube', 'success');
+                    }).catch(function() {
+                        mostrarNotificacion('✓ Guardado local, pero no se pudo enviar a la nube', 'warning');
+                    });
+                } else {
                     mostrarNotificacion('✓ Notas guardadas localmente', 'success');
                 }
-                return;
             }
-            syncPromise.then(function() {
-                notasCambiadas = false;
-                actualizarBtnGuardar(false);
-                setTimeout(() => setEstadoGuardado('guardado'), 600);
-                if (!silent && typeof mostrarNotificacion === 'function') {
-                    mostrarNotificacion('✓ Notas guardadas y enviadas a la nube', 'success');
-                }
-            }).catch(function(err) {
-                notasCambiadas = true;
-                actualizarBtnGuardar(true);
-                setEstadoGuardado('pendiente');
-                console.warn('Error al sincronizar notas:', err);
-                if (!silent && typeof mostrarNotificacion === 'function') {
-                    mostrarNotificacion('✓ Guardado local, pero no se pudo enviar a la nube', 'warning');
-                }
-            });
         }
 
         async function sincronizarNotasGrupoAppsScript(grado, seccion, tipoMateria) {
@@ -21866,10 +21806,561 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
 })();
 </script>
 
-<!-- Firebase — Notas en Tiempo Real -->
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- MODAL INFORME ASISTENCIA — Calendario + PDF mensual/por fecha        -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-informe-asistencia" style="z-index:5000;">
+  <div class="modal" style="max-width:480px;">
+    <h2 style="color:var(--blue-800);text-align:center;margin-bottom:4px;">📊 Informe de Asistencia</h2>
+    <p style="text-align:center;font-size:12px;color:var(--gray-600);margin-bottom:16px;">Todos los grados y secciones</p>
+
+    <!-- Selector de tipo -->
+    <div style="display:flex;gap:8px;margin-bottom:14px;justify-content:center;">
+      <button id="ia-tab-dia" onclick="iaSetTab('dia')"
+        style="flex:1;padding:8px;border-radius:8px;border:2px solid var(--blue-600);background:var(--blue-600);color:white;font-weight:700;cursor:pointer;font-size:12px;">📅 Por Fecha</button>
+      <button id="ia-tab-mes" onclick="iaSetTab('mes')"
+        style="flex:1;padding:8px;border-radius:8px;border:2px solid var(--blue-600);background:white;color:var(--blue-600);font-weight:700;cursor:pointer;font-size:12px;">📆 Mensual</button>
+    </div>
+
+    <!-- Panel Por Fecha -->
+    <div id="ia-panel-dia">
+      <label style="font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;">Fecha del informe</label>
+      <input type="date" id="ia-fecha-dia" style="width:100%;padding:10px;border:1.5px solid var(--gray-100);border-radius:8px;font-size:15px;margin-bottom:8px;">
+      <p style="font-size:11px;color:var(--gray-600);text-align:center;">Se generará un PDF con todos los reportes de asistencia de esa fecha, organizados por grado y sección.</p>
+    </div>
+
+    <!-- Panel Mensual -->
+    <div id="ia-panel-mes" style="display:none;">
+      <label style="font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;">Mes y Año</label>
+      <input type="month" id="ia-mes" style="width:100%;padding:10px;border:1.5px solid var(--gray-100);border-radius:8px;font-size:15px;margin-bottom:8px;">
+      <p style="font-size:11px;color:var(--gray-600);text-align:center;">Se generará un resumen mensual completo con totales por grado, sección y día.</p>
+    </div>
+
+    <!-- Estado de generación -->
+    <div id="ia-status" style="display:none;text-align:center;padding:10px;background:var(--blue-50);border-radius:8px;margin-bottom:12px;font-size:13px;color:var(--blue-800);font-weight:600;"></div>
+
+    <!-- Botones -->
+    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+      <button onclick="cerrarModalInformeAsistencia()"
+        style="flex:1;min-width:90px;padding:11px;border-radius:8px;border:1.5px solid var(--gray-100);background:var(--bg-panel);color:var(--text-primary);font-weight:700;cursor:pointer;font-size:13px;">✕ Cerrar</button>
+      <button id="ia-btn-pdf" onclick="generarInformeAsistenciaPDF()"
+        style="flex:2;min-width:120px;padding:11px;border-radius:8px;border:none;background:var(--blue-600);color:white;font-weight:700;cursor:pointer;font-size:13px;">📄 Generar PDF</button>
+      <button id="ia-btn-mensual" onclick="generarInformeMensual()"
+        style="flex:2;min-width:120px;padding:11px;border-radius:8px;border:none;background:var(--green-600);color:white;font-weight:700;cursor:pointer;font-size:13px;">📆 Informe Mensual</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDKs compat -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="firebase-notas.js"></script>
+<!-- Módulos Firebase SICA-INMU (Fases 2 y 3) -->
+<script src="firebase-config.js"></script>
+<script src="firebase-docentes.js"></script>
+<script src="firebase-asistencia.js"></script>
+<script src="firebase-reportes.js"></script>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════════
+ * AUTO-PORTAL — Botón en cabecera de tabla
+ * Activa onSnapshot de Firebase para actualizar la columna Portal en tiempo real
+ * sin necesidad de presionar "Sincronizar Asistencia"
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+let _autoPortalActivo = false;
+let _autoPortalUnsub  = null;
+
+function toggleAutoPortal(event) {
+  if (event) event.stopPropagation();
+  const btn = document.getElementById('btn-auto-portal');
+  if (_autoPortalActivo) {
+    // Desactivar
+    if (_autoPortalUnsub) { _autoPortalUnsub(); _autoPortalUnsub = null; }
+    _autoPortalActivo = false;
+    if (btn) { btn.textContent = '🔄 Auto'; btn.style.background = '#d1fae5'; btn.style.color = '#065f46'; }
+    if (typeof mostrarNotificacion === 'function')
+      mostrarNotificacion('Auto-portal desactivado.', 'warning', 2500);
+  } else {
+    // Activar
+    const grado   = (document.getElementById('grado-select')?.value   || '').trim();
+    const seccion = (document.getElementById('seccion-select')?.value || '').trim();
+    if (!grado || !seccion) {
+      if (typeof mostrarNotificacion === 'function')
+        mostrarNotificacion('Selecciona grado y sección primero.', 'warning');
+      return;
+    }
+    _iniciarAutoPortal(grado, seccion);
+    _autoPortalActivo = true;
+    if (btn) { btn.textContent = '🟢 Activo'; btn.style.background = '#059669'; btn.style.color = 'white'; }
+    if (typeof mostrarNotificacion === 'function')
+      mostrarNotificacion('✅ Auto-portal activado. Los alumnos que marquen aparecerán en tiempo real.', 'success', 4000);
+  }
+}
+
+function _iniciarAutoPortal(grado, seccion) {
+  if (_autoPortalUnsub) { _autoPortalUnsub(); _autoPortalUnsub = null; }
+  // Usar FB_activarPortal si está disponible (de firebase-asistencia.js)
+  if (typeof FB_activarPortal === 'function') {
+    FB_activarPortal(grado, seccion);
+    // El listener ya pinta la UI solo — guardamos referencia al botón
+    // Escuchar cambios de grado/sección para desactivar auto si cambian
+    _autoPortalUnsub = function() {
+      if (typeof window._fbUnsubPortalInmu === 'function') window._fbUnsubPortalInmu();
+    };
+    return;
+  }
+  // Fallback: Firebase directo si firebase-asistencia.js no está cargado
+  try {
+    if (!firebase || !firebase.apps.length) return;
+    const db = firebase.firestore();
+    const hoy = _getFechaKeyPortal();
+    _autoPortalUnsub = db.collection('asistencia_alumnos_inmu')
+      .where('fecha_key', '==', hoy)
+      .where('grado', '==', grado)
+      .where('seccion', '==', seccion)
+      .onSnapshot(snap => {
+        const mapa = {};
+        snap.forEach(doc => {
+          const d = doc.data();
+          if (d.nie) mapa[String(d.nie).trim()] = { estado: d.estado || 'presente', hora: d.hora || '' };
+        });
+        _pintarPortalAutoUI(mapa);
+      }, e => console.warn('[AutoPortal]', e));
+  } catch(e) { console.warn('[AutoPortal] Firebase no disponible:', e); }
+}
+
+function _getFechaKeyPortal() {
+  const n = new Date();
+  return String(n.getDate()).padStart(2,'0') + '_' + String(n.getMonth()+1).padStart(2,'0') + '_' + n.getFullYear();
+}
+
+function _pintarPortalAutoUI(mapa) {
+  (window.alumnosFiltrados || []).forEach(alumno => {
+    const nieStr = String(alumno.nie || '').trim();
+    const el = document.getElementById('asist-portal-' + nieStr);
+    if (!el) return;
+    const reg = mapa[nieStr];
+    if (reg) {
+      const hora = reg.hora || '';
+      const esP  = reg.estado === 'permiso';
+      el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;' +
+        (esP ? 'color:#92400e;background:#fef3c7;' : 'color:#166534;background:#dcfce7;');
+      el.innerHTML = esP
+        ? `⚠️ Permiso${hora ? '<br><small style="font-weight:400">' + hora + '</small>' : ''}`
+        : `✅ Marcó${hora ? '<br><small style="font-weight:400">' + hora + '</small>' : ''}`;
+    } else {
+      el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#991b1b;background:#fee2e2;';
+      el.textContent = '🔴 No marcó';
+    }
+  });
+}
+
+// Cuando cambian grado/sección, si auto-portal estaba activo, reiniciar para el nuevo grado
+(function() {
+  const MAX = 20; let t = 0;
+  function buscar() {
+    const sg = document.getElementById('grado-select');
+    const ss = document.getElementById('seccion-select');
+    if (sg && ss) {
+      function onChange() {
+        if (!_autoPortalActivo) return;
+        const g = (sg.value || '').trim();
+        const s = (ss.value || '').trim();
+        if (g && s) {
+          setTimeout(() => _iniciarAutoPortal(g, s), 400);
+        }
+      }
+      sg.addEventListener('change', onChange);
+      ss.addEventListener('change', onChange);
+    } else if (t++ < MAX) setTimeout(buscar, 600);
+  }
+  buscar();
+})();
+
+/* ══════════════════════════════════════════════════════════════════════════════
+ * MODAL INFORME ASISTENCIA
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+let _iaTab = 'dia'; // 'dia' | 'mes'
+
+function abrirModalInformeAsistencia() {
+  // Poner fecha de hoy por defecto
+  const hoy = new Date();
+  const yyyy = hoy.getFullYear();
+  const mm   = String(hoy.getMonth()+1).padStart(2,'0');
+  const dd   = String(hoy.getDate()).padStart(2,'0');
+  const elD = document.getElementById('ia-fecha-dia');
+  const elM = document.getElementById('ia-mes');
+  if (elD && !elD.value) elD.value = `${yyyy}-${mm}-${dd}`;
+  if (elM && !elM.value) elM.value = `${yyyy}-${mm}`;
+  iaSetTab('dia');
+  document.getElementById('ia-status').style.display = 'none';
+  document.getElementById('modal-informe-asistencia').classList.add('open');
+}
+
+function cerrarModalInformeAsistencia() {
+  document.getElementById('modal-informe-asistencia').classList.remove('open');
+}
+
+function iaSetTab(tab) {
+  _iaTab = tab;
+  const tabDia = document.getElementById('ia-tab-dia');
+  const tabMes = document.getElementById('ia-tab-mes');
+  const panDia = document.getElementById('ia-panel-dia');
+  const panMes = document.getElementById('ia-panel-mes');
+  const btnMensual = document.getElementById('ia-btn-mensual');
+  const btnPDF     = document.getElementById('ia-btn-pdf');
+
+  if (tab === 'dia') {
+    tabDia.style.background = 'var(--blue-600)'; tabDia.style.color = 'white';
+    tabMes.style.background = 'var(--bg-panel)'; tabMes.style.color = 'var(--blue-600)';
+    panDia.style.display = ''; panMes.style.display = 'none';
+    btnPDF.style.display = ''; btnMensual.style.display = 'none';
+  } else {
+    tabMes.style.background = 'var(--blue-600)'; tabMes.style.color = 'white';
+    tabDia.style.background = 'var(--bg-panel)'; tabDia.style.color = 'var(--blue-600)';
+    panMes.style.display = ''; panDia.style.display = 'none';
+    btnMensual.style.display = ''; btnPDF.style.display = 'none';
+  }
+}
+
+/* ── Genera PDF por fecha específica ─────────────────────────────────────── */
+async function generarInformeAsistenciaPDF() {
+  const fecha = document.getElementById('ia-fecha-dia').value;
+  if (!fecha) { alert('Selecciona una fecha.'); return; }
+
+  const btn = document.getElementById('ia-btn-pdf');
+  const status = document.getElementById('ia-status');
+  btn.disabled = true; btn.textContent = '⏳ Generando...';
+  status.style.display = '';
+  status.textContent = '⏳ Cargando reportes de esa fecha...';
+
+  try {
+    const reportes = await _cargarReportesPorFecha(fecha);
+    if (!reportes.length) {
+      status.textContent = '⚠️ No se encontraron reportes para esa fecha.';
+      btn.disabled = false; btn.textContent = '📄 Generar PDF';
+      return;
+    }
+    status.textContent = '📄 Generando PDF con ' + reportes.length + ' reporte(s)...';
+    const html = _construirHTMLInformeFecha(reportes, fecha);
+    await _exportarInformePDF(html, 'Informe_Asistencia_' + fecha + '.pdf');
+    status.textContent = '✅ PDF generado exitosamente.';
+    cerrarModalInformeAsistencia();
+  } catch(e) {
+    console.error('[InformeAsist]', e);
+    status.textContent = '❌ Error al generar: ' + (e.message || e);
+  } finally {
+    btn.disabled = false; btn.textContent = '📄 Generar PDF';
+  }
+}
+
+/* ── Genera PDF informe mensual ──────────────────────────────────────────── */
+async function generarInformeMensual() {
+  const mes = document.getElementById('ia-mes').value;
+  if (!mes) { alert('Selecciona un mes.'); return; }
+
+  const btn = document.getElementById('ia-btn-mensual');
+  const status = document.getElementById('ia-status');
+  btn.disabled = true; btn.textContent = '⏳ Generando...';
+  status.style.display = '';
+  status.textContent = '⏳ Cargando reportes del mes...';
+
+  try {
+    const reportes = await _cargarReportesPorMes(mes);
+    if (!reportes.length) {
+      status.textContent = '⚠️ No se encontraron reportes para ese mes.';
+      btn.disabled = false; btn.textContent = '📆 Informe Mensual';
+      return;
+    }
+    status.textContent = '📆 Generando informe mensual con ' + reportes.length + ' reporte(s)...';
+    const html = _construirHTMLInformeMensual(reportes, mes);
+    await _exportarInformePDF(html, 'Informe_Mensual_' + mes + '.pdf');
+    status.textContent = '✅ Informe mensual generado.';
+    cerrarModalInformeAsistencia();
+  } catch(e) {
+    console.error('[InformeMensual]', e);
+    status.textContent = '❌ Error: ' + (e.message || e);
+  } finally {
+    btn.disabled = false; btn.textContent = '📆 Informe Mensual';
+  }
+}
+
+/* ── Carga de reportes ───────────────────────────────────────────────────── */
+async function _cargarReportesPorFecha(fechaISO) {
+  // Intentar desde Firestore (Fase 3)
+  if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+    try {
+      const db = firebase.firestore();
+      const inicio = new Date(fechaISO + 'T00:00:00');
+      const fin    = new Date(fechaISO + 'T23:59:59');
+      const snap = await db.collection('reportes_inmu')
+        .where('fecha_ts', '>=', firebase.firestore.Timestamp.fromDate(inicio))
+        .where('fecha_ts', '<=', firebase.firestore.Timestamp.fromDate(fin))
+        .orderBy('fecha_ts')
+        .get();
+      if (!snap.empty) {
+        const lista = [];
+        snap.forEach(doc => lista.push(doc.data()));
+        return lista;
+      }
+    } catch(e) { console.warn('[InformeAsist] Firestore falló, usando memoria/GAS:', e); }
+  }
+  // Fallback: filtrar todosLosReportes en memoria
+  const todos = window.todosLosReportes || [];
+  return todos.filter(r => {
+    if (!r.fecha) return false;
+    const d = new Date(r.fecha);
+    const dStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    return dStr === fechaISO;
+  });
+}
+
+async function _cargarReportesPorMes(mesISO) {
+  // mesISO = "YYYY-MM"
+  const [yyyy, mm] = mesISO.split('-');
+  const inicio = new Date(parseInt(yyyy), parseInt(mm)-1, 1);
+  const fin    = new Date(parseInt(yyyy), parseInt(mm), 0, 23, 59, 59);
+
+  if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+    try {
+      const db = firebase.firestore();
+      const snap = await db.collection('reportes_inmu')
+        .where('fecha_ts', '>=', firebase.firestore.Timestamp.fromDate(inicio))
+        .where('fecha_ts', '<=', firebase.firestore.Timestamp.fromDate(fin))
+        .orderBy('fecha_ts')
+        .get();
+      if (!snap.empty) {
+        const lista = [];
+        snap.forEach(doc => lista.push(doc.data()));
+        return lista;
+      }
+    } catch(e) { console.warn('[InformeMensual] Firestore falló:', e); }
+  }
+  // Fallback memoria
+  const todos = window.todosLosReportes || [];
+  return todos.filter(r => {
+    if (!r.fecha) return false;
+    const d = new Date(r.fecha);
+    return d.getFullYear() === parseInt(yyyy) && (d.getMonth()+1) === parseInt(mm);
+  }).sort((a,b) => new Date(a.fecha) - new Date(b.fecha));
+}
+
+/* ── Constructores HTML ──────────────────────────────────────────────────── */
+function _construirHTMLInformeFecha(reportes, fechaISO) {
+  function esc(s) { return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  const fechaF = new Date(fechaISO + 'T12:00:00').toLocaleDateString('es-SV',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  const totalPres = reportes.reduce((s,r)=>s+(Number(r.presentes)||0),0);
+  const totalAus  = reportes.reduce((s,r)=>s+(Number(r.ausentes)||0),0);
+  const totalPerm = reportes.reduce((s,r)=>s+(Number(r.permisos)||0),0);
+  const totalM    = reportes.reduce((s,r)=>s+(Number(r.m)||0),0);
+  const totalF    = reportes.reduce((s,r)=>s+(Number(r.f)||0),0);
+  const totalAlum = totalPres + totalAus + totalPerm;
+
+  let filas = reportes.map((r,i) => `
+    <tr style="background:${i%2===0?'#f8fafc':'#fff'}">
+      <td>${esc(r.grado)} ${esc(r.seccion)}</td>
+      <td style="text-align:center;">${esc(r.docente)}</td>
+      <td style="text-align:center;color:#166534;font-weight:700;">${r.presentes||0}</td>
+      <td style="text-align:center;color:#dc2626;font-weight:700;">${r.ausentes||0}</td>
+      <td style="text-align:center;color:#ca8a04;font-weight:700;">${r.permisos||0}</td>
+      <td style="text-align:center;">${r.m||0}</td>
+      <td style="text-align:center;">${r.f||0}</td>
+      <td style="text-align:center;font-weight:700;">${(Number(r.presentes)||0)+(Number(r.ausentes)||0)+(Number(r.permisos)||0)}</td>
+    </tr>`).join('');
+
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Informe de Asistencia — ${fechaISO}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12px;background:#fff;max-width:900px;margin:0 auto;}
+.hdr{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #0C447C;padding-bottom:12px;margin-bottom:16px;}
+.hdr-logo{height:52px;object-fit:contain;}
+.hdr-center{text-align:center;flex:1;}
+.hdr-center h1{font-size:13px;color:#0C447C;text-transform:uppercase;font-weight:800;}
+.hdr-center h2{font-size:10px;color:#475569;margin-top:3px;}
+.badge-titulo{text-align:center;margin-bottom:14px;}
+.badge-titulo span{display:inline-block;background:#0C447C;color:#fff;padding:4px 20px;border-radius:20px;font-size:11px;font-weight:700;}
+.resumen{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px;}
+.stat{text-align:center;border:1px solid #e2e8f0;border-radius:8px;padding:8px 4px;}
+.stat-num{font-size:22px;font-weight:800;display:block;}
+.stat-lbl{font-size:9px;color:#64748b;text-transform:uppercase;}
+table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:14px;}
+thead tr{background:#0C447C;color:#fff;}
+th,td{padding:6px 8px;border:1px solid #cbd5e1;text-align:left;}
+.firmas{display:flex;gap:60px;justify-content:center;margin-top:40px;}
+.firma{text-align:center;width:180px;}
+.firma-l{border-top:1.5px solid #0C447C;padding-top:6px;font-size:10px;color:#334155;}
+.footer{text-align:center;margin-top:16px;font-size:9px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:7px;}
+</style></head><body>
+<div class="hdr">
+  <img src="logo3.jpg" class="hdr-logo" alt="INMU" onerror="this.style.visibility='hidden'">
+  <div class="hdr-center">
+    <h1>Instituto Nacional de Mercedes Umaña</h1>
+    <h2>Informe de Asistencia Diaria — ${fechaF}</h2>
+  </div>
+  <img src="logo2.svg" class="hdr-logo" alt="MINED" onerror="this.style.visibility='hidden'">
+</div>
+<div class="badge-titulo"><span>INFORME DE ASISTENCIA — TODOS LOS GRADOS Y SECCIONES</span></div>
+<div class="resumen">
+  <div class="stat"><span class="stat-num" style="color:#0C447C;">${totalAlum}</span><span class="stat-lbl">Total Matrícula</span></div>
+  <div class="stat"><span class="stat-num" style="color:#166534;">${totalPres}</span><span class="stat-lbl">Presentes</span></div>
+  <div class="stat"><span class="stat-num" style="color:#dc2626;">${totalAus}</span><span class="stat-lbl">Ausentes</span></div>
+  <div class="stat"><span class="stat-num" style="color:#ca8a04;">${totalPerm}</span><span class="stat-lbl">Permisos</span></div>
+  <div class="stat"><span class="stat-num" style="color:#1e40af;">${totalM}M / ${totalF}F</span><span class="stat-lbl">Género</span></div>
+</div>
+<table>
+  <thead><tr><th>Grado / Sección</th><th style="text-align:center;">Docente</th><th style="text-align:center;">Presentes</th><th style="text-align:center;">Ausentes</th><th style="text-align:center;">Permisos</th><th style="text-align:center;">M</th><th style="text-align:center;">F</th><th style="text-align:center;">Total</th></tr></thead>
+  <tbody>${filas}</tbody>
+  <tfoot><tr style="background:#0C447C;color:#fff;font-weight:700;">
+    <td colspan="2">TOTALES</td>
+    <td style="text-align:center;">${totalPres}</td>
+    <td style="text-align:center;">${totalAus}</td>
+    <td style="text-align:center;">${totalPerm}</td>
+    <td style="text-align:center;">${totalM}</td>
+    <td style="text-align:center;">${totalF}</td>
+    <td style="text-align:center;">${totalAlum}</td>
+  </tr></tfoot>
+</table>
+<div class="firmas">
+  <div class="firma"><div class="firma-l">Director/a<br><strong>INMU</strong></div></div>
+  <div class="firma"><div class="firma-l">Subdirector/a<br><strong>INMU</strong></div></div>
+</div>
+<div class="footer">Instituto Nacional de Mercedes Umaña — Generado: ${new Date().toLocaleString('es-SV')} | Informe oficial de asistencia diaria</div>
+</body></html>`;
+}
+
+function _construirHTMLInformeMensual(reportes, mesISO) {
+  function esc(s) { return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  const [yyyy, mm] = mesISO.split('-');
+  const nombreMes = new Date(parseInt(yyyy), parseInt(mm)-1, 1).toLocaleDateString('es-SV',{month:'long',year:'numeric'});
+
+  // Agrupar por grado+sección
+  const grupos = {};
+  reportes.forEach(r => {
+    const key = (r.grado||'') + '|||' + (r.seccion||'');
+    if (!grupos[key]) grupos[key] = { grado: r.grado, seccion: r.seccion, docente: r.docente, dias: [], totPres:0, totAus:0, totPerm:0, totM:0, totF:0 };
+    const g = grupos[key];
+    const d = new Date(r.fecha);
+    g.dias.push({ dia: d.getDate(), pres: Number(r.presentes)||0, aus: Number(r.ausentes)||0, perm: Number(r.permisos)||0 });
+    g.totPres += Number(r.presentes)||0;
+    g.totAus  += Number(r.ausentes)||0;
+    g.totPerm += Number(r.permisos)||0;
+    g.totM    += Number(r.m)||0;
+    g.totF    += Number(r.f)||0;
+  });
+
+  const totalGlobal = { pres:0, aus:0, perm:0, m:0, f:0 };
+  let tablas = Object.values(grupos).sort((a,b)=> (a.grado+a.seccion).localeCompare(b.grado+b.seccion)).map(g => {
+    totalGlobal.pres += g.totPres; totalGlobal.aus += g.totAus; totalGlobal.perm += g.totPerm; totalGlobal.m += g.totM; totalGlobal.f += g.totF;
+    const filasDias = g.dias.sort((a,b)=>a.dia-b.dia).map((d,i)=>`
+      <tr style="background:${i%2===0?'#f8fafc':'#fff'}">
+        <td style="text-align:center;font-weight:600;">${d.dia}</td>
+        <td style="text-align:center;color:#166534;">${d.pres}</td>
+        <td style="text-align:center;color:#dc2626;">${d.aus}</td>
+        <td style="text-align:center;color:#ca8a04;">${d.perm}</td>
+        <td style="text-align:center;">${d.pres+d.aus+d.perm}</td>
+      </tr>`).join('');
+    return `
+    <div style="margin-bottom:20px;page-break-inside:avoid;">
+      <div style="background:#0C447C;color:#fff;padding:7px 12px;border-radius:6px 6px 0 0;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-weight:800;font-size:12px;">${esc(g.grado)} — Sección ${esc(g.seccion)}</span>
+        <span style="font-size:10px;opacity:.85;">Docente: ${esc(g.docente)}</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;">
+        <thead><tr style="background:#1565C0;color:#fff;">
+          <th style="text-align:center;padding:5px;">Día</th>
+          <th style="text-align:center;padding:5px;">Presentes</th>
+          <th style="text-align:center;padding:5px;">Ausentes</th>
+          <th style="text-align:center;padding:5px;">Permisos</th>
+          <th style="text-align:center;padding:5px;">Total</th>
+        </tr></thead>
+        <tbody>${filasDias}</tbody>
+        <tfoot><tr style="background:#0C447C;color:#fff;font-weight:700;">
+          <td style="text-align:center;padding:5px;">TOTAL</td>
+          <td style="text-align:center;padding:5px;">${g.totPres}</td>
+          <td style="text-align:center;padding:5px;">${g.totAus}</td>
+          <td style="text-align:center;padding:5px;">${g.totPerm}</td>
+          <td style="text-align:center;padding:5px;">${g.totPres+g.totAus+g.totPerm}</td>
+        </tr></tfoot>
+      </table>
+    </div>`;
+  }).join('');
+
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Informe Mensual — ${nombreMes}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Arial,sans-serif;padding:20px 28px;color:#1e293b;font-size:12px;background:#fff;max-width:900px;margin:0 auto;}
+.hdr{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #0C447C;padding-bottom:10px;margin-bottom:14px;}
+.hdr-logo{height:48px;object-fit:contain;}
+.hdr-center{text-align:center;flex:1;}
+.hdr-center h1{font-size:13px;color:#0C447C;font-weight:800;text-transform:uppercase;}
+.hdr-center h2{font-size:10px;color:#475569;margin-top:2px;}
+.badge-titulo{text-align:center;margin-bottom:14px;}
+.badge-titulo span{display:inline-block;background:#0C447C;color:#fff;padding:4px 18px;border-radius:20px;font-size:11px;font-weight:700;}
+.resumen-global{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px;background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;}
+.stat{text-align:center;}
+.stat-num{font-size:20px;font-weight:800;display:block;}
+.stat-lbl{font-size:9px;color:#64748b;text-transform:uppercase;}
+table th,table td{border:1px solid #cbd5e1;padding:5px 7px;}
+.firmas{display:flex;gap:60px;justify-content:center;margin-top:36px;}
+.firma-l{border-top:1.5px solid #0C447C;padding-top:6px;font-size:10px;color:#334155;text-align:center;width:180px;}
+.footer{text-align:center;margin-top:14px;font-size:9px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:6px;}
+@media print{.page-break{page-break-after:always;}}
+</style></head><body>
+<div class="hdr">
+  <img src="logo3.jpg" class="hdr-logo" alt="INMU" onerror="this.style.visibility='hidden'">
+  <div class="hdr-center">
+    <h1>Instituto Nacional de Mercedes Umaña</h1>
+    <h2>Informe Mensual de Asistencia — ${nombreMes}</h2>
+  </div>
+  <img src="logo2.svg" class="hdr-logo" alt="MINED" onerror="this.style.visibility='hidden'">
+</div>
+<div class="badge-titulo"><span>RESUMEN MENSUAL — TODOS LOS GRADOS Y SECCIONES</span></div>
+<div class="resumen-global">
+  <div class="stat"><span class="stat-num" style="color:#166534;">${totalGlobal.pres}</span><span class="stat-lbl">Total Presencias</span></div>
+  <div class="stat"><span class="stat-num" style="color:#dc2626;">${totalGlobal.aus}</span><span class="stat-lbl">Total Ausencias</span></div>
+  <div class="stat"><span class="stat-num" style="color:#ca8a04;">${totalGlobal.perm}</span><span class="stat-lbl">Total Permisos</span></div>
+  <div class="stat"><span class="stat-num" style="color:#1e40af;">${totalGlobal.m}M / ${totalGlobal.f}F</span><span class="stat-lbl">Género Total</span></div>
+</div>
+${tablas}
+<div class="firmas">
+  <div class="firma-l">Director/a<br><strong>INMU</strong></div>
+  <div class="firma-l">Subdirector/a<br><strong>INMU</strong></div>
+</div>
+<div class="footer">Instituto Nacional de Mercedes Umaña — Generado: ${new Date().toLocaleString('es-SV')} | Informe mensual de asistencia oficial</div>
+</body></html>`;
+}
+
+/* ── Exportar PDF con html2pdf ───────────────────────────────────────────── */
+async function _exportarInformePDF(htmlStr, nombreArchivo) {
+  // Crear iframe oculto para renderizar
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:900px;height:600px;border:none;';
+  document.body.appendChild(iframe);
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(htmlStr);
+  iframe.contentDocument.close();
+  await new Promise(r => setTimeout(r, 300));
+
+  const opt = {
+    margin: [8,8,8,8],
+    filename: nombreArchivo,
+    image: { type:'jpeg', quality:0.95 },
+    html2canvas: { scale:2, useCORS:true, allowTaint:true, scrollY:0 },
+    jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
+    pagebreak: { mode:['css','legacy'] }
+  };
+
+  try {
+    await html2pdf().set(opt).from(iframe.contentDocument.body).save();
+  } finally {
+    iframe.remove();
+  }
+}
+</script>
 
 </body>
 
