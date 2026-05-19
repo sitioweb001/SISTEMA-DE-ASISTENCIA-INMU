@@ -2008,6 +2008,55 @@
                         style="width:100%; margin-top:15px; padding:12px; border-radius:8px; border:1px solid var(--blue-600); color:var(--blue-600); background:white; font-weight:bold; cursor:pointer;">🔄
                         Refrescar Nube</button>
 
+                    <!-- ══════════════════════════════════════════════════════ -->
+                    <!-- ÁREA DE ACTUALIZACIONES FIREBASE                      -->
+                    <!-- ══════════════════════════════════════════════════════ -->
+                    <div style="margin-top:25px;border-top:2px dashed var(--gray-100);padding-top:18px;">
+                        <h3 style="color:#1565C0;font-size:16px;margin-bottom:4px;display:flex;align-items:center;gap:8px;">
+                            🔄 Área de Actualizaciones
+                        </h3>
+                        <p style="font-size:11px;color:var(--gray-600);margin-bottom:14px;">
+                            Sincroniza docentes, alumnos, catálogo y configuración desde el sistema hacia Firebase Firestore.
+                        </p>
+
+                        <!-- Log de salida -->
+                        <div id="fb-update-log"
+                            style="display:none;background:#0f172a;color:#e2e8f0;font-family:monospace;font-size:11px;padding:14px;border-radius:8px;margin-bottom:14px;max-height:260px;overflow-y:auto;line-height:1.7;white-space:pre-wrap;word-break:break-all;">
+                        </div>
+
+                        <!-- Botones -->
+                        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+
+                            <!-- Botón 1: Migración completa -->
+                            <button id="btn-fb-migrar" onclick="ejecutarMigracionCompleta()"
+                                style="flex:1;min-width:200px;padding:13px 18px;border-radius:10px;border:none;
+                                       background:linear-gradient(135deg,#1565C0,#1976D2);color:white;
+                                       font-weight:700;font-size:13px;cursor:pointer;
+                                       box-shadow:0 2px 8px rgba(21,101,192,0.35);
+                                       display:flex;align-items:center;justify-content:center;gap:8px;
+                                       transition:opacity .2s;">
+                                ⚡ Ejecutar FB_MigracionCompleta()
+                            </button>
+
+                            <!-- Botón 2: Diagnóstico -->
+                            <button id="btn-fb-diagnostico" onclick="ejecutarDiagnostico()"
+                                style="flex:1;min-width:200px;padding:13px 18px;border-radius:10px;border:none;
+                                       background:linear-gradient(135deg,#065f46,#059669);color:white;
+                                       font-weight:700;font-size:13px;cursor:pointer;
+                                       box-shadow:0 2px 8px rgba(6,95,70,0.35);
+                                       display:flex;align-items:center;justify-content:center;gap:8px;
+                                       transition:opacity .2s;">
+                                🔍 Verificar FB_Diagnostico()
+                            </button>
+
+                        </div>
+
+                        <!-- Nota informativa -->
+                        <p style="font-size:10px;color:var(--gray-600);margin-top:10px;text-align:center;">
+                            💡 El resultado aparece en el log de arriba y también en la consola del navegador (F12).
+                        </p>
+                    </div>
+
                     <div style="margin-top: 25px; border-top: 2px dashed var(--gray-100); padding-top: 15px;">
                         <h3 style="color: var(--blue-800); font-size: 16px; margin-bottom: 15px;">⚙️ Configuración del
                             Sistema</h3>
@@ -22358,6 +22407,457 @@ async function _exportarInformePDF(htmlStr, nombreArchivo) {
     await html2pdf().set(opt).from(iframe.contentDocument.body).save();
   } finally {
     iframe.remove();
+  }
+}
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- FIREBASE SETUP — Migración y administración inline                   -->
+<!-- Siempre disponible: await FB_MigracionCompleta()                     -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<script src="firebase-setup.js"></script>
+<script>
+/* ══════════════════════════════════════════════════════════════════════════════
+ * SICA-INMU — Setup inline de respaldo
+ * Si firebase-setup.js no carga (404), este bloque inline garantiza que
+ * FB_MigracionCompleta() y FB_Diagnostico() siempre estén disponibles.
+ * ════════════════════════════════════════════════════════════════════════════ */
+(function() {
+  // Esperar a que Firebase esté listo antes de registrar las funciones
+  function _normKey(s) {
+    return (s||'').trim().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+  }
+
+  function _getCatalogoDefault() {
+    const esp = ["1° Adm. Contable","1° S. Eléctricos","2° Adm. Contable","2° Sist. Eléctricos","3° Adm. Contable","3° Sist. Eléctricos"];
+    return [
+      { nombre:"Lenguaje y Literatura",           categoria:"basica", escala:"0-10", requiere_especialidad:false, especialidades:[] },
+      { nombre:"Matemática",                      categoria:"basica", escala:"0-10", requiere_especialidad:false, especialidades:[] },
+      { nombre:"Estudios Sociales y Cívica",      categoria:"basica", escala:"0-10", requiere_especialidad:false, especialidades:[] },
+      { nombre:"Ciencia, Salud y Medio Ambiente", categoria:"basica", escala:"0-10", requiere_especialidad:false, especialidades:[] },
+      { nombre:"Inglés",                          categoria:"basica", escala:"0-10", requiere_especialidad:false, especialidades:[] },
+      { nombre:"Informática",                     categoria:"basica", escala:"0-10", requiere_especialidad:false, especialidades:[] },
+      { nombre:"Educación Física",                categoria:"basica", escala:"0-10", requiere_especialidad:false, especialidades:[] },
+      { nombre:"Moral, Urbanidad y Cívica",       categoria:"basica", escala:"0-10", requiere_especialidad:false, especialidades:[] },
+      { nombre:"Seminario",                       categoria:"basica", escala:"0-10", requiere_especialidad:false, especialidades:[] },
+      { nombre:"Módulo 1",                        categoria:"modulo", escala:"0-5",  requiere_especialidad:true,  especialidades:esp },
+      { nombre:"Módulo 2",                        categoria:"modulo", escala:"0-5",  requiere_especialidad:true,  especialidades:esp },
+      { nombre:"Módulo 3",                        categoria:"modulo", escala:"0-5",  requiere_especialidad:true,  especialidades:esp }
+    ];
+  }
+
+  function _getDB() {
+    if (!window.firebase || !firebase.apps || !firebase.apps.length) return null;
+    try { return firebase.firestore(); } catch(e) { return null; }
+  }
+
+  // ── FB_MigracionCompleta ──────────────────────────────────────────────────
+  if (typeof window.FB_MigracionCompleta !== 'function') {
+    window.FB_MigracionCompleta = async function(opciones) {
+      const opts = Object.assign({
+        saltarAlumnos:false, saltarDocentes:false, saltarCatalogo:false,
+        saltarConfig:false, saltarReportes:false, saltarInformes:false,
+        horarioInicio:'07:00', horarioFin:'15:00'
+      }, opciones||{});
+
+      console.log('╔══════════════════════════════════════════════════════╗');
+      console.log('║       SICA-INMU — MIGRACIÓN COMPLETA A FIREBASE      ║');
+      console.log('╚══════════════════════════════════════════════════════╝');
+
+      // Esperar a que Firebase esté listo (hasta 8 seg)
+      let db = null;
+      for (let i=0; i<16; i++) {
+        db = _getDB();
+        if (db) break;
+        await new Promise(r=>setTimeout(r,500));
+      }
+      if (!db) { console.error('[Setup] ❌ Firebase no disponible después de 8 seg.'); return { errores:['Firebase no disponible'], completado:false }; }
+
+      const errores = [];
+
+      /* PASO 1 — Config */
+      if (!opts.saltarConfig) {
+        console.log('\n▶ PASO 1 — Config del sistema...');
+        try {
+          await db.collection('config_inmu').doc('sistema').set({
+            mantenimiento:false, login_habilitado:true, modo_alumno_activo:true,
+            horario_inicio:opts.horarioInicio, horario_fin:opts.horarioFin,
+            actualizado:new Date().toISOString()
+          }, {merge:true});
+          console.log('  ✅ Config subida');
+        } catch(e) { console.error('  ❌ Config:', e); errores.push('config: '+e.message); }
+      }
+
+      /* PASO 2 — Catálogo */
+      if (!opts.saltarCatalogo) {
+        console.log('\n▶ PASO 2 — Catálogo de materias...');
+        try {
+          const catalogo = window.catalogoMaterias && window.catalogoMaterias.length
+            ? window.catalogoMaterias : _getCatalogoDefault();
+          await db.collection('config_inmu').doc('catalogo_materias').set(
+            { items:catalogo, actualizado:new Date().toISOString() }, {merge:true}
+          );
+          console.log('  ✅ Catálogo subido:', catalogo.length, 'materias');
+        } catch(e) { console.error('  ❌ Catálogo:', e); errores.push('catalogo: '+e.message); }
+      }
+
+      /* PASO 3 — Docentes */
+      if (!opts.saltarDocentes) {
+        console.log('\n▶ PASO 3 — Docentes...');
+        // Intentar cargar desde GAS si baseDatosDocentes está vacío
+        let docentes = window.baseDatosDocentes || [];
+        if (!docentes.length && window.SCRIPT_URL) {
+          console.log('  ⏳ baseDatosDocentes vacío, cargando desde GAS...');
+          try {
+            const r = await fetch(window.SCRIPT_URL + '?tipo=docentes');
+            docentes = await r.json();
+            window.baseDatosDocentes = docentes;
+            console.log('  📥 Docentes del GAS:', docentes.length);
+          } catch(e) { console.warn('  ⚠️ No pude cargar docentes del GAS:', e); }
+        }
+        if (!docentes.length) {
+          console.warn('  ⚠️ No hay docentes para subir.');
+          errores.push('docentes: baseDatosDocentes vacío');
+        } else {
+          try {
+            let subidos = 0;
+            for (let i=0; i<docentes.length; i+=100) {
+              const batch = db.batch();
+              docentes.slice(i,i+100).forEach(d => {
+                if (!d.nombre) return;
+                const key = _normKey(d.nombre);
+                batch.set(db.collection('docentes_inmu').doc(key), {
+                  nombre:            d.nombre            || '',
+                  grado:             d.grado             || '',
+                  seccion:           d.seccion           || '',
+                  grado_orientado:   d.grado_orientado   || d.grado   || '',
+                  seccion_orientada: d.seccion_orientada || d.seccion || '',
+                  materia:           d.materia           || '',
+                  tipo_materia:      d.tipo_materia      || '0-10',
+                  escala:            d.escala            || d.tipo_materia || '0-10',
+                  admin:             d.admin===true       || d.admin==='true',
+                  materias_asignadas:Array.isArray(d.materias_asignadas)?d.materias_asignadas:[]
+                }, {merge:true});
+                subidos++;
+              });
+              await batch.commit();
+            }
+            console.log('  ✅ Docentes subidos:', subidos);
+          } catch(e) { console.error('  ❌ Docentes:', e); errores.push('docentes: '+e.message); }
+        }
+      }
+
+      /* PASO 4 — Alumnos */
+      if (!opts.saltarAlumnos) {
+        console.log('\n▶ PASO 4 — Alumnos...');
+        let alumnos = window.baseDatosAlumnos || [];
+        if (!alumnos.length && window.SCRIPT_URL) {
+          console.log('  ⏳ Cargando alumnos desde GAS...');
+          try {
+            const r = await fetch(window.SCRIPT_URL + '?tipo=alumnos');
+            alumnos = await r.json();
+            window.baseDatosAlumnos = alumnos;
+            console.log('  📥 Alumnos del GAS:', alumnos.length);
+          } catch(e) { console.warn('  ⚠️ No pude cargar alumnos del GAS:', e); }
+        }
+        if (!alumnos.length) {
+          console.warn('  ⚠️ No hay alumnos para subir.');
+        } else {
+          let subidos=0, omitidos=0;
+          try {
+            for (let i=0; i<alumnos.length; i+=400) {
+              const batch = db.batch();
+              alumnos.slice(i,i+400).forEach(a => {
+                const nie = String(a.nie||'').trim();
+                if (!nie||nie==='N/A'||nie==='n/a'||nie==='0'||nie.includes('/')) { omitidos++; return; }
+                batch.set(db.collection('alumnos_inmu').doc(nie), {
+                  nie, nombre:a.nombre||'', grado:a.grado||'',
+                  seccion:a.seccion||'', sexo:a.sexo||'', telefono:a.telefono||''
+                }, {merge:true});
+                subidos++;
+              });
+              await batch.commit();
+              console.log('  ↑ Alumnos subidos:', subidos);
+            }
+            console.log('  ✅ Alumnos:', subidos, 'subidos,', omitidos, 'omitidos');
+          } catch(e) { console.error('  ❌ Alumnos:', e); errores.push('alumnos: '+e.message); }
+        }
+      }
+
+      /* PASO 5 — Reportes desde GAS */
+      if (!opts.saltarReportes && window.SCRIPT_URL) {
+        console.log('\n▶ PASO 5 — Migrando reportes del GAS...');
+        try {
+          const r = await fetch(window.SCRIPT_URL + '?tipo=reportes');
+          const lista = await r.json();
+          if (Array.isArray(lista) && lista.length) {
+            let subidos=0;
+            for (let i=0; i<lista.length; i+=100) {
+              const batch = db.batch();
+              lista.slice(i,i+100).forEach((rep,j) => {
+                let fecha=new Date(); try { fecha=new Date(rep.fecha); } catch(_){}
+                const id = _normKey((rep.grado||'')+'_'+(rep.seccion||''))+'_'+(fecha.getTime()+j);
+                batch.set(db.collection('reportes_inmu').doc(id), {
+                  fecha:rep.fecha||fecha.toISOString(),
+                  fecha_ts:firebase.firestore.Timestamp.fromDate(fecha),
+                  grado:rep.grado||'', seccion:rep.seccion||'', docente:rep.docente||'',
+                  presentes:Number(rep.presentes)||0, ausentes:Number(rep.ausentes)||0,
+                  permisos:Number(rep.permisos)||0, m:Number(rep.m)||0, f:Number(rep.f)||0
+                }, {merge:true});
+                subidos++;
+              });
+              await batch.commit();
+            }
+            console.log('  ✅ Reportes migrados:', subidos);
+          } else { console.log('  ℹ️ No hay reportes en el GAS o colección ya migrada.'); }
+        } catch(e) { console.warn('  ⚠️ Reportes (no crítico):', e.message); }
+      }
+
+      /* PASO 6 — Informes desde GAS */
+      if (!opts.saltarInformes && window.SCRIPT_URL) {
+        console.log('\n▶ PASO 6 — Migrando informes del GAS...');
+        try {
+          const r = await fetch(window.SCRIPT_URL + '?tipo=historial_informes');
+          const lista = await r.json();
+          if (Array.isArray(lista) && lista.length) {
+            let subidos=0;
+            for (let i=0; i<lista.length; i+=100) {
+              const batch = db.batch();
+              lista.slice(i,i+100).forEach((inf,j) => {
+                let fecha=new Date(); try { fecha=new Date(inf._ts||inf.fecha); } catch(_){}
+                const id = _normKey(inf.tipo||'informe')+'_'+(fecha.getTime()+j);
+                batch.set(db.collection('informes_inmu').doc(id), {
+                  ...inf, fecha_ts:firebase.firestore.Timestamp.fromDate(fecha)
+                }, {merge:true});
+                subidos++;
+              });
+              await batch.commit();
+            }
+            console.log('  ✅ Informes migrados:', subidos);
+          } else { console.log('  ℹ️ No hay informes o ya migrados.'); }
+        } catch(e) { console.warn('  ⚠️ Informes (no crítico):', e.message); }
+      }
+
+      /* PASO 7 — Verificación */
+      console.log('\n▶ PASO 7 — Verificación final...');
+      try {
+        const [snapDoc, snapAlum, snapCfg, snapCat] = await Promise.all([
+          db.collection('docentes_inmu').get(),
+          db.collection('alumnos_inmu').get(),
+          db.collection('config_inmu').doc('sistema').get(),
+          db.collection('config_inmu').doc('catalogo_materias').get()
+        ]);
+        console.log('╔══════════════════════════════════════════════════════╗');
+        console.log('║              RESULTADO DE MIGRACIÓN                  ║');
+        console.log('╠══════════════════════════════════════════════════════╣');
+        console.log('║  docentes_inmu:   ', snapDoc.size, 'docentes');
+        console.log('║  alumnos_inmu:    ', snapAlum.size, 'alumnos');
+        console.log('║  config/sistema:  ', snapCfg.exists ? '✅ OK' : '❌ FALTA');
+        console.log('║  config/catalogo: ', snapCat.exists ? '✅ OK ('+((snapCat.data().items||[]).length)+' materias)' : '❌ FALTA');
+        if (errores.length) { console.log('║  ⚠️ ERRORES:', errores); }
+        console.log('╚══════════════════════════════════════════════════════╝');
+        if (!errores.length) {
+          console.log('\n🎉 MIGRACIÓN COMPLETADA SIN ERRORES');
+          console.log('   Recarga la página para ver el sistema desde Firebase.');
+        }
+      } catch(e) { console.error('  ❌ Verificación:', e); }
+
+      return { errores, completado:errores.length===0 };
+    };
+    console.log('[Setup-inline] FB_MigracionCompleta() lista ✓');
+  }
+
+  // ── FB_Diagnostico ────────────────────────────────────────────────────────
+  if (typeof window.FB_Diagnostico !== 'function') {
+    window.FB_Diagnostico = async function() {
+      const db = _getDB();
+      if (!db) { console.error('[Setup] Firebase no disponible'); return; }
+      console.log('[Setup] Ejecutando diagnóstico...');
+      const cols = [
+        'alumnos_inmu','docentes_inmu','config_inmu',
+        'asistencia_alumnos_inmu','notas_inmu',
+        'reportes_inmu','informes_inmu',
+        'ausencias_inmu','presencia_docentes_inmu'
+      ];
+      const res = {};
+      await Promise.all(cols.map(async col => {
+        try { const s=await db.collection(col).limit(500).get(); res[col]=s.size+(s.size===500?'+':''); }
+        catch(e) { res[col]='❌ '+e.code; }
+      }));
+      console.log('\n══════════════ DIAGNÓSTICO FIRESTORE ══════════════');
+      Object.entries(res).forEach(([col,count])=>console.log(' ',col.padEnd(32),'→',count));
+      console.log('════════════════════════════════════════════════════');
+      return res;
+    };
+    console.log('[Setup-inline] FB_Diagnostico() lista ✓');
+  }
+
+  // ── FB_SetMantenimiento ───────────────────────────────────────────────────
+  if (typeof window.FB_SetMantenimiento !== 'function') {
+    window.FB_SetMantenimiento = async function(valor) {
+      const db = _getDB();
+      if (!db) { console.error('[Setup] Firebase no disponible'); return; }
+      await db.collection('config_inmu').doc('sistema').set(
+        { mantenimiento:!!valor, actualizado:new Date().toISOString() }, {merge:true}
+      );
+      console.log('[Setup] ✅ Mantenimiento:', valor?'ACTIVADO':'DESACTIVADO');
+    };
+  }
+
+  // ── FB_ListarDocentes ─────────────────────────────────────────────────────
+  if (typeof window.FB_ListarDocentes !== 'function') {
+    window.FB_ListarDocentes = async function() {
+      const db = _getDB();
+      if (!db) return;
+      const snap = await db.collection('docentes_inmu').get();
+      const lista = [];
+      snap.forEach(doc=>lista.push(doc.data()));
+      console.table(lista.map(d=>({nombre:d.nombre,grado:d.grado,seccion:d.seccion,materia:d.materia,admin:d.admin})));
+      return lista;
+    };
+  }
+
+  // ── FB_AgregarDocente ─────────────────────────────────────────────────────
+  if (typeof window.FB_AgregarDocente !== 'function') {
+    window.FB_AgregarDocente = async function(d) {
+      if (!d||!d.nombre) { console.error('[Setup] Se requiere nombre'); return; }
+      const db = _getDB(); if (!db) return;
+      const key = _normKey(d.nombre);
+      await db.collection('docentes_inmu').doc(key).set({
+        nombre:d.nombre||'', grado:d.grado||'', seccion:d.seccion||'',
+        grado_orientado:d.grado||'', seccion_orientada:d.seccion||'',
+        materia:d.materia||'', tipo_materia:d.escala||'0-10',
+        escala:d.escala||'0-10', admin:d.admin===true,
+        materias_asignadas:d.materias_asignadas||[]
+      }, {merge:true});
+      console.log('[Setup] ✅ Docente guardado:', d.nombre);
+    };
+  }
+
+  // ── FB_EliminarDocente ────────────────────────────────────────────────────
+  if (typeof window.FB_EliminarDocente !== 'function') {
+    window.FB_EliminarDocente = async function(nombre) {
+      const db = _getDB(); if (!db) return;
+      await db.collection('docentes_inmu').doc(_normKey(nombre)).delete();
+      console.log('[Setup] ✅ Docente eliminado:', nombre);
+    };
+  }
+
+  console.log('[Setup-inline] ✅ Todos los comandos de admin disponibles.');
+  console.log('[Setup-inline] Comandos: FB_MigracionCompleta() | FB_Diagnostico() | FB_SetMantenimiento(bool) | FB_ListarDocentes() | FB_AgregarDocente({...}) | FB_EliminarDocente("nombre")');
+})();
+
+/* ══════════════════════════════════════════════════════════════════════════════
+ * ÁREA DE ACTUALIZACIONES — funciones de los botones en subdirección
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+// Intercepta console.log temporalmente para mostrar el output en el log visual
+function _fbLogCapture(logEl, fn) {
+  const _orig = console.log;
+  const _origErr = console.error;
+  const _origWarn = console.warn;
+
+  function appendLog(color, ...args) {
+    const texto = args.map(a => {
+      if (typeof a === 'object') { try { return JSON.stringify(a, null, 2); } catch(_) { return String(a); } }
+      return String(a);
+    }).join(' ');
+    const line = document.createElement('div');
+    line.style.color = color;
+    line.textContent = texto;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+    _orig.apply(console, args);
+  }
+
+  console.log   = (...a) => appendLog('#e2e8f0', ...a);
+  console.error = (...a) => appendLog('#f87171', ...a);
+  console.warn  = (...a) => appendLog('#fbbf24', ...a);
+
+  return Promise.resolve(fn()).finally(() => {
+    console.log   = _orig;
+    console.error = _origErr;
+    console.warn  = _origWarn;
+  });
+}
+
+async function ejecutarMigracionCompleta() {
+  const btn = document.getElementById('btn-fb-migrar');
+  const logEl = document.getElementById('fb-update-log');
+  if (!logEl) return;
+
+  // Preparar UI
+  logEl.innerHTML = '';
+  logEl.style.display = 'block';
+  btn.disabled = true;
+  btn.style.opacity = '0.6';
+  btn.innerHTML = '⏳ Ejecutando migración...';
+
+  const inicio = Date.now();
+  try {
+    await _fbLogCapture(logEl, () => FB_MigracionCompleta());
+    const seg = ((Date.now() - inicio) / 1000).toFixed(1);
+    const ok = document.createElement('div');
+    ok.style.cssText = 'color:#4ade80;font-weight:700;margin-top:8px;border-top:1px solid #334155;padding-top:8px;';
+    ok.textContent = '✅ Migración completada en ' + seg + 's — abre F12 para ver detalles completos.';
+    logEl.appendChild(ok);
+    logEl.scrollTop = logEl.scrollHeight;
+  } catch(e) {
+    const err = document.createElement('div');
+    err.style.color = '#f87171';
+    err.textContent = '❌ Error: ' + (e.message || e);
+    logEl.appendChild(err);
+  } finally {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.innerHTML = '⚡ Ejecutar FB_MigracionCompleta()';
+  }
+}
+
+async function ejecutarDiagnostico() {
+  const btn = document.getElementById('btn-fb-diagnostico');
+  const logEl = document.getElementById('fb-update-log');
+  if (!logEl) return;
+
+  logEl.innerHTML = '';
+  logEl.style.display = 'block';
+  btn.disabled = true;
+  btn.style.opacity = '0.6';
+  btn.innerHTML = '⏳ Verificando...';
+
+  try {
+    let resultado = null;
+    await _fbLogCapture(logEl, async () => {
+      resultado = await FB_Diagnostico();
+    });
+
+    if (resultado) {
+      // Pintar resumen visual coloreado
+      const resumen = document.createElement('div');
+      resumen.style.cssText = 'border-top:1px solid #334155;padding-top:10px;margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px;';
+      Object.entries(resultado).forEach(([col, count]) => {
+        const item = document.createElement('div');
+        const ok = !String(count).includes('❌') && Number(String(count).replace('+','')) > 0;
+        const vacio = String(count) === '0';
+        item.style.cssText = 'padding:4px 8px;border-radius:5px;font-size:10px;' +
+          (ok ? 'background:#14532d;color:#4ade80;' : vacio ? 'background:#1c1917;color:#78716c;' : 'background:#450a0a;color:#f87171;');
+        item.textContent = col.replace('_inmu','') + ': ' + count;
+        resumen.appendChild(item);
+      });
+      logEl.appendChild(resumen);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+  } catch(e) {
+    const err = document.createElement('div');
+    err.style.color = '#f87171';
+    err.textContent = '❌ Error: ' + (e.message || e);
+    logEl.appendChild(err);
+  } finally {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.innerHTML = '🔍 Verificar FB_Diagnostico()';
   }
 }
 </script>
