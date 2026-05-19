@@ -1,16 +1,7 @@
 /**
- * ══════════════════════════════════════════════════════════════════════════════
  * SICA-INMU — firebase-config.js
- * Módulo: Configuración, Mantenimiento y Horario en Tiempo Real
  * Fase 2-A | 2026
- *
- * REEMPLAZA:
- *   chequearMantenimientoNube()  → cold start 5-8 seg → < 0.3 seg
- *   toggle_mantenimiento POST   → tiempo real con onSnapshot
- *   toggle_login POST
- *   toggle_modo_alumno POST
- *   configurar_horario POST
- * ══════════════════════════════════════════════════════════════════════════════
+ * CON TIMEOUT 3 SEG + FALLBACK AUTOMÁTICO si Firebase está offline
  */
 
 const FB_CFG = {
@@ -23,11 +14,30 @@ const FB_CFG = {
 };
 
 const FB_CONFIG_CACHE_KEY = 'fb_config_sistema';
+const FB_CONFIG_TIMEOUT   = 3000; // 3 seg máximo
 
-let _cfgDb     = null;
-let _cfgListo  = false;
-let _unsubCfg  = null;
+let _cfgDb    = null;
+let _cfgListo = false;
+let _unsubCfg = null;
 
+/* ── Config por defecto si Firebase no responde ─────────────────────────── */
+const _CFG_DEFAULT = {
+  mantenimiento:      false,
+  login_habilitado:   true,
+  modo_alumno_activo: true,
+  horario_inicio:     '07:00',
+  horario_fin:        '15:00'
+};
+
+/* ── Promesa con timeout ────────────────────────────────────────────────── */
+function _cfgConTimeout(promesa, ms) {
+  return Promise.race([
+    promesa,
+    new Promise((_, rej) => setTimeout(() => rej(new Error('Config timeout ' + ms + 'ms')), ms))
+  ]);
+}
+
+/* ── Init ───────────────────────────────────────────────────────────────── */
 (function initConfig() {
   if (!window.firebase) { setTimeout(initConfig, 600); return; }
   try {
@@ -41,6 +51,7 @@ let _unsubCfg  = null;
   }
 })();
 
+/* ── Listener tiempo real ───────────────────────────────────────────────── */
 function _escucharConfigEnTiempoReal() {
   if (!_cfgDb) return;
   _unsubCfg = _cfgDb.collection('config_inmu').doc('sistema')
@@ -49,10 +60,10 @@ function _escucharConfigEnTiempoReal() {
       const cfg = snap.data();
       try { localStorage.setItem(FB_CONFIG_CACHE_KEY, JSON.stringify(cfg)); } catch (_) {}
       _aplicarConfigEnUI(cfg);
-      console.log('[FB-Config] Config actualizada en tiempo real:', cfg);
-    }, e => console.warn('[FB-Config] Error listener config:', e));
+    }, e => console.warn('[FB-Config] Error listener:', e));
 }
 
+/* ── Aplicar config en UI ───────────────────────────────────────────────── */
 function _aplicarConfigEnUI(cfg) {
   if (!cfg) return;
   if (cfg.mantenimiento === true) {
@@ -63,11 +74,10 @@ function _aplicarConfigEnUI(cfg) {
   if (cfg.horario_inicio && cfg.horario_fin) {
     try {
       localStorage.setItem('horario_asistencia', JSON.stringify({
-        inicio: cfg.horario_inicio,
-        fin:    cfg.horario_fin,
+        inicio: cfg.horario_inicio, fin: cfg.horario_fin,
         activo: cfg.modo_alumno_activo !== false,
         acceso_alumnos: cfg.modo_alumno_activo !== false,
-        mantenimiento:  cfg.mantenimiento === true
+        mantenimiento: cfg.mantenimiento === true
       }));
       const iI = document.getElementById('config-hora-inicio');
       const iF = document.getElementById('config-hora-fin');
@@ -75,17 +85,17 @@ function _aplicarConfigEnUI(cfg) {
       if (iF) iF.value = cfg.horario_fin;
     } catch (_) {}
   }
-  const btnToggle = document.getElementById('btn-toggle-login');
-  if (btnToggle) {
-    const loginOn = cfg.login_habilitado !== false;
-    btnToggle.innerText = loginOn ? 'Desactivar Login' : 'Activar Login';
-    btnToggle.style.background = loginOn ? 'var(--red-600)' : 'var(--green-600)';
+  const btnL = document.getElementById('btn-toggle-login');
+  if (btnL) {
+    const on = cfg.login_habilitado !== false;
+    btnL.innerText = on ? 'Desactivar Login' : 'Activar Login';
+    btnL.style.background = on ? 'var(--red-600)' : 'var(--green-600)';
   }
-  const btnAlumno = document.getElementById('btn-toggle-alumno');
-  if (btnAlumno) {
-    const alumnoOn = cfg.modo_alumno_activo !== false;
-    btnAlumno.textContent = alumnoOn ? '✅ Activo' : '🚫 Desactivado';
-    btnAlumno.style.background = alumnoOn ? 'var(--green-600)' : 'var(--red-600)';
+  const btnA = document.getElementById('btn-toggle-alumno');
+  if (btnA) {
+    const on = cfg.modo_alumno_activo !== false;
+    btnA.textContent = on ? '✅ Activo' : '🚫 Desactivado';
+    btnA.style.background = on ? 'var(--green-600)' : 'var(--red-600)';
   }
 }
 
@@ -109,7 +119,8 @@ function _activarPantallaMantenimiento() {
 
 function _desactivarPantallaMantenimiento(cfg) {
   if (typeof sistemaEnMantenimiento !== 'undefined') window.sistemaEnMantenimiento = false;
-  document.getElementById('pantalla-mantenimiento')?.style?.setProperty('display', 'none');
+  const pm = document.getElementById('pantalla-mantenimiento');
+  if (pm) pm.style.display = 'none';
   if (cfg && cfg.login_habilitado !== false) {
     document.getElementById('modal-inicio-login')?.classList.add('open');
   } else {
@@ -118,101 +129,140 @@ function _desactivarPantallaMantenimiento(cfg) {
   }
 }
 
+/* ── INTERCEPTAR chequearMantenimientoNube ──────────────────────────────── */
 (function interceptarChequeo() {
   const MAX = 25; let t = 0;
   function intentar() {
     if (typeof window.chequearMantenimientoNube === 'function') {
       const _orig = window.chequearMantenimientoNube;
-      window.chequearMantenimientoNube = async function() {
-        try {
-          const cached = JSON.parse(localStorage.getItem(FB_CONFIG_CACHE_KEY) || 'null');
-          if (cached) {
-            console.log('[FB-Config] Config desde caché local (instantáneo) ✓');
-            _aplicarConfigEnUI(cached);
-            if (cached.mantenimiento !== true) {
-              if (typeof inicializarBaseDatos === 'function') inicializarBaseDatos();
-              setTimeout(() => { if (typeof restaurarSesionGuardada === 'function') restaurarSesionGuardada(); }, 500);
+      window.chequearMantenimientoNube = async function () {
+
+        // 1. Usar caché local INMEDIATAMENTE (< 1ms) — nunca bloquear
+        let cfgCached = null;
+        try { cfgCached = JSON.parse(localStorage.getItem(FB_CONFIG_CACHE_KEY) || 'null'); } catch (_) {}
+
+        if (cfgCached) {
+          console.log('[FB-Config] Config desde caché local ✓');
+          // Si mantenimiento estaba activo en caché, verificar con Firebase antes de bloquear
+          if (cfgCached.mantenimiento === true) {
+            console.log('[FB-Config] Mantenimiento en caché — verificando con Firebase...');
+            try {
+              const snap = await _cfgConTimeout(
+                _cfgDb.collection('config_inmu').doc('sistema').get(), FB_CONFIG_TIMEOUT
+              );
+              if (snap.exists) {
+                cfgCached = snap.data();
+                localStorage.setItem(FB_CONFIG_CACHE_KEY, JSON.stringify(cfgCached));
+              }
+            } catch (e) {
+              // Firebase offline: si mantenimiento en caché, NO bloquear — usar default
+              console.warn('[FB-Config] Firebase offline al verificar mantenimiento → desactivando mantenimiento por seguridad');
+              cfgCached = { ...cfgCached, mantenimiento: false };
+              localStorage.setItem(FB_CONFIG_CACHE_KEY, JSON.stringify(cfgCached));
             }
-            return;
           }
-        } catch (_) {}
+          _aplicarConfigEnUI(cfgCached);
+          if (cfgCached.mantenimiento !== true) {
+            if (typeof inicializarBaseDatos    === 'function') inicializarBaseDatos();
+            setTimeout(() => { if (typeof restaurarSesionGuardada === 'function') restaurarSesionGuardada(); }, 500);
+          }
+          return;
+        }
+
+        // 2. Sin caché → intentar Firebase con timeout
         if (_cfgListo && _cfgDb) {
           try {
-            const snap = await _cfgDb.collection('config_inmu').doc('sistema').get();
+            const snap = await _cfgConTimeout(
+              _cfgDb.collection('config_inmu').doc('sistema').get(), FB_CONFIG_TIMEOUT
+            );
             if (snap.exists) {
               const cfg = snap.data();
               localStorage.setItem(FB_CONFIG_CACHE_KEY, JSON.stringify(cfg));
               _aplicarConfigEnUI(cfg);
               if (cfg.mantenimiento !== true) {
-                if (typeof inicializarBaseDatos === 'function') inicializarBaseDatos();
+                if (typeof inicializarBaseDatos    === 'function') inicializarBaseDatos();
                 setTimeout(() => { if (typeof restaurarSesionGuardada === 'function') restaurarSesionGuardada(); }, 500);
               }
               return;
             }
           } catch (e) {
-            console.warn('[FB-Config] Firestore falló, usando GAS:', e);
+            console.warn('[FB-Config] Firebase timeout/offline → usando config por defecto + GAS fallback:', e.message);
           }
         }
+
+        // 3. Firebase no disponible o sin datos → config por defecto y llamar GAS
+        console.warn('[FB-Config] Usando config por defecto, llamando GAS...');
+        _aplicarConfigEnUI(_CFG_DEFAULT);
         return _orig.call(this);
       };
       console.log('[FB-Config] chequearMantenimientoNube interceptada ✓');
-    } else if (t++ < MAX) setTimeout(intentar, 400);
+    } else if (t++ < MAX) {
+      setTimeout(intentar, 400);
+    }
   }
   intentar();
 })();
 
+/* ── Interceptar toggles (POST al GAS) ─────────────────────────────────── */
 (function interceptarToggle() {
   const _origFetch = window.fetch;
-  window.fetch = function(url, opts) {
-    if (opts && opts.body) {
+  window.fetch = function (url, opts) {
+    if (opts && opts.body && _cfgListo && _cfgDb) {
       try {
         const body = JSON.parse(opts.body);
-        if (body.tipo_post === 'toggle_mantenimiento' && _cfgListo && _cfgDb) {
-          _cfgDb.collection('config_inmu').doc('sistema').get().then(snap => {
+        const ref  = _cfgDb.collection('config_inmu').doc('sistema');
+        if (body.tipo_post === 'toggle_mantenimiento') {
+          ref.get().then(snap => {
             const actual = snap.exists ? snap.data().mantenimiento : false;
-            _cfgDb.collection('config_inmu').doc('sistema').set(
-              { mantenimiento: !actual }, { merge: true }
-            ).catch(e => console.warn('[FB-Config] Error toggle mantenimiento:', e));
+            ref.set({ mantenimiento: !actual }, { merge: true }).catch(() => {});
           });
         }
-        if (body.tipo_post === 'toggle_login' && _cfgListo && _cfgDb) {
-          _cfgDb.collection('config_inmu').doc('sistema').get().then(snap => {
+        if (body.tipo_post === 'toggle_login') {
+          ref.get().then(snap => {
             const actual = snap.exists ? snap.data().login_habilitado : true;
-            _cfgDb.collection('config_inmu').doc('sistema').set(
-              { login_habilitado: !actual }, { merge: true }
-            ).catch(e => console.warn('[FB-Config] Error toggle login:', e));
+            ref.set({ login_habilitado: !actual }, { merge: true }).catch(() => {});
           });
         }
-        if (body.tipo_post === 'toggle_modo_alumno' && _cfgListo && _cfgDb) {
-          _cfgDb.collection('config_inmu').doc('sistema').set(
-            { modo_alumno_activo: body.activo }, { merge: true }
-          ).catch(e => console.warn('[FB-Config] Error toggle alumno:', e));
+        if (body.tipo_post === 'toggle_modo_alumno') {
+          ref.set({ modo_alumno_activo: body.activo }, { merge: true }).catch(() => {});
         }
-        if (body.tipo_post === 'configurar_horario' && _cfgListo && _cfgDb) {
-          _cfgDb.collection('config_inmu').doc('sistema').set({
-            horario_inicio: body.inicio,
-            horario_fin:    body.fin
-          }, { merge: true }).catch(e => console.warn('[FB-Config] Error guardar horario:', e));
+        if (body.tipo_post === 'configurar_horario') {
+          ref.set({ horario_inicio: body.inicio, horario_fin: body.fin }, { merge: true }).catch(() => {});
         }
       } catch (_) {}
     }
     return _origFetch.apply(this, arguments);
   };
-  console.log('[FB-Config] fetch interceptado para config/toggle ✓');
+  console.log('[FB-Config] fetch interceptado para toggles ✓');
 })();
 
-window.FB_subirConfigInicial = async function(opts) {
+/* ── API pública ────────────────────────────────────────────────────────── */
+window.FB_subirConfigInicial = async function (opts) {
   if (!_cfgListo || !_cfgDb) { console.error('[FB-Config] Firebase no listo'); return; }
   opts = opts || {};
   const cfg = {
-    mantenimiento:       opts.mantenimiento       ?? false,
-    login_habilitado:    opts.login_habilitado    ?? true,
-    modo_alumno_activo:  opts.modo_alumno_activo  ?? true,
-    horario_inicio:      opts.horario_inicio      ?? '07:00',
-    horario_fin:         opts.horario_fin         ?? '15:00'
+    mantenimiento:      opts.mantenimiento      ?? false,
+    login_habilitado:   opts.login_habilitado   ?? true,
+    modo_alumno_activo: opts.modo_alumno_activo ?? true,
+    horario_inicio:     opts.horario_inicio     ?? '07:00',
+    horario_fin:        opts.horario_fin        ?? '15:00'
   };
   await _cfgDb.collection('config_inmu').doc('sistema').set(cfg, { merge: true });
-  console.log('[FB-Config] ✅ Config inicial subida a Firestore:', cfg);
+  console.log('[FB-Config] ✅ Config subida:', cfg);
 };
 
-console.log('[FB-Config] Módulo cargado ✓');
+/* ── Salida de emergencia: desactivar mantenimiento desde consola ────────── */
+window.FB_SalirMantenimiento = function () {
+  const cfg = { ..._CFG_DEFAULT, mantenimiento: false };
+  try { localStorage.setItem(FB_CONFIG_CACHE_KEY, JSON.stringify(cfg)); } catch (_) {}
+  if (_cfgListo && _cfgDb) {
+    _cfgDb.collection('config_inmu').doc('sistema')
+      .set({ mantenimiento: false }, { merge: true })
+      .catch(() => {});
+  }
+  _desactivarPantallaMantenimiento(cfg);
+  if (typeof inicializarBaseDatos === 'function') inicializarBaseDatos();
+  console.log('[FB-Config] ✅ Mantenimiento desactivado de emergencia.');
+};
+
+console.log('[FB-Config] Módulo cargado ✓  |  Emergencia: FB_SalirMantenimiento()');
