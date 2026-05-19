@@ -30,7 +30,7 @@
       if (!firebase.apps || firebase.apps.length === 0) firebase.initializeApp(FB_CFG);
       _db    = firebase.firestore();
       // Configurar caché offline de Firestore con timeout corto
-      _db.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED });
+      
       _listo = true;
       _interceptarInicializarBaseDatos();
       _interceptarGuardarDocente();
