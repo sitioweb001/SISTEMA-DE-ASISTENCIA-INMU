@@ -2772,25 +2772,36 @@
             }
         }
 
-        let baseDatosAlumnos = [];
+        // ── Variables globales compartidas con módulos Firebase ────────────
+        // Usar var en vez de let para que sean escribibles desde módulos externos
+        var baseDatosAlumnos  = [];
+        var baseDatosDocentes = [];
+        var catalogoMaterias  = [];
+        var alumnosFiltrados  = [];
+        var docentesStatus    = {};
+        var todosLosReportes  = [];
+
+        // Sincronizar con window para que módulos Firebase puedan escribirlas
+        window.baseDatosAlumnos  = baseDatosAlumnos;
+        window.baseDatosDocentes = baseDatosDocentes;
+        window.catalogoMaterias  = catalogoMaterias;
+        window.alumnosFiltrados  = alumnosFiltrados;
+        window.docentesStatus    = docentesStatus;
+        window.todosLosReportes  = todosLosReportes;
+
         let baseDatosDiRefuerzo = [];
         let diResultadosActuales = [];
         let modoDiRefuerzo = false;
         let accionDiRefuerzo = 'agregar';
-        let docentesStatus = {}; // Estados de docentes: online/offline
         let carpetaPDFUri = null;
-        let baseDatosDocentes = [];
-        let catalogoMaterias = [];
         let asignacionesNuevoDocente = [];
         let asignacionesDocenteEdicion = [];
-        let alumnosFiltrados = [];
         let estadoSeleccion = true;
         let sistemaEnMantenimiento = true;
-        let todosLosReportes = [];
         let loginRequerido = true;
         window.usuarioActual = '';
         let paginaActual = 1;
-        let alumnosPorPagina = 10; // dynamic: 10 only for full-school (Dirección/Única) mode
+        let alumnosPorPagina = 10;
         let listaContraida = false;
 
         // ── Variables del visor PDF ──────────────────────────────────────
@@ -3914,33 +3925,13 @@
             }
         }
 
-        async function entrarComoDocenteDropdown(sel = null) {
+        function entrarComoDocenteDropdown(sel = null) {
             if (sel === null) sel = document.getElementById("select-docente-inicio").value;
             if (!sel) return alert("Por favor, seleccione una opción.");
 
             if (sel !== "Invitado") {
-                // 1. Buscar en memoria primero
-                let docenteEncontrado = baseDatosDocentes.find(d => d.nombre === sel);
-
-                // 2. Si no está en memoria, buscar directo en Firestore
-                if (!docenteEncontrado) {
-                    try {
-                        const norm = s => (s||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
-                        const db = firebase.firestore();
-                        const snap = await db.collection('docentes_inmu').doc(norm(sel)).get();
-                        if (snap.exists) {
-                            docenteEncontrado = snap.data();
-                            // Agregar a memoria para no volver a buscar
-                            baseDatosDocentes.push(docenteEncontrado);
-                            window.baseDatosDocentes = baseDatosDocentes;
-                        }
-                    } catch(e) {
-                        console.warn('[Login] Error buscando docente en Firestore:', e);
-                    }
-                }
-
-                // 3. Si aún no encontró, crear objeto básico con el nombre
-                aplicarDatosDocenteSeleccionado(docenteEncontrado || { nombre: sel, admin: false });
+                const docenteEncontrado = baseDatosDocentes.find(d => d.nombre === sel);
+                aplicarDatosDocenteSeleccionado(docenteEncontrado || { nombre: sel });
             } else {
                 document.getElementById("docente-nombre").value = "";
                 const materiaInput = document.getElementById("docente-materia");
@@ -4173,25 +4164,14 @@
                 cargarAlumnos();
 
                 baseDatosDocentes = await responseDoc.json();
-                window.baseDatosDocentes = baseDatosDocentes;
                 catalogoMaterias = await responseCatalogo.json();
-                window.catalogoMaterias = catalogoMaterias;
                 if (!Array.isArray(catalogoMaterias) || catalogoMaterias.length === 0) {
                     catalogoMaterias = getCatalogoMateriasFallback();
-                    window.catalogoMaterias = catalogoMaterias;
                 }
                 let htmlDoc = `<option value="">-- Seleccionar --</option>`;
                 baseDatosDocentes.forEach(d => { htmlDoc += `<option value="${d.nombre}">${d.nombre}</option>`; });
                 selDoc.innerHTML = htmlDoc;
                 inicializarMateriasUI();
-
-                // Subir a Firebase en segundo plano automáticamente
-                if (typeof FB_subirDocentes === 'function' && baseDatosDocentes.length > 0) {
-                    setTimeout(() => FB_subirDocentes().catch(() => {}), 3000);
-                }
-                if (typeof FB_subirCatalogo === 'function' && Array.isArray(catalogoMaterias) && catalogoMaterias.length > 0) {
-                    setTimeout(() => FB_subirCatalogo().catch(() => {}), 6000);
-                }
 
             } catch (error) {
                 console.warn('Error inicializando datos:', error);
