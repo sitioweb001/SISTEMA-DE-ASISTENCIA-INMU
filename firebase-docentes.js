@@ -1,7 +1,7 @@
 /**
  * SICA-INMU — firebase-docentes.js
- * Carga docentes, alumnos y catálogo desde Firebase con fallback automático al GAS.
- * Si Firebase falla o tiene 0 alumnos → usa el GAS y sube los datos a Firebase en segundo plano.
+ * Carga docentes, alumnos y catálogo desde Firebase con fallback al GAS.
+ * CORRECCIÓN: limpia comillas en sección al leer datos.
  */
 (function () {
   'use strict';
@@ -15,9 +15,9 @@
     appId:             "1:264940304462:web:643c263f1ad46139102b1f"
   };
 
-  const GAS_URL      = "https://script.google.com/macros/s/AKfycbxKnxasl94QOwaLx2QZMDNnfNG8NTtnWg1agE9shf9cyeYeP1PsgtUjbu4X94lXRSIM/exec";
-  const TIMEOUT_FB   = 5000;  // 5 seg max esperando Firebase
-  const TIMEOUT_GAS  = 12000; // 12 seg max esperando GAS
+  const GAS_URL     = "https://script.google.com/macros/s/AKfycbxKnxasl94QOwaLx2QZMDNnfNG8NTtnWg1agE9shf9cyeYeP1PsgtUjbu4X94lXRSIM/exec";
+  const TIMEOUT_FB  = 6000;
+  const TIMEOUT_GAS = 15000;
 
   let _db    = null;
   let _listo = false;
@@ -31,46 +31,64 @@
       _listo = true;
       console.log('[FB-Docentes] Firebase listo ✓');
     } catch (e) {
-      console.warn('[FB-Docentes] Error init Firebase:', e.message);
+      console.warn('[FB-Docentes] Error init:', e.message);
     }
-    // Interceptar funciones del INDEX después de que carguen
     _esperarEInicializar();
   })();
 
-  // ── Promesa con timeout ────────────────────────────────────────────────────
+  // ── Helpers ────────────────────────────────────────────────────────────────
   function _timeout(ms) {
     return new Promise((_, rej) => setTimeout(() => rej(new Error('timeout ' + ms + 'ms')), ms));
   }
-  function _conTimeout(promesa, ms) {
-    return Promise.race([promesa, _timeout(ms)]);
+  function _race(p, ms) { return Promise.race([p, _timeout(ms)]); }
+
+  // Limpiar comillas extras en sección: '"A"' → 'A'
+  function _limpiarSeccion(s) {
+    return String(s || '').replace(/^"+|"+$/g, '').trim();
   }
 
-  // ── Fetch con timeout ──────────────────────────────────────────────────────
-  async function _fetchGAS(tipo, ms) {
-    ms = ms || TIMEOUT_GAS;
+  // Normalizar clave Firestore
+  function _normKey(s) {
+    return (s || '').trim().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+  }
+
+  // Escapar HTML
+  function _esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Fetch GAS con timeout ──────────────────────────────────────────────────
+  async function _fetchGAS(tipo) {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), ms);
+    const t = setTimeout(() => ctrl.abort(), TIMEOUT_GAS);
     try {
       const r = await fetch(GAS_URL + '?tipo=' + tipo, { signal: ctrl.signal });
       clearTimeout(t);
       return await r.json();
-    } catch (e) {
-      clearTimeout(t);
-      throw e;
-    }
+    } catch (e) { clearTimeout(t); throw e; }
   }
 
-  // ── Leer colección completa de Firestore con timeout ──────────────────────
-  async function _leerColeccion(nombre) {
+  // ── Leer colección Firestore ───────────────────────────────────────────────
+  async function _leerCol(nombre) {
     if (!_listo || !_db) throw new Error('Firebase no disponible');
-    const snap = await _conTimeout(_db.collection(nombre).get(), TIMEOUT_FB);
+    const snap = await _race(_db.collection(nombre).get(), TIMEOUT_FB);
     const lista = [];
     snap.forEach(doc => lista.push(doc.data()));
     return lista;
   }
 
-  // ── Subir alumnos a Firestore en lotes ────────────────────────────────────
-  async function _subirAlumnosFirebase(lista) {
+  // ── Limpiar alumnos (quitar comillas en sección) ───────────────────────────
+  function _limpiarAlumnos(lista) {
+    return (lista || []).map(a => ({
+      ...a,
+      seccion: _limpiarSeccion(a.seccion)
+    }));
+  }
+
+  // ── Subir alumnos a Firebase ───────────────────────────────────────────────
+  async function _subirAlumnos(lista) {
     if (!_listo || !_db || !lista || !lista.length) return 0;
     let n = 0;
     for (let i = 0; i < lista.length; i += 400) {
@@ -80,11 +98,11 @@
         if (!nie || nie === 'N/A' || nie === '0') return;
         batch.set(_db.collection('alumnos_inmu').doc(nie), {
           nie,
-          nombre:   a.nombre   || '',
-          grado:    a.grado    || '',
-          seccion:  a.seccion  || '',
-          sexo:     a.sexo     || '',
-          telefono: a.telefono || ''
+          nombre:   a.nombre            || '',
+          grado:    a.grado             || '',
+          seccion:  _limpiarSeccion(a.seccion),
+          sexo:     a.sexo              || '',
+          telefono: a.telefono          || ''
         }, { merge: true });
         n++;
       });
@@ -94,23 +112,20 @@
     return n;
   }
 
-  // ── Subir docentes a Firestore en lotes ───────────────────────────────────
-  async function _subirDocentesFirebase(lista) {
+  // ── Subir docentes a Firebase ──────────────────────────────────────────────
+  async function _subirDocentes(lista) {
     if (!_listo || !_db || !lista || !lista.length) return 0;
-    const norm = s => (s||'').trim().toLowerCase().normalize('NFD')
-      .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_')
-      .replace(/_+/g,'_').replace(/^_|_$/g,'');
     let n = 0;
     for (let i = 0; i < lista.length; i += 100) {
       const batch = _db.batch();
       lista.slice(i, i + 100).forEach(d => {
         if (!d.nombre) return;
-        batch.set(_db.collection('docentes_inmu').doc(norm(d.nombre)), {
+        batch.set(_db.collection('docentes_inmu').doc(_normKey(d.nombre)), {
           nombre:            d.nombre            || '',
           grado:             d.grado             || '',
-          seccion:           d.seccion           || '',
+          seccion:           _limpiarSeccion(d.seccion),
           grado_orientado:   d.grado_orientado   || d.grado   || '',
-          seccion_orientada: d.seccion_orientada || d.seccion || '',
+          seccion_orientada: _limpiarSeccion(d.seccion_orientada || d.seccion),
           materia:           d.materia           || '',
           tipo_materia:      d.tipo_materia      || '0-10',
           escala:            d.escala            || d.tipo_materia || '0-10',
@@ -125,88 +140,45 @@
     return n;
   }
 
-  // ── Poblar el selector de docentes en el HTML ──────────────────────────────
-  function _poblarSelectDocentes(lista) {
+  // ── Poblar selector de docentes ────────────────────────────────────────────
+  function _poblarSelect(lista) {
     const sel = document.getElementById('select-docente-inicio');
     if (!sel) return;
     let html = '<option value="">-- Seleccionar --</option>';
-    lista.forEach(d => {
-      const n = String(d.nombre || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-      html += `<option value="${n}">${n}</option>`;
-    });
+    lista.forEach(d => { html += `<option value="${_esc(d.nombre)}">${_esc(d.nombre)}</option>`; });
     sel.innerHTML = html;
   }
 
-  // ── Aplicar datos al sistema y actualizar UI ───────────────────────────────
-  function _aplicarDatos(docentes, alumnos, catalogo) {
-    // Docentes
-    if (Array.isArray(docentes) && docentes.length > 0) {
-      window.baseDatosDocentes = docentes;
+  // ── Aplicar datos al sistema ───────────────────────────────────────────────
+  // IMPORTANTE: asignar con splice/push para modificar el array original
+  // que la variable local del INDEX referencia, no crear uno nuevo.
+  function _aplicar(docentes, alumnos, catalogo) {
+    if (Array.isArray(docentes) && docentes.length) {
+      // Modificar el array existente que baseDatosDocentes referencia
+      const arrDoc = window.baseDatosDocentes;
+      arrDoc.splice(0, arrDoc.length, ...docentes);
+      _poblarSelect(docentes);
       if (typeof window.inicializarMateriasUI === 'function') window.inicializarMateriasUI();
-      _poblarSelectDocentes(docentes);
     }
-    // Alumnos
-    if (Array.isArray(alumnos) && alumnos.length > 0) {
-      alumnos.sort((a, b) => (a.nombre||'').localeCompare(b.nombre||''));
-      window.baseDatosAlumnos = alumnos;
+    if (Array.isArray(alumnos) && alumnos.length) {
+      const limpios = _limpiarAlumnos(alumnos);
+      limpios.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+      // Modificar el array existente que baseDatosAlumnos referencia
+      const arrAlu = window.baseDatosAlumnos;
+      arrAlu.splice(0, arrAlu.length, ...limpios);
       if (typeof window.cargarAlumnos === 'function') window.cargarAlumnos();
     }
-    // Catálogo
-    if (Array.isArray(catalogo) && catalogo.length > 0) {
-      window.catalogoMaterias = catalogo;
+    if (Array.isArray(catalogo) && catalogo.length) {
+      const arrCat = window.catalogoMaterias;
+      arrCat.splice(0, arrCat.length, ...catalogo);
     } else if (typeof window.getCatalogoMateriasFallback === 'function') {
-      window.catalogoMaterias = window.getCatalogoMateriasFallback();
+      const fb = window.getCatalogoMateriasFallback();
+      const arrCat = window.catalogoMaterias;
+      arrCat.splice(0, arrCat.length, ...fb);
     }
   }
 
-  // ── Cargar desde GAS ───────────────────────────────────────────────────────
-  async function _cargarDesdeGAS() {
-    console.log('[FB-Docentes] Cargando desde GAS...');
-    const sel  = document.getElementById('select-docente-inicio');
-    const cont = document.getElementById('tabla-alumnos');
-    if (sel)  sel.innerHTML  = '<option value="">⏳ Cargando docentes...</option>';
-    if (cont) cont.innerHTML = '<div style="padding:20px;text-align:center;color:#185FA5;font-weight:bold;">⏳ Sincronizando alumnos...</div>';
-
-    const [docentes, alumnos, catalogo] = await Promise.all([
-      _fetchGAS('docentes'),
-      _fetchGAS('alumnos'),
-      _fetchGAS('catalogo_materias').catch(() => [])
-    ]);
-
-    console.log('[FB-Docentes] GAS → docentes:', docentes.length, '| alumnos:', alumnos.length);
-    _aplicarDatos(docentes, alumnos, catalogo);
-
-    // Subir a Firebase en segundo plano (sin bloquear)
-    setTimeout(async () => {
-      try {
-        await _subirDocentesFirebase(docentes);
-        await _subirAlumnosFirebase(alumnos);
-        if (_listo && _db && Array.isArray(catalogo) && catalogo.length) {
-          await _db.collection('config_inmu').doc('catalogo_materias')
-            .set({ items: catalogo, actualizado: new Date().toISOString() }, { merge: true });
-        }
-        console.log('[FB-Docentes] ✅ Datos del GAS sincronizados a Firebase en segundo plano.');
-      } catch (e) {
-        console.warn('[FB-Docentes] Error subiendo a Firebase:', e.message);
-      }
-    }, 2000);
-
-    return { docentes, alumnos, catalogo };
-  }
-
-  // ── Cargar desde Firebase ──────────────────────────────────────────────────
-  async function _cargarDesdeFirebase() {
-    const [docentes, alumnos, cfgSnap] = await Promise.all([
-      _leerColeccion('docentes_inmu'),
-      _leerColeccion('alumnos_inmu'),
-      _conTimeout(_db.collection('config_inmu').doc('catalogo_materias').get(), TIMEOUT_FB).catch(() => null)
-    ]);
-    const catalogo = cfgSnap && cfgSnap.exists ? (cfgSnap.data().items || []) : [];
-    console.log('[FB-Docentes] Firebase → docentes:', docentes.length, '| alumnos:', alumnos.length);
-    return { docentes, alumnos, catalogo };
-  }
-
-  // ── Función principal de carga ─────────────────────────────────────────────
+  // ── Carga principal ────────────────────────────────────────────────────────
   async function _inicializar() {
     if (window.sistemaEnMantenimiento) return;
 
@@ -215,91 +187,133 @@
     if (sel)  sel.innerHTML  = '<option value="">⚡ Cargando...</option>';
     if (cont) cont.innerHTML = '<div style="padding:20px;text-align:center;color:#185FA5;font-weight:bold;">⚡ Cargando datos...</div>';
 
-    // Intentar Firebase primero
+    // ── Intentar Firebase ────────────────────────────────────────────────────
     if (_listo && _db) {
       try {
-        const { docentes, alumnos, catalogo } = await _cargarDesdeFirebase();
+        const [docentes, alumnos, cfgSnap] = await Promise.all([
+          _leerCol('docentes_inmu'),
+          _leerCol('alumnos_inmu'),
+          _race(_db.collection('config_inmu').doc('catalogo_materias').get(), TIMEOUT_FB).catch(() => null)
+        ]);
+        const catalogo = cfgSnap && cfgSnap.exists ? (cfgSnap.data().items || []) : [];
 
-        // Firebase tiene datos completos → usarlos
+        console.log('[FB-Docentes] Firebase → docentes:', docentes.length, '| alumnos:', alumnos.length);
+
         if (docentes.length > 0 && alumnos.length > 0) {
-          _aplicarDatos(docentes, alumnos, catalogo);
-          console.log('[FB-Docentes] ✅ Datos cargados desde Firebase');
-          return;
-        }
+          _aplicar(docentes, alumnos, catalogo);
+          console.log('[FB-Docentes] ✅ Cargado desde Firebase');
 
-        // Firebase tiene docentes pero no alumnos → cargar alumnos del GAS
-        if (docentes.length > 0 && alumnos.length === 0) {
-          console.warn('[FB-Docentes] Firebase sin alumnos → cargando alumnos del GAS');
-          _poblarSelectDocentes(docentes);
-          window.baseDatosDocentes = docentes;
-          if (typeof window.inicializarMateriasUI === 'function') window.inicializarMateriasUI();
-
-          const aluGAS = await _fetchGAS('alumnos').catch(() => []);
-          if (aluGAS.length > 0) {
-            aluGAS.sort((a, b) => (a.nombre||'').localeCompare(b.nombre||''));
-            window.baseDatosAlumnos = aluGAS;
-            if (typeof window.cargarAlumnos === 'function') window.cargarAlumnos();
-            // Subir alumnos a Firebase en segundo plano
-            setTimeout(() => _subirAlumnosFirebase(aluGAS).catch(() => {}), 2000);
+          // Corregir secciones en Firebase en segundo plano si hay datos sucios
+          const sucios = alumnos.filter(a => (a.seccion||'').includes('"'));
+          if (sucios.length > 0) {
+            console.log('[FB-Docentes] Corrigiendo', sucios.length, 'secciones sucias en Firebase...');
+            setTimeout(async () => {
+              try {
+                for (let i = 0; i < sucios.length; i += 400) {
+                  const batch = _db.batch();
+                  sucios.slice(i, i + 400).forEach(a => {
+                    batch.update(_db.collection('alumnos_inmu').doc(String(a.nie)), {
+                      seccion: _limpiarSeccion(a.seccion)
+                    });
+                  });
+                  await batch.commit();
+                }
+                console.log('[FB-Docentes] ✅ Secciones corregidas en Firebase');
+              } catch(e) { console.warn('[FB-Docentes] Error corrigiendo secciones:', e.message); }
+            }, 3000);
           }
           return;
         }
 
-        // Firebase vacío → usar GAS completo
-        console.warn('[FB-Docentes] Firebase vacío → usando GAS completo');
+        // Firebase tiene docentes pero no alumnos
+        if (docentes.length > 0 && alumnos.length === 0) {
+          console.warn('[FB-Docentes] Sin alumnos en Firebase → GAS');
+          window.baseDatosDocentes = docentes;
+          _poblarSelect(docentes);
+          if (typeof window.inicializarMateriasUI === 'function') window.inicializarMateriasUI();
+          const aluGAS = await _fetchGAS('alumnos').catch(() => []);
+          if (aluGAS.length) {
+            _aplicar(null, aluGAS, catalogo);
+            setTimeout(() => _subirAlumnos(aluGAS).catch(() => {}), 2000);
+          }
+          return;
+        }
+
+        console.warn('[FB-Docentes] Firebase vacío → GAS completo');
       } catch (e) {
-        console.warn('[FB-Docentes] Firebase falló (' + e.message + ') → usando GAS');
+        console.warn('[FB-Docentes] Firebase falló (' + e.message + ') → GAS');
       }
     }
 
-    // Fallback: GAS completo
+    // ── Fallback GAS ─────────────────────────────────────────────────────────
     try {
-      await _cargarDesdeGAS();
+      console.log('[FB-Docentes] Cargando desde GAS...');
+      if (sel)  sel.innerHTML  = '<option value="">⏳ Cargando docentes...</option>';
+      if (cont) cont.innerHTML = '<div style="padding:20px;text-align:center;color:#185FA5;font-weight:bold;">⏳ Cargando datos...</div>';
+
+      const [docentes, alumnos, catalogo] = await Promise.all([
+        _fetchGAS('docentes'),
+        _fetchGAS('alumnos'),
+        _fetchGAS('catalogo_materias').catch(() => [])
+      ]);
+
+      console.log('[FB-Docentes] GAS → docentes:', docentes.length, '| alumnos:', alumnos.length);
+      _aplicar(docentes, alumnos, catalogo);
+
+      // Subir a Firebase en segundo plano
+      setTimeout(async () => {
+        try {
+          await _subirDocentes(docentes);
+          await _subirAlumnos(alumnos);
+          if (_listo && _db && catalogo.length) {
+            await _db.collection('config_inmu').doc('catalogo_materias')
+              .set({ items: catalogo, actualizado: new Date().toISOString() }, { merge: true });
+          }
+          console.log('[FB-Docentes] ✅ Datos del GAS sincronizados a Firebase.');
+        } catch (e) { console.warn('[FB-Docentes] Error sincronizando a Firebase:', e.message); }
+      }, 3000);
+
     } catch (e) {
       console.error('[FB-Docentes] GAS también falló:', e.message);
-      if (sel) sel.innerHTML = '<option value="">❌ Error de conexión — reintentando...</option>';
-      if (cont) cont.innerHTML = '<div style="padding:20px;text-align:center;color:var(--red-600);">Error de conexión. Reintentando en 8 segundos...</div>';
+      if (sel)  sel.innerHTML  = '<option value="">❌ Sin conexión — reintentando...</option>';
+      if (cont) cont.innerHTML = '<div style="padding:20px;text-align:center;color:red;">Sin conexión. Reintentando...</div>';
       setTimeout(() => _inicializar(), 8000);
     }
   }
 
-  // ── Esperar que el INDEX cargue sus funciones y luego interceptar ──────────
+  // ── Esperar funciones del INDEX e interceptar ──────────────────────────────
   function _esperarEInicializar() {
     const MAX = 40; let t = 0;
     function intentar() {
       if (typeof window.inicializarBaseDatos === 'function' &&
-          typeof window.cargarAlumnos === 'function') {
-        // Reemplazar inicializarBaseDatos con nuestra versión
+          typeof window.cargarAlumnos        === 'function') {
+
+        // Reemplazar inicializarBaseDatos
         window.inicializarBaseDatos = _inicializar;
         console.log('[FB-Docentes] inicializarBaseDatos reemplazada ✓');
 
-        // También interceptar el login por dropdown para leer admin desde Firebase
+        // Reemplazar entrarComoDocenteDropdown
         if (typeof window.entrarComoDocenteDropdown === 'function') {
-          const _origLogin = window.entrarComoDocenteDropdown;
-          window.entrarComoDocenteDropdown = async function(sel) {
-            if (sel === null || sel === undefined) sel = document.getElementById("select-docente-inicio")?.value;
-            if (!sel) return alert("Por favor, seleccione una opción.");
+          window.entrarComoDocenteDropdown = async function (sel) {
+            if (sel === null || sel === undefined) {
+              sel = document.getElementById('select-docente-inicio')?.value;
+            }
+            if (!sel) return alert('Por favor, seleccione una opción.');
 
-            if (sel !== "Invitado") {
+            if (sel !== 'Invitado') {
               // Buscar en memoria
               let doc = (window.baseDatosDocentes || []).find(d => d.nombre === sel);
 
-              // Si no está en memoria, buscar en Firebase
+              // Si no está en memoria → buscar en Firebase
               if (!doc && _listo && _db) {
                 try {
-                  const norm = s => (s||'').trim().toLowerCase().normalize('NFD')
-                    .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_')
-                    .replace(/_+/g,'_').replace(/^_|_$/g,'');
-                  const snap = await _db.collection('docentes_inmu').doc(norm(sel)).get();
+                  const snap = await _db.collection('docentes_inmu').doc(_normKey(sel)).get();
                   if (snap.exists) {
                     doc = snap.data();
-                    // Agregar a memoria
                     if (!window.baseDatosDocentes) window.baseDatosDocentes = [];
                     window.baseDatosDocentes.push(doc);
                   }
-                } catch(e) {
-                  console.warn('[FB-Docentes] Error buscando docente:', e.message);
-                }
+                } catch(e) { console.warn('[FB-Docentes] Error buscando docente:', e.message); }
               }
 
               if (doc) {
@@ -308,18 +322,60 @@
                   window.aplicarDatosDocenteSeleccionado(doc);
                 }
               } else {
+                // Docente no encontrado en Firebase — crear entrada básica
                 window.usuarioAdmin = false;
+                if (typeof window.aplicarDatosDocenteSeleccionado === 'function') {
+                  window.aplicarDatosDocenteSeleccionado({ nombre: sel, admin: false });
+                }
               }
             } else {
               window.usuarioAdmin = false;
+              const mi = document.getElementById('docente-materia');
+              if (mi) mi.innerHTML = '<option value="">-- Seleccione la materia --</option>';
             }
 
-            document.getElementById("modal-inicio-dropdown")?.classList.remove('open');
+            document.getElementById('modal-inicio-dropdown')?.classList.remove('open');
             if (typeof window.desbloquearInterfazMain === 'function') {
-              window.desbloquearInterfazMain(sel !== "Invitado" ? sel : "invitado");
+              window.desbloquearInterfazMain(sel !== 'Invitado' ? sel : 'invitado');
             }
           };
           console.log('[FB-Docentes] entrarComoDocenteDropdown reemplazada ✓');
+        }
+
+        // Interceptar guardar/eliminar docente vía fetch POST
+        if (!window._fbDocFetchPatched) {
+          window._fbDocFetchPatched = true;
+          const _origFetch = window.fetch;
+          window.fetch = function (url, opts) {
+            if (opts && opts.body && _listo && _db) {
+              try {
+                const body = JSON.parse(opts.body);
+                if (body.tipo_post === 'guardar_docente' && body.nombre) {
+                  _db.collection('docentes_inmu').doc(_normKey(body.nombre)).set({
+                    nombre: body.nombre || '', grado: body.grado || '',
+                    seccion: _limpiarSeccion(body.seccion),
+                    grado_orientado: body.grado_orientado || body.grado || '',
+                    seccion_orientada: _limpiarSeccion(body.seccion_orientada || body.seccion),
+                    materia: body.materia || '', tipo_materia: body.tipo_materia || '0-10',
+                    escala: body.tipo_materia || '0-10',
+                    admin: body.admin === true || body.admin === 'true',
+                    materias_asignadas: body.materias_asignadas || []
+                  }, { merge: true }).catch(e => console.warn('[FB-Docentes] Error guardar:', e));
+                }
+                if (body.tipo_post === 'eliminar_docente' && body.nombre) {
+                  _db.collection('docentes_inmu').doc(_normKey(body.nombre)).delete()
+                    .catch(e => console.warn('[FB-Docentes] Error eliminar:', e));
+                }
+                if (body.tipo_post === 'guardar_catalogo_materias' && Array.isArray(body.catalogo)) {
+                  _db.collection('config_inmu').doc('catalogo_materias')
+                    .set({ items: body.catalogo, actualizado: new Date().toISOString() }, { merge: true })
+                    .catch(e => console.warn('[FB-Docentes] Error catálogo:', e));
+                }
+              } catch (_) {}
+            }
+            return _origFetch.apply(this, arguments);
+          };
+          console.log('[FB-Docentes] fetch interceptado ✓');
         }
 
       } else if (t++ < MAX) {
@@ -335,13 +391,13 @@
   window.FB_subirDocentes = async function () {
     const lista = window.baseDatosDocentes || [];
     if (!lista.length) { console.error('[FB-Docentes] baseDatosDocentes vacío'); return; }
-    await _subirDocentesFirebase(lista);
+    await _subirDocentes(lista);
   };
 
   window.FB_subirAlumnos = async function () {
     const lista = window.baseDatosAlumnos || [];
     if (!lista.length) { console.error('[FB-Docentes] baseDatosAlumnos vacío'); return; }
-    await _subirAlumnosFirebase(lista);
+    await _subirAlumnos(lista);
   };
 
   window.FB_subirCatalogo = async function () {
@@ -354,7 +410,7 @@
   };
 
   window.FB_refrescarTodo = async function () {
-    console.log('[FB-Docentes] Refrescando todo...');
+    FB_limpiarCache();
     await _inicializar();
   };
 
@@ -366,17 +422,31 @@
     console.log('[FB-Docentes] ✅ Caché limpiada.');
   };
 
-  // Marcar docente como admin
-  window.FB_SetAdmin = async function(nombre, esAdmin) {
+  window.FB_SetAdmin = async function (nombre, esAdmin) {
     if (!_listo || !_db) { console.error('Firebase no disponible'); return; }
-    const norm = s => (s||'').trim().toLowerCase().normalize('NFD')
-      .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_')
-      .replace(/_+/g,'_').replace(/^_|_$/g,'');
-    await _db.collection('docentes_inmu').doc(norm(nombre))
+    await _db.collection('docentes_inmu').doc(_normKey(nombre))
       .set({ admin: esAdmin !== false }, { merge: true });
     console.log('[FB-Docentes] ✅ Admin=' + (esAdmin !== false) + ' para:', nombre);
   };
 
+  // Corregir secciones sucias en Firebase (ejecutar una vez)
+  window.FB_CorregirSecciones = async function () {
+    if (!_listo || !_db) { console.error('Firebase no disponible'); return; }
+    const snap = await _db.collection('alumnos_inmu').get();
+    let n = 0;
+    for (let i = 0; i < snap.docs.length; i += 400) {
+      const batch = _db.batch();
+      snap.docs.slice(i, i + 400).forEach(doc => {
+        const d = doc.data();
+        const limpia = _limpiarSeccion(d.seccion);
+        if (limpia !== d.seccion) { batch.update(doc.ref, { seccion: limpia }); n++; }
+      });
+      await batch.commit();
+    }
+    console.log('[FB-Docentes] ✅ Secciones corregidas:', n);
+    return n;
+  };
+
   console.log('[FB-Docentes] Script cargado ✓');
-  console.log('[FB-Docentes] Comandos: FB_refrescarTodo() | FB_limpiarCache() | FB_SetAdmin("NOMBRE") | FB_subirDocentes() | FB_subirAlumnos()');
+  console.log('[FB-Docentes] Comandos: FB_refrescarTodo() | FB_limpiarCache() | FB_SetAdmin("NOMBRE") | FB_CorregirSecciones() | FB_subirDocentes() | FB_subirAlumnos()');
 })();
