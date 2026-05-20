@@ -2851,11 +2851,12 @@
                 console.warn('No se pudo conectar con la nube:', error.name === 'AbortError' ? 'Timeout de red' : error);
                 sistemaEnMantenimiento = false;
                 modoOffline = true;
-                loginRequerido = true;
+                loginRequerido = false;
                 document.getElementById('pantalla-mantenimiento').style.display = 'none';
-                document.getElementById('modal-inicio-dropdown').classList.remove('open');
-                document.getElementById('modal-inicio-login').classList.add('open');
+                document.getElementById('modal-inicio-login').classList.remove('open');
+                document.getElementById('modal-inicio-dropdown').classList.add('open');
                 marcarModoOffline();
+                inicializarBaseDatos();
                 setTimeout(restaurarSesionGuardada, 500);
             }
         }
@@ -3232,8 +3233,9 @@
                 loginRequerido = false;
                 marcarModoOffline();
                 document.getElementById('pantalla-mantenimiento').style.display = 'none';
-                document.getElementById('modal-inicio-dropdown').classList.remove('open');
-                document.getElementById('modal-inicio-login').classList.add('open');
+                document.getElementById('modal-inicio-login').classList.remove('open');
+                document.getElementById('modal-inicio-dropdown').classList.add('open');
+                inicializarBaseDatos();
                 setTimeout(restaurarSesionGuardada, 500);
             }
         };
@@ -4132,6 +4134,21 @@
             const cont = document.getElementById('tabla-alumnos');
             const selDoc = document.getElementById('select-docente-inicio');
 
+            // Si Firebase ya cargó docentes en memoria, usar esos directamente
+            if (Array.isArray(window.baseDatosDocentes) && window.baseDatosDocentes.length > 0) {
+                baseDatosDocentes = window.baseDatosDocentes;
+                let htmlDoc = `<option value="">-- Seleccionar --</option>`;
+                baseDatosDocentes.forEach(d => { htmlDoc += `<option value="${d.nombre}">${d.nombre}</option>`; });
+                selDoc.innerHTML = htmlDoc;
+                inicializarMateriasUI();
+                if (Array.isArray(window.baseDatosAlumnos) && window.baseDatosAlumnos.length > 0) {
+                    baseDatosAlumnos = window.baseDatosAlumnos;
+                    baseDatosAlumnos.sort((a, b) => a.nombre.localeCompare(b.nombre));
+                    cargarAlumnos();
+                }
+                return;
+            }
+
             if (!navigator.onLine && !esAppAndroid()) {
                 marcarModoOffline();
                 return;
@@ -4141,12 +4158,17 @@
             selDoc.innerHTML = '<option value="">Descargando lista...</option>';
 
             try {
+                // Timeout de 10 segundos para el GAS
+                const ctrl = new AbortController();
+                const timerGAS = setTimeout(() => ctrl.abort(), 10000);
+
                 const [responseAlu, responseDoc, responseCatalogo] = await Promise.all([
-                    fetch(SCRIPT_URL + "?tipo=alumnos"),
-                    fetch(SCRIPT_URL + "?tipo=docentes"),
-                    fetch(SCRIPT_URL + "?tipo=catalogo_materias")
+                    fetch(SCRIPT_URL + "?tipo=alumnos", { signal: ctrl.signal }),
+                    fetch(SCRIPT_URL + "?tipo=docentes", { signal: ctrl.signal }),
+                    fetch(SCRIPT_URL + "?tipo=catalogo_materias", { signal: ctrl.signal })
                 ]);
-                if (!responseAlu.ok || !responseDoc.ok || !responseCatalogo.ok) throw new Error("Error");
+                clearTimeout(timerGAS);
+                if (!responseAlu.ok || !responseDoc.ok || !responseCatalogo.ok) throw new Error("Error HTTP");
 
                 baseDatosAlumnos = await responseAlu.json();
                 baseDatosAlumnos.sort((a, b) => a.nombre.localeCompare(b.nombre));
@@ -4162,14 +4184,25 @@
                 selDoc.innerHTML = htmlDoc;
                 inicializarMateriasUI();
 
+                // Subir a Firebase en segundo plano si está disponible
+                if (typeof FB_subirDocentes === 'function' && baseDatosDocentes.length > 0) {
+                    setTimeout(() => FB_subirDocentes(baseDatosDocentes).catch(() => {}), 3000);
+                }
+
             } catch (error) {
-                console.warn('Error inicializando datos:', error);
-                if (!esAppAndroid()) {
-                    marcarModoOffline();
+                console.warn('Error inicializando datos desde GAS:', error);
+                // Si Firebase tiene docentes en caché, usar esos como último recurso
+                if (Array.isArray(window.baseDatosDocentes) && window.baseDatosDocentes.length > 0) {
+                    baseDatosDocentes = window.baseDatosDocentes;
+                    let htmlDoc = `<option value="">-- Seleccionar --</option>`;
+                    baseDatosDocentes.forEach(d => { htmlDoc += `<option value="${d.nombre}">${d.nombre}</option>`; });
+                    selDoc.innerHTML = htmlDoc;
+                    inicializarMateriasUI();
                     return;
                 }
-                cont.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--red-600);">Error de conexión.</div>';
-                selDoc.innerHTML = '<option value="Invitado">Error de red - Invitado</option>';
+                selDoc.innerHTML = '<option value="">Error de red — reintentando...</option>';
+                // Reintentar una vez después de 5 segundos
+                setTimeout(() => inicializarBaseDatos(), 5000);
             }
         }
 
