@@ -1,8 +1,7 @@
 /**
  * SICA-INMU — firebase-docentes.js
- * Fase 2-A | 2026
- * MODO RESILIENTE: Firebase es mejora opcional — GAS es la base siempre
- * Si Firebase falla, tarda o está vacío → GAS inmediatamente sin bloquear
+ * Carga docentes, alumnos y catálogo desde Firebase con fallback automático al GAS.
+ * Si Firebase falla o tiene 0 alumnos → usa el GAS y sube los datos a Firebase en segundo plano.
  */
 (function () {
   'use strict';
@@ -16,312 +15,368 @@
     appId:             "1:264940304462:web:643c263f1ad46139102b1f"
   };
 
-  const CACHE_DOCENTES = 'fb_cache_docentes_v2';
-  const CACHE_CATALOGO = 'fb_cache_catalogo_v2';
-  const CACHE_ALUMNOS  = 'fb_cache_alumnos_v2';
-  const TTL_MS         = 10 * 60 * 1000; // 10 min
-  const TIMEOUT_MS     = 3000;           // 3 seg máximo — si no responde, GAS
+  const GAS_URL      = "https://script.google.com/macros/s/AKfycbxKnxasl94QOwaLx2QZMDNnfNG8NTtnWg1agE9shf9cyeYeP1PsgtUjbu4X94lXRSIM/exec";
+  const TIMEOUT_FB   = 5000;  // 5 seg max esperando Firebase
+  const TIMEOUT_GAS  = 12000; // 12 seg max esperando GAS
 
   let _db    = null;
   let _listo = false;
 
-  // ── Init — no bloquear si Firebase falla ──────────────────────────────────
+  // ── Init Firebase ──────────────────────────────────────────────────────────
   (function _init() {
-    if (!window.firebase) { setTimeout(_init, 500); return; }
+    if (!window.firebase) { setTimeout(_init, 300); return; }
     try {
       if (!firebase.apps || firebase.apps.length === 0) firebase.initializeApp(FB_CFG);
       _db    = firebase.firestore();
       _listo = true;
-      console.log('[FB-Docentes] Módulo listo ✓');
+      console.log('[FB-Docentes] Firebase listo ✓');
     } catch (e) {
-      console.warn('[FB-Docentes] Firebase no disponible — usando GAS como base:', e.message);
-      _listo = false;
+      console.warn('[FB-Docentes] Error init Firebase:', e.message);
     }
-    // Siempre interceptar — con o sin Firebase
-    _interceptarInicializarBaseDatos();
-    _interceptarGuardarDocente();
+    // Interceptar funciones del INDEX después de que carguen
+    _esperarEInicializar();
   })();
 
-  // ── Timeout helper ────────────────────────────────────────────────────────
+  // ── Promesa con timeout ────────────────────────────────────────────────────
+  function _timeout(ms) {
+    return new Promise((_, rej) => setTimeout(() => rej(new Error('timeout ' + ms + 'ms')), ms));
+  }
   function _conTimeout(promesa, ms) {
-    return Promise.race([
-      promesa,
-      new Promise((_, r) => setTimeout(() => r(new Error('timeout')), ms))
-    ]);
+    return Promise.race([promesa, _timeout(ms)]);
   }
 
-  // ── Caché ─────────────────────────────────────────────────────────────────
-  function _guardarCache(key, data) {
-    try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch (_) {}
-  }
-  function _leerCache(key) {
+  // ── Fetch con timeout ──────────────────────────────────────────────────────
+  async function _fetchGAS(tipo, ms) {
+    ms = ms || TIMEOUT_GAS;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms);
     try {
-      const raw = localStorage.getItem(key);
-      if (!raw) return null;
-      const obj = JSON.parse(raw);
-      if (Date.now() - obj.ts > TTL_MS) return null;
-      return obj.data;
-    } catch (_) { return null; }
-  }
-  function _borrarCache(key) { try { localStorage.removeItem(key); } catch (_) {} }
-
-  // ── Intentar leer de Firestore (nunca bloquea) ────────────────────────────
-  async function _tryFirestore(coleccion, docId) {
-    if (!_listo || !_db) return null;
-    try {
-      if (docId) {
-        const snap = await _conTimeout(_db.collection(coleccion).doc(docId).get(), TIMEOUT_MS);
-        return snap.exists ? snap.data() : null;
-      } else {
-        const snap = await _conTimeout(_db.collection(coleccion).get(), TIMEOUT_MS);
-        const lista = [];
-        snap.forEach(doc => lista.push(doc.data()));
-        return lista;
-      }
+      const r = await fetch(GAS_URL + '?tipo=' + tipo, { signal: ctrl.signal });
+      clearTimeout(t);
+      return await r.json();
     } catch (e) {
-      console.warn('[FB-Docentes] Firestore no respondió (' + coleccion + '):', e.message);
-      return null;
+      clearTimeout(t);
+      throw e;
     }
   }
 
-  // ── INTERCEPTAR inicializarBaseDatos ──────────────────────────────────────
-  function _interceptarInicializarBaseDatos() {
-    const MAX = 30; let t = 0;
+  // ── Leer colección completa de Firestore con timeout ──────────────────────
+  async function _leerColeccion(nombre) {
+    if (!_listo || !_db) throw new Error('Firebase no disponible');
+    const snap = await _conTimeout(_db.collection(nombre).get(), TIMEOUT_FB);
+    const lista = [];
+    snap.forEach(doc => lista.push(doc.data()));
+    return lista;
+  }
+
+  // ── Subir alumnos a Firestore en lotes ────────────────────────────────────
+  async function _subirAlumnosFirebase(lista) {
+    if (!_listo || !_db || !lista || !lista.length) return 0;
+    let n = 0;
+    for (let i = 0; i < lista.length; i += 400) {
+      const batch = _db.batch();
+      lista.slice(i, i + 400).forEach(a => {
+        const nie = String(a.nie || '').trim();
+        if (!nie || nie === 'N/A' || nie === '0') return;
+        batch.set(_db.collection('alumnos_inmu').doc(nie), {
+          nie,
+          nombre:   a.nombre   || '',
+          grado:    a.grado    || '',
+          seccion:  a.seccion  || '',
+          sexo:     a.sexo     || '',
+          telefono: a.telefono || ''
+        }, { merge: true });
+        n++;
+      });
+      await batch.commit();
+    }
+    console.log('[FB-Docentes] ✅ Alumnos subidos a Firebase:', n);
+    return n;
+  }
+
+  // ── Subir docentes a Firestore en lotes ───────────────────────────────────
+  async function _subirDocentesFirebase(lista) {
+    if (!_listo || !_db || !lista || !lista.length) return 0;
+    const norm = s => (s||'').trim().toLowerCase().normalize('NFD')
+      .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_')
+      .replace(/_+/g,'_').replace(/^_|_$/g,'');
+    let n = 0;
+    for (let i = 0; i < lista.length; i += 100) {
+      const batch = _db.batch();
+      lista.slice(i, i + 100).forEach(d => {
+        if (!d.nombre) return;
+        batch.set(_db.collection('docentes_inmu').doc(norm(d.nombre)), {
+          nombre:            d.nombre            || '',
+          grado:             d.grado             || '',
+          seccion:           d.seccion           || '',
+          grado_orientado:   d.grado_orientado   || d.grado   || '',
+          seccion_orientada: d.seccion_orientada || d.seccion || '',
+          materia:           d.materia           || '',
+          tipo_materia:      d.tipo_materia      || '0-10',
+          escala:            d.escala            || d.tipo_materia || '0-10',
+          admin:             d.admin === true    || d.admin === 'true',
+          materias_asignadas: Array.isArray(d.materias_asignadas) ? d.materias_asignadas : []
+        }, { merge: true });
+        n++;
+      });
+      await batch.commit();
+    }
+    console.log('[FB-Docentes] ✅ Docentes subidos a Firebase:', n);
+    return n;
+  }
+
+  // ── Poblar el selector de docentes en el HTML ──────────────────────────────
+  function _poblarSelectDocentes(lista) {
+    const sel = document.getElementById('select-docente-inicio');
+    if (!sel) return;
+    let html = '<option value="">-- Seleccionar --</option>';
+    lista.forEach(d => {
+      const n = String(d.nombre || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      html += `<option value="${n}">${n}</option>`;
+    });
+    sel.innerHTML = html;
+  }
+
+  // ── Aplicar datos al sistema y actualizar UI ───────────────────────────────
+  function _aplicarDatos(docentes, alumnos, catalogo) {
+    // Docentes
+    if (Array.isArray(docentes) && docentes.length > 0) {
+      window.baseDatosDocentes = docentes;
+      if (typeof window.inicializarMateriasUI === 'function') window.inicializarMateriasUI();
+      _poblarSelectDocentes(docentes);
+    }
+    // Alumnos
+    if (Array.isArray(alumnos) && alumnos.length > 0) {
+      alumnos.sort((a, b) => (a.nombre||'').localeCompare(b.nombre||''));
+      window.baseDatosAlumnos = alumnos;
+      if (typeof window.cargarAlumnos === 'function') window.cargarAlumnos();
+    }
+    // Catálogo
+    if (Array.isArray(catalogo) && catalogo.length > 0) {
+      window.catalogoMaterias = catalogo;
+    } else if (typeof window.getCatalogoMateriasFallback === 'function') {
+      window.catalogoMaterias = window.getCatalogoMateriasFallback();
+    }
+  }
+
+  // ── Cargar desde GAS ───────────────────────────────────────────────────────
+  async function _cargarDesdeGAS() {
+    console.log('[FB-Docentes] Cargando desde GAS...');
+    const sel  = document.getElementById('select-docente-inicio');
+    const cont = document.getElementById('tabla-alumnos');
+    if (sel)  sel.innerHTML  = '<option value="">⏳ Cargando docentes...</option>';
+    if (cont) cont.innerHTML = '<div style="padding:20px;text-align:center;color:#185FA5;font-weight:bold;">⏳ Sincronizando alumnos...</div>';
+
+    const [docentes, alumnos, catalogo] = await Promise.all([
+      _fetchGAS('docentes'),
+      _fetchGAS('alumnos'),
+      _fetchGAS('catalogo_materias').catch(() => [])
+    ]);
+
+    console.log('[FB-Docentes] GAS → docentes:', docentes.length, '| alumnos:', alumnos.length);
+    _aplicarDatos(docentes, alumnos, catalogo);
+
+    // Subir a Firebase en segundo plano (sin bloquear)
+    setTimeout(async () => {
+      try {
+        await _subirDocentesFirebase(docentes);
+        await _subirAlumnosFirebase(alumnos);
+        if (_listo && _db && Array.isArray(catalogo) && catalogo.length) {
+          await _db.collection('config_inmu').doc('catalogo_materias')
+            .set({ items: catalogo, actualizado: new Date().toISOString() }, { merge: true });
+        }
+        console.log('[FB-Docentes] ✅ Datos del GAS sincronizados a Firebase en segundo plano.');
+      } catch (e) {
+        console.warn('[FB-Docentes] Error subiendo a Firebase:', e.message);
+      }
+    }, 2000);
+
+    return { docentes, alumnos, catalogo };
+  }
+
+  // ── Cargar desde Firebase ──────────────────────────────────────────────────
+  async function _cargarDesdeFirebase() {
+    const [docentes, alumnos, cfgSnap] = await Promise.all([
+      _leerColeccion('docentes_inmu'),
+      _leerColeccion('alumnos_inmu'),
+      _conTimeout(_db.collection('config_inmu').doc('catalogo_materias').get(), TIMEOUT_FB).catch(() => null)
+    ]);
+    const catalogo = cfgSnap && cfgSnap.exists ? (cfgSnap.data().items || []) : [];
+    console.log('[FB-Docentes] Firebase → docentes:', docentes.length, '| alumnos:', alumnos.length);
+    return { docentes, alumnos, catalogo };
+  }
+
+  // ── Función principal de carga ─────────────────────────────────────────────
+  async function _inicializar() {
+    if (window.sistemaEnMantenimiento) return;
+
+    const sel  = document.getElementById('select-docente-inicio');
+    const cont = document.getElementById('tabla-alumnos');
+    if (sel)  sel.innerHTML  = '<option value="">⚡ Cargando...</option>';
+    if (cont) cont.innerHTML = '<div style="padding:20px;text-align:center;color:#185FA5;font-weight:bold;">⚡ Cargando datos...</div>';
+
+    // Intentar Firebase primero
+    if (_listo && _db) {
+      try {
+        const { docentes, alumnos, catalogo } = await _cargarDesdeFirebase();
+
+        // Firebase tiene datos completos → usarlos
+        if (docentes.length > 0 && alumnos.length > 0) {
+          _aplicarDatos(docentes, alumnos, catalogo);
+          console.log('[FB-Docentes] ✅ Datos cargados desde Firebase');
+          return;
+        }
+
+        // Firebase tiene docentes pero no alumnos → cargar alumnos del GAS
+        if (docentes.length > 0 && alumnos.length === 0) {
+          console.warn('[FB-Docentes] Firebase sin alumnos → cargando alumnos del GAS');
+          _poblarSelectDocentes(docentes);
+          window.baseDatosDocentes = docentes;
+          if (typeof window.inicializarMateriasUI === 'function') window.inicializarMateriasUI();
+
+          const aluGAS = await _fetchGAS('alumnos').catch(() => []);
+          if (aluGAS.length > 0) {
+            aluGAS.sort((a, b) => (a.nombre||'').localeCompare(b.nombre||''));
+            window.baseDatosAlumnos = aluGAS;
+            if (typeof window.cargarAlumnos === 'function') window.cargarAlumnos();
+            // Subir alumnos a Firebase en segundo plano
+            setTimeout(() => _subirAlumnosFirebase(aluGAS).catch(() => {}), 2000);
+          }
+          return;
+        }
+
+        // Firebase vacío → usar GAS completo
+        console.warn('[FB-Docentes] Firebase vacío → usando GAS completo');
+      } catch (e) {
+        console.warn('[FB-Docentes] Firebase falló (' + e.message + ') → usando GAS');
+      }
+    }
+
+    // Fallback: GAS completo
+    try {
+      await _cargarDesdeGAS();
+    } catch (e) {
+      console.error('[FB-Docentes] GAS también falló:', e.message);
+      if (sel) sel.innerHTML = '<option value="">❌ Error de conexión — reintentando...</option>';
+      if (cont) cont.innerHTML = '<div style="padding:20px;text-align:center;color:var(--red-600);">Error de conexión. Reintentando en 8 segundos...</div>';
+      setTimeout(() => _inicializar(), 8000);
+    }
+  }
+
+  // ── Esperar que el INDEX cargue sus funciones y luego interceptar ──────────
+  function _esperarEInicializar() {
+    const MAX = 40; let t = 0;
     function intentar() {
-      if (typeof window.inicializarBaseDatos === 'function') {
-        const _orig = window.inicializarBaseDatos;
+      if (typeof window.inicializarBaseDatos === 'function' &&
+          typeof window.cargarAlumnos === 'function') {
+        // Reemplazar inicializarBaseDatos con nuestra versión
+        window.inicializarBaseDatos = _inicializar;
+        console.log('[FB-Docentes] inicializarBaseDatos reemplazada ✓');
 
-        window.inicializarBaseDatos = async function () {
-          if (window.sistemaEnMantenimiento) return;
+        // También interceptar el login por dropdown para leer admin desde Firebase
+        if (typeof window.entrarComoDocenteDropdown === 'function') {
+          const _origLogin = window.entrarComoDocenteDropdown;
+          window.entrarComoDocenteDropdown = async function(sel) {
+            if (sel === null || sel === undefined) sel = document.getElementById("select-docente-inicio")?.value;
+            if (!sel) return alert("Por favor, seleccione una opción.");
 
-          const selDoc = document.getElementById('select-docente-inicio');
-          const cont   = document.getElementById('tabla-alumnos');
+            if (sel !== "Invitado") {
+              // Buscar en memoria
+              let doc = (window.baseDatosDocentes || []).find(d => d.nombre === sel);
 
-          // ── 1. Mostrar caché local INMEDIATAMENTE si existe ───────────────
-          const cachedDoc  = _leerCache(CACHE_DOCENTES);
-          const cachedAlum = _leerCache(CACHE_ALUMNOS);
-          const cachedCat  = _leerCache(CACHE_CATALOGO);
+              // Si no está en memoria, buscar en Firebase
+              if (!doc && _listo && _db) {
+                try {
+                  const norm = s => (s||'').trim().toLowerCase().normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_')
+                    .replace(/_+/g,'_').replace(/^_|_$/g,'');
+                  const snap = await _db.collection('docentes_inmu').doc(norm(sel)).get();
+                  if (snap.exists) {
+                    doc = snap.data();
+                    // Agregar a memoria
+                    if (!window.baseDatosDocentes) window.baseDatosDocentes = [];
+                    window.baseDatosDocentes.push(doc);
+                  }
+                } catch(e) {
+                  console.warn('[FB-Docentes] Error buscando docente:', e.message);
+                }
+              }
 
-          if (cachedDoc && cachedDoc.length > 0) {
-            // Tenemos caché → mostrar YA, sin esperar nada
-            console.log('[FB-Docentes] ⚡ Cargando desde caché local...');
-            _poblarUI(cachedDoc, cachedAlum || [], cachedCat);
+              if (doc) {
+                window.usuarioAdmin = doc.admin === true || doc.admin === 'true';
+                if (typeof window.aplicarDatosDocenteSeleccionado === 'function') {
+                  window.aplicarDatosDocenteSeleccionado(doc);
+                }
+              } else {
+                window.usuarioAdmin = false;
+              }
+            } else {
+              window.usuarioAdmin = false;
+            }
 
-            // Intentar refrescar desde Firestore en segundo plano (no bloquea)
-            _refrescarEnSegundoPlano();
-            return;
-          }
+            document.getElementById("modal-inicio-dropdown")?.classList.remove('open');
+            if (typeof window.desbloquearInterfazMain === 'function') {
+              window.desbloquearInterfazMain(sel !== "Invitado" ? sel : "invitado");
+            }
+          };
+          console.log('[FB-Docentes] entrarComoDocenteDropdown reemplazada ✓');
+        }
 
-          // ── 2. Sin caché → intentar Firestore con timeout corto ───────────
-          if (selDoc) selDoc.innerHTML = '<option value="">⚡ Cargando...</option>';
-          if (cont)   cont.innerHTML   = '<div style="padding:20px;text-align:center;color:#185FA5;font-weight:bold;">⚡ Cargando datos...</div>';
-
-          // Intentar Firebase y GAS en paralelo — el que gane primero se usa
-          let fbResult = null;
-          let gasLlamado = false;
-
-          const fbPromesa = (async () => {
-            const [docs, alum, catSnap] = await Promise.all([
-              _tryFirestore('docentes_inmu'),
-              _tryFirestore('alumnos_inmu'),
-              _tryFirestore('config_inmu', 'catalogo_materias')
-            ]);
-            return { docs, alum, cat: catSnap ? catSnap.items : null };
-          })();
-
-          // Timer: si Firebase no responde en TIMEOUT_MS → GAS inmediatamente
-          const gasTimer = new Promise(resolve => setTimeout(resolve, TIMEOUT_MS));
-
-          const ganador = await Promise.race([fbPromesa, gasTimer]);
-
-          if (ganador && ganador.docs && ganador.docs.length > 0) {
-            // Firebase ganó y tiene datos
-            fbResult = ganador;
-            const { docs, alum, cat } = fbResult;
-            _guardarCache(CACHE_DOCENTES, docs);
-            if (alum && alum.length) _guardarCache(CACHE_ALUMNOS, alum);
-            if (cat  && cat.length)  _guardarCache(CACHE_CATALOGO, cat);
-            _poblarUI(docs, alum || [], cat);
-            console.log('[FB-Docentes] ✅ Datos desde Firebase ✓');
-          } else {
-            // Firebase tardó, falló o está vacío → GAS
-            gasLlamado = true;
-            console.warn('[FB-Docentes] Firebase no disponible/vacío → GAS');
-            if (selDoc) selDoc.innerHTML = '<option value="">Cargando del servidor...</option>';
-            await _orig.call(this);
-
-            // Cuando el GAS termine, guardar en Firestore en segundo plano
-            setTimeout(() => _subirDatosAFirestore(), 2000);
-          }
-        };
-
-        console.log('[FB-Docentes] inicializarBaseDatos() interceptada ✓');
       } else if (t++ < MAX) {
-        setTimeout(intentar, 400);
+        setTimeout(intentar, 300);
+      } else {
+        console.warn('[FB-Docentes] Timeout esperando funciones del INDEX');
       }
     }
     intentar();
   }
 
-  // ── Poblar la UI con los datos ────────────────────────────────────────────
-  function _poblarUI(docentes, alumnos, catalogo) {
-    window.baseDatosDocentes = docentes || [];
-    window.baseDatosAlumnos  = alumnos  || [];
-    window.catalogoMaterias  = (catalogo && catalogo.length)
-      ? catalogo
-      : (typeof getCatalogoMateriasFallback === 'function' ? getCatalogoMateriasFallback() : []);
+  // ── API pública ────────────────────────────────────────────────────────────
+  window.FB_subirDocentes = async function () {
+    const lista = window.baseDatosDocentes || [];
+    if (!lista.length) { console.error('[FB-Docentes] baseDatosDocentes vacío'); return; }
+    await _subirDocentesFirebase(lista);
+  };
 
-    const selDoc = document.getElementById('select-docente-inicio');
-    if (selDoc && docentes && docentes.length) {
-      let html = '<option value="">-- Seleccionar --</option>';
-      docentes.forEach(d => { html += `<option value="${_esc(d.nombre)}">${_esc(d.nombre)}</option>`; });
-      selDoc.innerHTML = html;
-    }
+  window.FB_subirAlumnos = async function () {
+    const lista = window.baseDatosAlumnos || [];
+    if (!lista.length) { console.error('[FB-Docentes] baseDatosAlumnos vacío'); return; }
+    await _subirAlumnosFirebase(lista);
+  };
 
-    if (typeof cargarAlumnos        === 'function') cargarAlumnos();
-    if (typeof inicializarMateriasUI === 'function') inicializarMateriasUI();
-    if (typeof cargarReportesSub     === 'function') setTimeout(() => cargarReportesSub(false), 1000);
-  }
+  window.FB_subirCatalogo = async function () {
+    if (!_listo || !_db) { console.error('[FB-Docentes] Firebase no disponible'); return; }
+    const catalogo = window.catalogoMaterias || [];
+    if (!catalogo.length) { console.error('[FB-Docentes] catalogoMaterias vacío'); return; }
+    await _db.collection('config_inmu').doc('catalogo_materias')
+      .set({ items: catalogo, actualizado: new Date().toISOString() }, { merge: true });
+    console.log('[FB-Docentes] ✅ Catálogo subido:', catalogo.length, 'materias.');
+  };
 
-  // ── Refrescar desde Firestore en segundo plano (no bloquea la UI) ─────────
-  async function _refrescarEnSegundoPlano() {
-    const [docs, alum, catSnap] = await Promise.all([
-      _tryFirestore('docentes_inmu'),
-      _tryFirestore('alumnos_inmu'),
-      _tryFirestore('config_inmu', 'catalogo_materias')
-    ]);
-    if (docs && docs.length > 0) {
-      _guardarCache(CACHE_DOCENTES, docs);
-      _guardarCache(CACHE_ALUMNOS,  alum || []);
-      if (catSnap && catSnap.items) _guardarCache(CACHE_CATALOGO, catSnap.items);
-      console.log('[FB-Docentes] Caché refrescada en segundo plano ✓');
-    }
-  }
+  window.FB_refrescarTodo = async function () {
+    console.log('[FB-Docentes] Refrescando todo...');
+    await _inicializar();
+  };
 
-  // ── Subir datos del GAS a Firestore cuando Firebase vuelva ───────────────
-  async function _subirDatosAFirestore() {
-    if (!_listo || !_db) return;
-    const docs = window.baseDatosDocentes || [];
-    const alum = window.baseDatosAlumnos  || [];
-    if (!docs.length && !alum.length) return;
-
-    try {
-      // Subir docentes
-      if (docs.length) {
-        for (let i = 0; i < docs.length; i += 100) {
-          const batch = _db.batch();
-          docs.slice(i, i + 100).forEach(d => {
-            if (!d.nombre) return;
-            batch.set(_db.collection('docentes_inmu').doc(_normalizar(d.nombre)), {
-              nombre: d.nombre||'', grado: d.grado||'', seccion: d.seccion||'',
-              grado_orientado: d.grado_orientado||d.grado||'',
-              seccion_orientada: d.seccion_orientada||d.seccion||'',
-              materia: d.materia||'', tipo_materia: d.tipo_materia||'0-10',
-              escala: d.escala||d.tipo_materia||'0-10',
-              admin: d.admin===true||d.admin==='true',
-              materias_asignadas: Array.isArray(d.materias_asignadas)?d.materias_asignadas:[]
-            }, { merge: true });
-          });
-          await batch.commit();
-        }
-        _guardarCache(CACHE_DOCENTES, docs);
-        console.log('[FB-Docentes] ✅ Docentes subidos a Firestore automáticamente:', docs.length);
-      }
-
-      // Subir alumnos
-      if (alum.length) {
-        let count = 0;
-        for (let i = 0; i < alum.length; i += 400) {
-          const batch = _db.batch();
-          alum.slice(i, i + 400).forEach(a => {
-            const nie = String(a.nie||'').trim();
-            if (!nie || nie==='N/A' || nie==='0') return;
-            batch.set(_db.collection('alumnos_inmu').doc(nie), {
-              nie, nombre:a.nombre||'', grado:a.grado||'',
-              seccion:a.seccion||'', sexo:a.sexo||'', telefono:a.telefono||''
-            }, { merge: true });
-            count++;
-          });
-          await batch.commit();
-        }
-        _guardarCache(CACHE_ALUMNOS, alum);
-        console.log('[FB-Docentes] ✅ Alumnos subidos a Firestore automáticamente:', count);
-      }
-    } catch (e) {
-      console.warn('[FB-Docentes] No se pudo subir a Firestore (offline):', e.message);
-    }
-  }
-
-  // ── Interceptar POST guardar/eliminar docente ─────────────────────────────
-  function _interceptarGuardarDocente() {
-    if (window._fbDocentesFetchPatched) return;
-    window._fbDocentesFetchPatched = true;
-    const _origFetch = window.fetch;
-    window.fetch = function (url, opts) {
-      if (opts && opts.body && _listo && _db) {
-        try {
-          const body = JSON.parse(opts.body);
-          if (body.tipo_post === 'guardar_docente' && body.nombre) {
-            _db.collection('docentes_inmu').doc(_normalizar(body.nombre)).set({
-              nombre:body.nombre||'', grado:body.grado||'', seccion:body.seccion||'',
-              grado_orientado:body.grado_orientado||body.grado||'',
-              seccion_orientada:body.seccion_orientada||body.seccion||'',
-              materia:body.materia||'', tipo_materia:body.tipo_materia||'0-10',
-              escala:body.tipo_materia||'0-10',
-              admin:body.admin===true||body.admin==='true',
-              materias_asignadas:body.materias_asignadas||[]
-            }, { merge:true })
-            .then(() => _borrarCache(CACHE_DOCENTES))
-            .catch(() => {});
-          }
-          if (body.tipo_post === 'eliminar_docente' && body.nombre) {
-            _db.collection('docentes_inmu').doc(_normalizar(body.nombre)).delete()
-            .then(() => _borrarCache(CACHE_DOCENTES)).catch(() => {});
-          }
-          if (body.tipo_post === 'guardar_catalogo_materias' && Array.isArray(body.catalogo)) {
-            _db.collection('config_inmu').doc('catalogo_materias')
-              .set({ items:body.catalogo, actualizado:new Date().toISOString() }, { merge:true })
-              .then(() => _borrarCache(CACHE_CATALOGO)).catch(() => {});
-          }
-        } catch (_) {}
-      }
-      return _origFetch.apply(this, arguments);
-    };
-  }
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  function _normalizar(s) {
-    return (s||'').trim().toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-      .replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
-  }
-  function _esc(s) {
-    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-
-  // ── API pública ───────────────────────────────────────────────────────────
-  window.FB_subirDocentes  = () => _subirDatosAFirestore();
-  window.FB_limpiarCache   = function() {
-    [CACHE_DOCENTES, CACHE_CATALOGO, CACHE_ALUMNOS].forEach(k => { try { localStorage.removeItem(k); } catch(_){} });
+  window.FB_limpiarCache = function () {
+    ['fb_cache_docentes_v2','fb_cache_catalogo_v2','fb_cache_alumnos_v2',
+     'fb_cache_docentes','fb_cache_alumnos','fb_cache_catalogo'].forEach(k => {
+      try { localStorage.removeItem(k); } catch(_) {}
+    });
     console.log('[FB-Docentes] ✅ Caché limpiada.');
   };
-  window.FB_refrescarTodo  = async function() {
-    await _refrescarEnSegundoPlano();
-    _poblarUI(
-      _leerCache(CACHE_DOCENTES) || window.baseDatosDocentes || [],
-      _leerCache(CACHE_ALUMNOS)  || window.baseDatosAlumnos  || [],
-      _leerCache(CACHE_CATALOGO)
-    );
-  };
-  window.FB_subirCatalogo = async function() {
+
+  // Marcar docente como admin
+  window.FB_SetAdmin = async function(nombre, esAdmin) {
     if (!_listo || !_db) { console.error('Firebase no disponible'); return; }
-    const cat = window.catalogoMaterias || [];
-    if (!cat.length) { console.error('catalogoMaterias vacío'); return; }
-    await _db.collection('config_inmu').doc('catalogo_materias')
-      .set({ items:cat, actualizado:new Date().toISOString() }, { merge:true });
-    _borrarCache(CACHE_CATALOGO);
-    console.log('[FB-Docentes] ✅ Catálogo subido:', cat.length);
+    const norm = s => (s||'').trim().toLowerCase().normalize('NFD')
+      .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_')
+      .replace(/_+/g,'_').replace(/^_|_$/g,'');
+    await _db.collection('docentes_inmu').doc(norm(nombre))
+      .set({ admin: esAdmin !== false }, { merge: true });
+    console.log('[FB-Docentes] ✅ Admin=' + (esAdmin !== false) + ' para:', nombre);
   };
 
   console.log('[FB-Docentes] Script cargado ✓');
+  console.log('[FB-Docentes] Comandos: FB_refrescarTodo() | FB_limpiarCache() | FB_SetAdmin("NOMBRE") | FB_subirDocentes() | FB_subirAlumnos()');
 })();
