@@ -2800,8 +2800,19 @@
         // GLOBAL — módulos Firebase necesitan escribir estas variables
         var sistemaEnMantenimiento = true;
         window.sistemaEnMantenimiento = true;
-        var loginRequerido = true;
-        window.loginRequerido = true;
+        var _loginRequeridoBase = true;
+        // loginRequerido lee siempre del caché de Firebase si está disponible
+        Object.defineProperty(window, 'loginRequerido', {
+            get: function() {
+                try {
+                    const cfg = JSON.parse(localStorage.getItem('fb_config_sistema') || 'null');
+                    if (cfg && typeof cfg.login_habilitado === 'boolean') return cfg.login_habilitado;
+                } catch(_) {}
+                return _loginRequeridoBase;
+            },
+            set: function(v) { _loginRequeridoBase = v; },
+            configurable: true
+        });
         window.usuarioActual = '';
         let paginaActual = 1;
         let alumnosPorPagina = 10;
