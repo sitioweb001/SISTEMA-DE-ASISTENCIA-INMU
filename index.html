@@ -267,7 +267,10 @@
         body {
             background-color: var(--gray-50);
             color: var(--gray-900);
-            padding-bottom: 50px;
+            padding-bottom: 0;
+        }
+        html {
+            background-color: var(--blue-800, #0C447C);
         }
 
         /* HEADER */
@@ -2820,6 +2823,8 @@
          * Usar esta en vez de manipular los modales directamente.
          */
         function mostrarModalLogin() {
+            // Si el usuario ya está logueado, no abrir ningún modal
+            if (window.usuarioActual && window.usuarioActual.trim()) return;
             // Cerrar AMBOS primero
             document.getElementById('modal-inicio-login')?.classList.remove('open');
             document.getElementById('modal-inicio-dropdown')?.classList.remove('open');
@@ -2878,18 +2883,18 @@
 
                     loginRequerido = data.login_habilitado;
 
-                    if (loginRequerido) {
-                        mostrarModalLogin();
-
+                    // Actualizar botón toggle siempre
                     const btnToggle = document.getElementById("btn-toggle-login");
                     if (btnToggle) {
                         btnToggle.innerText = loginRequerido ? "Desactivar Login" : "Activar Login";
                         btnToggle.style.background = loginRequerido ? "var(--red-600)" : "var(--green-600)";
                     }
 
+                    // Mostrar modal de login solo si corresponde
+                    mostrarModalLogin();
+
                     inicializarBaseDatos();
                     setTimeout(restaurarSesionGuardada, 2000);
-                }
                 }
             } catch (error) {
                 console.warn('No se pudo conectar con la nube:', error.name === 'AbortError' ? 'Timeout de red' : error);
@@ -3182,20 +3187,22 @@
             } catch(e){}
             const btn = document.getElementById('btn-toggle-alumno');
             if (btn) {
-                btn.textContent = nuevoEstado ? '\u2705 Activo' : '\U0001f6ab Desactivado';
+                btn.textContent = nuevoEstado ? '\u2705 Activo' : '🚫 Desactivado';
                 btn.style.background = nuevoEstado ? '#16a34a' : '#dc2626';
                 btn.style.transform = 'scale(1.07)';
                 setTimeout(function(){ btn.style.transform=''; }, 180);
             }
             const lbl = document.getElementById('acceso-estado-lbl');
             if (lbl) {
-                lbl.textContent = nuevoEstado ? '\U0001f7e2 Portal de alumnos ACTIVO' : '\U0001f534 Portal de alumnos DESACTIVADO';
+                lbl.textContent = nuevoEstado ? '🟢 Portal de alumnos ACTIVO' : '🔴 Portal de alumnos DESACTIVADO';
                 lbl.style.color = nuevoEstado ? '#166534' : '#991b1b';
             }
             mostrarNotificacion(nuevoEstado
                 ? '\u2705 Acceso de alumnos activado.'
-                : '\U0001f6ab Acceso de alumnos desactivado \u2014 index2.html est\u00e1 bloqueado.',
+                : '🚫 Acceso de alumnos desactivado — index2.html está bloqueado.',
                 nuevoEstado ? 'success' : 'error', 4000);
+            // FIX: cerrar cualquier modal que el listener externo haya podido abrir
+            ocultarModalesLogin();
         }
 
         function iniciarConfigUI() {
@@ -3307,6 +3314,8 @@
             if (event.key === 'Enter') {
                 if (document.getElementById('modal-inicio-login').classList.contains('open')) {
                     ejecutarLogin();
+                } else if (document.getElementById('modal-inicio-dropdown').classList.contains('open')) {
+                    entrarComoDocenteDropdown();
                 }
             }
         });
@@ -3320,31 +3329,39 @@
             loginClicks++;
             clearTimeout(loginTimer);
 
+            if (loginClicks >= 4) {
+                loginClicks = 0;
+                let pass = prompt("🔐 Acceso Administrador Sub-Dirección:");
+                if (pass === PASS_ADMIN) {
+                    // FIX: establecer usuarioActual para que el guard de mostrarModalLogin() funcione
+                    window.usuarioActual = 'admin';
+                    window.usuarioAdmin = true;
+                    document.getElementById("modal-inicio-login").classList.remove('open');
+                    document.getElementById('header-principal').style.display = 'flex';
+                    document.getElementById('container-principal').style.display = 'block';
+                    document.getElementById('footer-sistema').style.display = 'block';
+                    cambiarVista('subdireccion');
+                } else {
+                    if (pass !== null) alert("❌ Contraseña incorrecta.");
+                }
+                return;
+            }
+
             loginTimer = setTimeout(() => {
                 let clicsRegistrados = loginClicks;
                 loginClicks = 0;
 
                 if (clicsRegistrados === 2) {
-                    // 2 clics = abrir menú alternativo (dropdown)
-                    document.getElementById('modal-inicio-login')?.classList.remove('open');
-                    document.getElementById('modal-inicio-dropdown')?.classList.add('open');
-                } else if (clicsRegistrados >= 4) {
-                    // 4+ clics = acceso rápido sub-dirección
-                    let pass = prompt("🔐 Acceso Administrador Sub-Dirección:");
-                    if (pass === PASS_ADMIN) {
-                        document.getElementById("modal-inicio-login")?.classList.remove('open');
-                        document.getElementById('header-principal').style.display = 'flex';
-                        document.getElementById('container-principal').style.display = 'block';
-                        document.getElementById('footer-sistema').style.display = 'block';
-                        cambiarVista('subdireccion');
-                    } else {
-                        if (pass !== null) alert("❌ Contraseña incorrecta.");
-                    }
-                } else {
-                    // 1 o 3 clics = login normal
+                    const isRobotChecked = document.getElementById("login-robot-check").checked;
+                    if (!isRobotChecked) return alert("🤖 Por favor, confirme que no es un robot marcando la casilla.");
+
+                    document.getElementById("modal-inicio-login").classList.remove('open');
+                    document.getElementById("modal-inicio-dropdown").classList.add('open');
+                }
+                else if (clicsRegistrados === 1 || clicsRegistrados === 3) {
                     ejecutarLogin();
                 }
-            }, 350);
+            }, 300);
         }
 
         function normalizarEscalaMateriaCliente(valor) {
@@ -3906,7 +3923,8 @@
             if (passStr !== PASS_LOGIN) return alert("❌ Contraseña de acceso incorrecta.");
 
             if (userStr === "12") {
-                mostrarModalLogin();
+                document.getElementById("modal-inicio-login").classList.remove('open');
+                document.getElementById("modal-inicio-dropdown").classList.add('open');
                 return;
             }
             if (userStr === "invitado") {
@@ -3940,7 +3958,13 @@
         }
 
         function verificarVueltaAlLogin() {
-            mostrarModalLogin();
+            document.getElementById('modal-inicio-dropdown').classList.remove('open');
+            if (loginRequerido) {
+                document.getElementById('modal-inicio-login').classList.add('open');
+            } else {
+                document.getElementById('modal-inicio-dropdown').classList.add('open');
+                alert("ℹ️ La pantalla de inicio de sesión está desactivada por el administrador.");
+            }
         }
 
         function entrarComoDocenteDropdown(sel = null) {
@@ -4108,11 +4132,18 @@
 
                 // 4. Aplicar cambio en UI sin recargar
                 loginRequerido = nuevoLogin;
-                mostrarModalLogin();
+                // Cerrar cualquier modal que el listener externo de Firebase haya podido abrir
+                ocultarModalesLogin();
+                // NO abrir modal — el admin ya está logueado, solo actualizar UI
                 btn.innerText = nuevoLogin ? "Desactivar Login" : "Activar Login";
                 btn.style.background = nuevoLogin ? "var(--red-600)" : "var(--green-600)";
                 btn.disabled = false;
-                alert("✅ Configuración de inicio de sesión actualizada para todos los dispositivos.");
+                mostrarNotificacion(
+                    nuevoLogin
+                        ? "🔐 Login activado — los usuarios deberán ingresar usuario y contraseña."
+                        : "🔓 Login desactivado — todos entran directo al menú de docentes.",
+                    nuevoLogin ? "success" : "info", 5000
+                );
 
             } catch (e) {
                 alert("❌ Error de red.");
@@ -4123,11 +4154,17 @@
 
         function pedirPasswordSub() {
             if (sistemaEnMantenimiento) return;
-            if (window.usuarioAdmin) { cambiarVista('subdireccion'); return; }
+            if (window.usuarioAdmin) return cambiarVista('subdireccion');
             const pass = prompt("🔐 Contraseña Sub-Dirección:");
             if (pass === null) return;
-            if (pass === PASS_ADMIN) cambiarVista('subdireccion');
-            else alert("❌ Contraseña incorrecta.");
+            if (pass === PASS_ADMIN) {
+                // FIX: marcar como admin para que el guard de mostrarModalLogin() funcione
+                window.usuarioAdmin = true;
+                if (!window.usuarioActual || !window.usuarioActual.trim()) {
+                    window.usuarioActual = 'admin';
+                }
+                cambiarVista('subdireccion');
+            } else alert("❌ Contraseña incorrecta.");
         }
         function pedirPasswordNuevo() {
             if (sistemaEnMantenimiento) return;
@@ -7301,13 +7338,13 @@
                 document.getElementById("header-principal").style.display = "none";
                 document.getElementById("container-principal").style.display = "none";
                 document.getElementById("footer-sistema").style.display = "none";
-                if (loginRequerido) {
-                    mostrarModalLogin();
+                // Limpiar usuario ANTES de mostrarModalLogin para que el guard lo permita
+                window.usuarioActual = '';
+                window.usuarioAdmin = false;
                 cambiarVista('docente');
                 window.scrollTo(0, 0);
+                mostrarModalLogin();
             }
-        }
-
         }
         function mostrarDocentesEnLinea() {
             document.getElementById('modal-docentes-linea').classList.add('open');
