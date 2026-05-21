@@ -3320,35 +3320,31 @@
             loginClicks++;
             clearTimeout(loginTimer);
 
-            if (loginClicks >= 4) {
-                loginClicks = 0;
-                let pass = prompt("🔐 Acceso Administrador Sub-Dirección:");
-                if (pass === PASS_ADMIN) {
-                    document.getElementById("modal-inicio-login").classList.remove('open');
-                    document.getElementById('header-principal').style.display = 'flex';
-                    document.getElementById('container-principal').style.display = 'block';
-                    document.getElementById('footer-sistema').style.display = 'block';
-                    cambiarVista('subdireccion');
-                } else {
-                    if (pass !== null) alert("❌ Contraseña incorrecta.");
-                }
-                return;
-            }
-
             loginTimer = setTimeout(() => {
                 let clicsRegistrados = loginClicks;
                 loginClicks = 0;
 
                 if (clicsRegistrados === 2) {
-                    const isRobotChecked = document.getElementById("login-robot-check").checked;
-                    if (!isRobotChecked) return alert("🤖 Por favor, confirme que no es un robot marcando la casilla.");
-
-                    mostrarModalLogin();
-                }
-                else if (clicsRegistrados === 1 || clicsRegistrados === 3) {
+                    // 2 clics = abrir menú alternativo (dropdown)
+                    document.getElementById('modal-inicio-login')?.classList.remove('open');
+                    document.getElementById('modal-inicio-dropdown')?.classList.add('open');
+                } else if (clicsRegistrados >= 4) {
+                    // 4+ clics = acceso rápido sub-dirección
+                    let pass = prompt("🔐 Acceso Administrador Sub-Dirección:");
+                    if (pass === PASS_ADMIN) {
+                        document.getElementById("modal-inicio-login")?.classList.remove('open');
+                        document.getElementById('header-principal').style.display = 'flex';
+                        document.getElementById('container-principal').style.display = 'block';
+                        document.getElementById('footer-sistema').style.display = 'block';
+                        cambiarVista('subdireccion');
+                    } else {
+                        if (pass !== null) alert("❌ Contraseña incorrecta.");
+                    }
+                } else {
+                    // 1 o 3 clics = login normal
                     ejecutarLogin();
                 }
-            }, 300);
+            }, 350);
         }
 
         function normalizarEscalaMateriaCliente(valor) {
@@ -4127,8 +4123,11 @@
 
         function pedirPasswordSub() {
             if (sistemaEnMantenimiento) return;
-            if (window.usuarioAdmin) return cambiarVista('subdireccion');
-            if (prompt("Contraseña:") === PASS_ADMIN) cambiarVista('subdireccion'); else alert("Incorrecta.");
+            if (window.usuarioAdmin) { cambiarVista('subdireccion'); return; }
+            const pass = prompt("🔐 Contraseña Sub-Dirección:");
+            if (pass === null) return;
+            if (pass === PASS_ADMIN) cambiarVista('subdireccion');
+            else alert("❌ Contraseña incorrecta.");
         }
         function pedirPasswordNuevo() {
             if (sistemaEnMantenimiento) return;
