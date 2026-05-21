@@ -4371,7 +4371,7 @@
                 html += `<div class="student-row" id="row-${indexReal}"
               onclick="toggleFila(event, ${indexReal})"
               ondblclick="iniciarPermisoPorDobleClick(${indexReal}); event.stopPropagation();">
-              <div class="checkbox-wrapper"><input type="checkbox" id="chk-${indexReal}" value="${indexReal}" checked onchange="actualizarEstadoCheckbox(${indexReal})"></div>
+              <div class="checkbox-wrapper"><input type="checkbox" id="chk-${indexReal}" value="${indexReal}" onchange="actualizarEstadoCheckbox(${indexReal})"></div>
               <div id="nombre-alumno-${indexReal}" style="font-weight: 500; font-size:13px; cursor:pointer;" title="Triple clic para ver detalle; ${alumno.nie}; ${alumno.sexo}; ${alumno.telefono || 'N/A'}" onclick="handleNombreAlumnoClick(event, ${indexReal})">${alumno.nombre}</div>
               <div><span class="badge ${alumno.sexo.toLowerCase()}">${alumno.sexo}</span></div>
               <div style="font-size: 13px;">${alumno.nie}</div>
@@ -4381,7 +4381,7 @@
           </div>`;
             });
             contenedor.innerHTML = html;
-            estadoSeleccion = true;
+            estadoSeleccion = false;
             actualizarInfoPagina();
             actualizarControlesLista();
             setTimeout(cargarEstadoAsistencia, 100);
@@ -5306,35 +5306,54 @@
         }
 
         async function obtenerNotasRemotas(grado, seccion, materiaClave, escala) {
-            if (!grado || !seccion || !SCRIPT_URL) return [];
+            if (!grado || !seccion) return [];
+
+            // 1. Intentar Firebase primero (< 1 seg)
+            try {
+                if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
+                    const db = firebase.firestore();
+                    const docId = (grado + '_' + seccion + (materiaClave ? '_' + materiaClave : ''))
+                        .trim().toLowerCase().normalize('NFD')
+                        .replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]/g,'_')
+                        .replace(/_+/g,'_').replace(/^_|_$/g,'');
+                    const snap = await Promise.race([
+                        db.collection('notas_inmu').doc(docId).get(),
+                        new Promise((_,rej) => setTimeout(() => rej(new Error('timeout')), 3000))
+                    ]);
+                    if (snap.exists) {
+                        const data = snap.data();
+                        const alumnos = data.alumnos || {};
+                        // Convertir formato Firestore → formato GAS [{nie, p1:{a1,a2,a3}, ...}]
+                        const resultado = Object.entries(alumnos).map(([nie, notas]) => ({
+                            nie, ...notas
+                        }));
+                        if (resultado.length > 0) {
+                            console.log('[Notas] Cargadas desde Firebase:', resultado.length, 'alumnos');
+                            return resultado;
+                        }
+                    }
+                }
+            } catch(e) {
+                console.warn('[Notas] Firebase falló, usando GAS:', e.message);
+            }
+
+            // 2. Fallback: GAS
+            if (!SCRIPT_URL) return [];
             var base = SCRIPT_URL + '?tipo=notas&grado=' + encodeURIComponent(grado)
                 + '&seccion=' + encodeURIComponent(seccion)
                 + '&escala=' + encodeURIComponent(escala || getTipoMateriaNotas());
             var urlWithClave = base + '&materia_clave=' + encodeURIComponent(materiaClave || '');
             try {
-                var data = await gasGet(urlWithClave, 15000);
-                // Si no devolvió nada pero se pidió una materia_clave, intentar sin filtro de materia
+                var data = await gasGet(urlWithClave, 12000);
                 if ((!Array.isArray(data) || data.length === 0) && materiaClave) {
                     console.warn('No se encontraron notas usando materia_clave, reintentando sin clave');
-                    try {
-                        var data2 = await gasGet(base, 15000);
-                        return Array.isArray(data2) ? data2 : [];
-                    } catch (err2) {
-                        console.warn('Fallback sin materia_clave falló:', err2);
-                        return [];
-                    }
+                    try { var data2 = await gasGet(base, 12000); return Array.isArray(data2) ? data2 : []; } catch (err2) { return []; }
                 }
                 return Array.isArray(data) ? data : [];
             } catch (err) {
                 console.warn('No se pudo obtener notas remotas:', err);
-                // Intentar fallback sin materia_clave
                 if (materiaClave) {
-                    try {
-                        var data3 = await gasGet(base, 15000);
-                        return Array.isArray(data3) ? data3 : [];
-                    } catch (err3) {
-                        console.warn('Fallback sin materia_clave falló:', err3);
-                    }
+                    try { var data3 = await gasGet(base, 12000); return Array.isArray(data3) ? data3 : []; } catch (err3) { return []; }
                 }
                 return [];
             }
@@ -5442,11 +5461,35 @@
             const grado   = document.getElementById('grado-select')?.value || '';
             const seccion = document.getElementById('seccion-select')?.value || '';
             const key     = getNotasStorageKey(grado, seccion, notasTipoActual);
-            // Show saving state
             setEstadoGuardado('guardando');
+            try { localStorage.setItem(key, JSON.stringify(notasData)); } catch(e) {}
+
+            // Guardar en Firebase en segundo plano (instantáneo)
             try {
-                localStorage.setItem(key, JSON.stringify(notasData));
-            } catch(e) { console.warn('localStorage no disponible:', e); }
+                if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
+                    const db = firebase.firestore();
+                    const materiaActiva = getMateriaDocenteActiva();
+                    const materiaClave = materiaActiva?.clave || '';
+                    const docId = (grado + '_' + seccion + (materiaClave ? '_' + materiaClave : ''))
+                        .trim().toLowerCase().normalize('NFD')
+                        .replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]/g,'_')
+                        .replace(/_+/g,'_').replace(/^_|_$/g,'');
+                    // Convertir notasData a formato Firestore
+                    const alumnosMap = {};
+                    Object.entries(notasData).forEach(([nie, nd]) => { alumnosMap[nie] = nd; });
+                    db.collection('notas_inmu').doc(docId).set({
+                        grado, seccion,
+                        materia: materiaActiva?.materia || '',
+                        materia_clave: materiaClave,
+                        escala: notasTipoActual,
+                        alumnos: alumnosMap,
+                        actualizado: new Date().toISOString()
+                    }, { merge: true }).then(() => {
+                        console.log('[Notas] ✅ Guardadas en Firebase');
+                    }).catch(e => console.warn('[Notas] Error guardando en Firebase:', e));
+                }
+            } catch(e) { console.warn('[Notas] Error Firebase:', e); }
+
             var syncPromise = Promise.resolve();
             if (sync) {
                 syncPromise = Promise.resolve(sincronizarNotasGrupoAppsScript(grado, seccion, notasTipoActual));
@@ -5459,7 +5502,7 @@
                     syncPromise.then(function() {
                         mostrarNotificacion('✓ Notas guardadas y enviadas a la nube', 'success');
                     }).catch(function() {
-                        mostrarNotificacion('✓ Guardado local, pero no se pudo enviar a la nube', 'warning');
+                        mostrarNotificacion('✓ Guardado local y en Firebase', 'success');
                     });
                 } else {
                     mostrarNotificacion('✓ Notas guardadas localmente', 'success');
