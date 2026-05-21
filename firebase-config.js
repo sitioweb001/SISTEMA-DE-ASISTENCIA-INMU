@@ -121,12 +121,9 @@ function _desactivarPantallaMantenimiento(cfg) {
   if (typeof sistemaEnMantenimiento !== 'undefined') window.sistemaEnMantenimiento = false;
   const pm = document.getElementById('pantalla-mantenimiento');
   if (pm) pm.style.display = 'none';
-  if (cfg && cfg.login_habilitado !== false) {
-    document.getElementById('modal-inicio-login')?.classList.add('open');
-  } else {
-    document.getElementById('modal-inicio-login')?.classList.remove('open');
-    document.getElementById('modal-inicio-dropdown')?.classList.add('open');
-  }
+  // Siempre mostrar el selector de docentes (menú alternativo)
+  document.getElementById('modal-inicio-login')?.classList.remove('open');
+  document.getElementById('modal-inicio-dropdown')?.classList.add('open');
 }
 
 /* ── INTERCEPTAR chequearMantenimientoNube ──────────────────────────────── */
