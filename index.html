@@ -2825,7 +2825,10 @@
             document.getElementById('modal-inicio-dropdown')?.classList.remove('open');
             // Abrir solo el correcto según config actual
             if (loginRequerido) {
-                mostrarModalLogin();
+                document.getElementById('modal-inicio-login')?.classList.add('open');
+            } else {
+                document.getElementById('modal-inicio-dropdown')?.classList.add('open');
+            }
         }
 
         function ocultarModalesLogin() {
