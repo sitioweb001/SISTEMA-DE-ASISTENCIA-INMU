@@ -2797,8 +2797,11 @@
         let asignacionesNuevoDocente = [];
         let asignacionesDocenteEdicion = [];
         let estadoSeleccion = true;
-        let sistemaEnMantenimiento = true;
-        let loginRequerido = true;
+        // GLOBAL — módulos Firebase necesitan escribir estas variables
+        var sistemaEnMantenimiento = true;
+        window.sistemaEnMantenimiento = true;
+        var loginRequerido = true;
+        window.loginRequerido = true;
         window.usuarioActual = '';
         let paginaActual = 1;
         let alumnosPorPagina = 10;
@@ -3967,7 +3970,7 @@
 
         function pedirPasswordDocente() {
             if (sistemaEnMantenimiento) return;
-            if (prompt("Ingrese contraseña de Administrador:") === PASS_ADMIN) {
+            if (window.usuarioAdmin || prompt("Ingrese contraseña de Administrador:") === PASS_ADMIN) {
                 asignacionesNuevoDocente = [];
                 renderAsignacionesNuevoDocente();
                 actualizarFormularioAsignacion('new-docente');
@@ -3977,7 +3980,7 @@
 
         function pedirPasswordAsignarMateria() {
             if (sistemaEnMantenimiento) return;
-            if (prompt("Ingrese contraseña de Administrador:") === PASS_ADMIN) {
+            if (window.usuarioAdmin || prompt("Ingrese contraseña de Administrador:") === PASS_ADMIN) {
                 cargarSelectDocentesAsignacion();
                 renderCatalogoMaterias();
                 document.getElementById('modal-asignar-materia').classList.add('open');
