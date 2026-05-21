@@ -2880,7 +2880,6 @@
 
                     if (loginRequerido) {
                         mostrarModalLogin();
-                    }
 
                     const btnToggle = document.getElementById("btn-toggle-login");
                     if (btnToggle) {
@@ -2890,6 +2889,7 @@
 
                     inicializarBaseDatos();
                     setTimeout(restaurarSesionGuardada, 2000);
+                }
                 }
             } catch (error) {
                 console.warn('No se pudo conectar con la nube:', error.name === 'AbortError' ? 'Timeout de red' : error);
@@ -7309,6 +7309,7 @@
             }
         }
 
+        }
         function mostrarDocentesEnLinea() {
             document.getElementById('modal-docentes-linea').classList.add('open');
             const cont = document.getElementById('lista-docentes-linea');
@@ -21550,7 +21551,6 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
                 });
             }
         }
-    }
 </script>
 
     <!-- ══════════════════════════════════════════════════════
