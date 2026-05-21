@@ -4070,9 +4070,41 @@
             btn.disabled = true; btn.innerText = "⏳...";
 
             try {
+                // Calcular nuevo valor
+                const nuevoLogin = !loginRequerido;
+
+                // 1. Actualizar caché local de Firebase ANTES de recargar
+                try {
+                    const cfgActual = JSON.parse(localStorage.getItem('fb_config_sistema') || '{}');
+                    cfgActual.login_habilitado = nuevoLogin;
+                    localStorage.setItem('fb_config_sistema', JSON.stringify(cfgActual));
+                } catch(_) {}
+
+                // 2. Actualizar Firestore directamente (tiempo real en otros dispositivos)
+                try {
+                    if (window.firebase && firebase.apps && firebase.apps.length) {
+                        await firebase.firestore().collection('config_inmu').doc('sistema')
+                            .set({ login_habilitado: nuevoLogin }, { merge: true });
+                    }
+                } catch(_) {}
+
+                // 3. POST al GAS (para mantener Sheets sincronizado)
                 await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "toggle_login", password: password }) });
+
+                // 4. Aplicar cambio en UI sin recargar
+                loginRequerido = nuevoLogin;
+                if (nuevoLogin) {
+                    document.getElementById("modal-inicio-login").classList.add('open');
+                    document.getElementById("modal-inicio-dropdown").classList.remove('open');
+                } else {
+                    document.getElementById("modal-inicio-login").classList.remove('open');
+                    document.getElementById("modal-inicio-dropdown").classList.add('open');
+                }
+                btn.innerText = nuevoLogin ? "Desactivar Login" : "Activar Login";
+                btn.style.background = nuevoLogin ? "var(--red-600)" : "var(--green-600)";
+                btn.disabled = false;
                 alert("✅ Configuración de inicio de sesión actualizada para todos los dispositivos.");
-                setTimeout(() => { location.reload(); }, 1000);
+
             } catch (e) {
                 alert("❌ Error de red.");
                 btn.disabled = false;
