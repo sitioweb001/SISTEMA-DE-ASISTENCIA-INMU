@@ -1653,8 +1653,12 @@
                     onclick="pedirPasswordDocente()">👨‍🏫 Añadir Docente</button>
                 <button class="btn-nav" style="background:#0C447C; max-width: 260px; width:100%;"
                     onclick="pedirPasswordAsignarMateria()">ASIGNAR MATERIA</button>
+                <button class="btn-nav" style="background:#1565C0; max-width: 260px; width:100%;"
+                    onclick="abrirEdicionDocentes()">✏️ EDICIÓN DOCENTES</button>
                 <button class="btn-nav" style="background:#BA7517; max-width: 260px; width:100%;"
                     onclick="pedirPasswordNuevo()">➕ Nuevo Alumno</button>
+                <button class="btn-nav" style="background:#7c3aed; max-width: 260px; width:100%;"
+                    onclick="abrirEdicionAlumnos()">✏️ EDICIÓN ALUMNO</button>
                 <button class="btn-nav" style="background:var(--green-600); max-width: 260px; width:100%;"
                     onclick="pedirPasswordSub()">📊 Sub-Dirección</button>
             </div>
@@ -3177,31 +3181,60 @@
             } catch(e){}
         }
 
-                function toggleModoAlumno() {
-            const activo = localStorage.getItem('alumno_acceso') !== 'false';
-            const nuevoEstado = !activo;
-            localStorage.setItem('alumno_acceso', nuevoEstado ? 'true' : 'false');
+                async function toggleModoAlumno() {
+            if (sistemaEnMantenimiento) return;
+            const btn = document.getElementById('btn-toggle-alumno');
+            if (btn) { btn.disabled = true; btn.textContent = '\u23f3...'; }
+
+            // Leer estado actual desde cache Firebase (fuente de verdad)
+            let estadoActual = true;
+            try {
+                const cfg = JSON.parse(localStorage.getItem('fb_config_sistema') || '{}');
+                estadoActual = cfg.modo_alumno_activo !== false;
+            } catch(_) {}
+            const nuevoEstado = !estadoActual;
+
+            // 1. Actualizar cache local ANTES de que el listener de Firebase se dispare
+            //    Asi _aplicarConfigEnUI() no abre el modal al detectar el cambio
+            try {
+                const cfg = JSON.parse(localStorage.getItem('fb_config_sistema') || '{}');
+                cfg.modo_alumno_activo = nuevoEstado;
+                localStorage.setItem('fb_config_sistema', JSON.stringify(cfg));
+                localStorage.setItem('alumno_acceso', nuevoEstado ? 'true' : 'false');
+            } catch(_) {}
+
+            // 2. Escribir en Firestore directamente
+            try {
+                if (window.firebase && firebase.apps && firebase.apps.length) {
+                    await firebase.firestore().collection('config_inmu').doc('sistema')
+                        .set({ modo_alumno_activo: nuevoEstado }, { merge: true });
+                }
+            } catch(e) { console.warn('[toggleModoAlumno] Firestore error:', e); }
+
+            // 3. POST al GAS como respaldo
             try {
                 fetch(SCRIPT_URL, { method:'POST', mode:'no-cors',
                     body: JSON.stringify({ tipo_post:'toggle_modo_alumno', activo: nuevoEstado }) });
-            } catch(e){}
-            const btn = document.getElementById('btn-toggle-alumno');
+            } catch(e) {}
+
+            // 4. Actualizar UI - el admin ya esta adentro, NO tocar modales
             if (btn) {
-                btn.textContent = nuevoEstado ? '\u2705 Activo' : '🚫 Desactivado';
+                btn.textContent = nuevoEstado ? '\u2705 Activo' : '\uD83D\uDEAB Desactivado';
                 btn.style.background = nuevoEstado ? '#16a34a' : '#dc2626';
                 btn.style.transform = 'scale(1.07)';
+                btn.disabled = false;
                 setTimeout(function(){ btn.style.transform=''; }, 180);
             }
             const lbl = document.getElementById('acceso-estado-lbl');
             if (lbl) {
-                lbl.textContent = nuevoEstado ? '🟢 Portal de alumnos ACTIVO' : '🔴 Portal de alumnos DESACTIVADO';
+                lbl.textContent = nuevoEstado ? '\uD83D\uDFE2 Portal de alumnos ACTIVO' : '\uD83D\uDD34 Portal de alumnos DESACTIVADO';
                 lbl.style.color = nuevoEstado ? '#166534' : '#991b1b';
             }
             mostrarNotificacion(nuevoEstado
                 ? '\u2705 Acceso de alumnos activado.'
-                : '🚫 Acceso de alumnos desactivado — index2.html está bloqueado.',
+                : '\uD83D\uDEAB Acceso de alumnos desactivado \u2014 index2.html est\u00e1 bloqueado.',
                 nuevoEstado ? 'success' : 'error', 4000);
-            // FIX: cerrar cualquier modal que el listener externo haya podido abrir
+            // Garantia extra: cerrar cualquier modal que el listener haya abierto
             ocultarModalesLogin();
         }
 
@@ -4469,6 +4502,10 @@
             setTimeout(actualizarContadoresAsistencia, 200);
             if (modoDiRefuerzo) mostrarPanelDiRefuerzo(true);
             else mostrarPanelDiRefuerzo(false);
+            // Auto-portal: activar automaticamente al cargar lista
+            const _apG = document.getElementById('grado-select')?.value?.trim() || '';
+            const _apS = document.getElementById('seccion-select')?.value?.trim() || '';
+            if (_apG && _apS) setTimeout(() => _activarAutoPortalParaGradoSeccion(_apG, _apS), 400);
         }
 
         function filtrarStudentList() {
@@ -8265,11 +8302,23 @@
             const contenedor = document.getElementById('lista-status-docentes');
             if (!contenedor) return;
             contenedor.innerHTML = '<h4 style="color: var(--blue-800); margin-bottom: 10px;">Estado de Docentes</h4>';
-            Object.keys(docentesStatus).sort().forEach(docente => {
+            const docentes = Object.keys(docentesStatus).sort();
+            if (!docentes.length) {
+                contenedor.innerHTML += '<p style="color:var(--gray-500);font-size:12px;text-align:center;">Sin datos de conexión aún.</p>';
+                return;
+            }
+            docentes.forEach(docente => {
                 const status = docentesStatus[docente];
-                const color = status === 'online' ? 'var(--green-600)' : 'var(--red-600)';
-                const texto = status === 'online' ? 'En línea' : 'No conectado';
-                contenedor.innerHTML += `<div style="padding: 8px; border-bottom: 1px solid var(--gray-100); color: ${color}; font-weight: bold;">${docente}: ${texto}</div>`;
+                const color = status === 'online' ? 'var(--green-600)' : '#94a3b8';
+                const texto = status === 'online' ? '🟢 En línea' : '⚪ No conectado';
+                contenedor.innerHTML += `
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--gray-100);gap:8px;">
+                    <span style="color:${color};font-weight:600;font-size:13px;flex:1;">${texto} — ${docente}</span>
+                    <button onclick="abrirEditorDocente('${docente.replace(/'/g,"\'")}')"
+                      style="padding:4px 12px;border-radius:6px;border:none;background:#0C447C;color:white;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">
+                      ✏️ Editar
+                    </button>
+                  </div>`;
             });
         }
 
@@ -20255,7 +20304,7 @@
                 html += '</div>';
             });
 
-            html += '</div></body></html>';
+            html += '<\/div><\/body><\/html>';
             const w = window.open('', '_blank');
             if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 800); }
             else { alert('Active las ventanas emergentes para imprimir.'); }
@@ -21587,7 +21636,471 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
                 });
             }
         }
+
+
+/* =====================================================================
+   EDITOR DE DOCENTES — funciones
+   ===================================================================== */
+
+var _edDocMaterias = [];
+
+function _normKeyEdit(s) {
+  return (s||'').trim().toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+}
+
+function _fbDbEdit() {
+  if (window.firebase && firebase.apps && firebase.apps.length)
+    return firebase.firestore();
+  return null;
+}
+
+function abrirEdicionDocentes() {
+  if (sistemaEnMantenimiento) return;
+  if (!window.usuarioAdmin) {
+    var p = prompt('Contrasena de administrador:');
+    if (p !== PASS_ADMIN) { alert('Contrasena incorrecta.'); return; }
+  }
+  _llenarSelectEditorDocente();
+  document.getElementById('ed-docente-form').style.display = 'none';
+  document.getElementById('modal-editor-docente').classList.add('open');
+}
+
+function abrirEditorDocente(nombre) {
+  if (sistemaEnMantenimiento) return;
+  if (!window.usuarioAdmin) {
+    var p = prompt('Contrasena de administrador:');
+    if (p !== PASS_ADMIN) { alert('Contrasena incorrecta.'); return; }
+  }
+  _llenarSelectEditorDocente();
+  var sel = document.getElementById('ed-docente-select');
+  if (sel) sel.value = nombre;
+  cargarDatosEditorDocente();
+  document.getElementById('modal-editor-docente').classList.add('open');
+}
+
+function _llenarSelectEditorDocente() {
+  var sel = document.getElementById('ed-docente-select');
+  if (!sel) return;
+  var docentes = (window.baseDatosDocentes || []).slice().sort(function(a,b){
+    return (a.nombre||'').localeCompare(b.nombre||'');
+  });
+  var html = '<option value="">-- Seleccione un docente --</option>';
+  docentes.forEach(function(d) {
+    var n = (d.nombre||'').replace(/"/g,'&quot;');
+    html += '<option value="' + n + '">' + n + '</option>';
+  });
+  sel.innerHTML = html;
+}
+
+function cargarDatosEditorDocente() {
+  var nombre = document.getElementById('ed-docente-select').value;
+  var form   = document.getElementById('ed-docente-form');
+  if (!nombre) { form.style.display = 'none'; return; }
+  var doc = (window.baseDatosDocentes || []).find(function(d){ return d.nombre === nombre; });
+  if (!doc) { form.style.display = 'none'; return; }
+  document.getElementById('ed-doc-nombre').value  = doc.nombre || '';
+  document.getElementById('ed-doc-grado').value   = doc.grado_orientado || doc.grado   || '';
+  document.getElementById('ed-doc-seccion').value = doc.seccion_orientada || doc.seccion || '';
+  document.getElementById('ed-doc-materia').value = doc.materia || '';
+  document.getElementById('ed-doc-escala').value  = doc.escala  || doc.tipo_materia || '0-10';
+  document.getElementById('ed-doc-admin').checked = !!doc.admin;
+  _edDocMaterias = Array.isArray(doc.materias_asignadas)
+    ? doc.materias_asignadas.map(function(m){ return Object.assign({}, m); })
+    : [];
+  _renderMateriasEditorDocente();
+  form.style.display = 'block';
+}
+
+function _renderMateriasEditorDocente() {
+  var cont = document.getElementById('ed-doc-materias-lista');
+  if (!cont) return;
+  if (!_edDocMaterias.length) {
+    cont.innerHTML = '<p style="color:var(--gray-500);font-size:11px;text-align:center;margin:4px 0;">Sin materias.</p>';
+    return;
+  }
+  var html = '';
+  _edDocMaterias.forEach(function(m, i) {
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;background:#f0f7ff;border-radius:6px;margin-bottom:4px;font-size:12px;">' +
+      '<span style="flex:1;font-weight:600;color:#0c447c;">' + (m.materia||m.nombre||'') + '</span>' +
+      '<span style="color:#64748b;margin:0 8px;">' + (m.escala||m.tipo_materia||'0-10') + '</span>' +
+      '<button onclick="_quitarMateriaEditorDocente(' + i + ')" style="padding:2px 7px;border-radius:5px;border:none;background:#fee2e2;color:#dc2626;font-weight:700;cursor:pointer;font-size:11px;">x</button>' +
+      '</div>';
+  });
+  cont.innerHTML = html;
+}
+
+function _quitarMateriaEditorDocente(i) {
+  _edDocMaterias.splice(i, 1);
+  _renderMateriasEditorDocente();
+}
+
+function agregarMateriaEditorDocente() {
+  var mat    = document.getElementById('ed-doc-nueva-materia').value.trim();
+  var escala = document.getElementById('ed-doc-nueva-escala').value;
+  if (!mat) { alert('Ingresa el nombre de la materia.'); return; }
+  _edDocMaterias.push({ materia: mat, escala: escala });
+  document.getElementById('ed-doc-nueva-materia').value = '';
+  _renderMateriasEditorDocente();
+}
+
+async function guardarEdicionDocente() {
+  var nombreOriginal = document.getElementById('ed-docente-select').value;
+  var nombre  = document.getElementById('ed-doc-nombre').value.trim();
+  var grado   = document.getElementById('ed-doc-grado').value;
+  var seccion = document.getElementById('ed-doc-seccion').value;
+  var materia = document.getElementById('ed-doc-materia').value.trim();
+  var escala  = document.getElementById('ed-doc-escala').value;
+  var admin   = document.getElementById('ed-doc-admin').checked;
+  if (!nombre) { alert('El nombre es obligatorio.'); return; }
+  var payload = { nombre:nombre, grado:grado, seccion:seccion,
+    grado_orientado:grado, seccion_orientada:seccion,
+    materia:materia, escala:escala, tipo_materia:escala,
+    admin:admin, materias_asignadas:_edDocMaterias };
+  // Memoria
+  var arr = window.baseDatosDocentes || [];
+  var idx = arr.findIndex(function(d){ return d.nombre === nombreOriginal; });
+  if (idx >= 0) arr[idx] = Object.assign({}, arr[idx], payload);
+  else arr.push(payload);
+  // Firebase
+  var db = _fbDbEdit();
+  if (db) {
+    try {
+      if (nombre !== nombreOriginal)
+        await db.collection('docentes_inmu').doc(_normKeyEdit(nombreOriginal)).delete();
+      await db.collection('docentes_inmu').doc(_normKeyEdit(nombre)).set(payload, { merge:true });
+    } catch(e) { console.warn('[EditorDoc]', e); }
+  }
+  // GAS
+  try { fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',body:JSON.stringify(Object.assign({tipo_post:'guardar_docente'},payload))}); } catch(e){}
+  // Select de inicio
+  var selInicio = document.getElementById('select-docente-inicio');
+  if (selInicio) {
+    selInicio.innerHTML = '<option value="">-- Seleccionar --</option>' +
+      (window.baseDatosDocentes||[]).map(function(d){
+        var n=(d.nombre||'').replace(/"/g,'&quot;');
+        return '<option value="'+n+'">'+n+'</option>';
+      }).join('');
+  }
+  mostrarNotificacion('Docente actualizado correctamente.', 'success', 4000);
+  cerrarModal('modal-editor-docente');
+}
+
+async function eliminarDocenteEditor() {
+  var nombre = document.getElementById('ed-docente-select').value;
+  if (!nombre) return;
+  if (!confirm('Eliminar al docente "' + nombre + '" permanentemente?')) return;
+  var arr = window.baseDatosDocentes || [];
+  var idx = arr.findIndex(function(d){ return d.nombre === nombre; });
+  if (idx >= 0) arr.splice(idx, 1);
+  var db = _fbDbEdit();
+  if (db) { try { await db.collection('docentes_inmu').doc(_normKeyEdit(nombre)).delete(); } catch(e){} }
+  try { fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({tipo_post:'eliminar_docente',nombre:nombre})}); } catch(e){}
+  var selInicio = document.getElementById('select-docente-inicio');
+  if (selInicio) {
+    selInicio.innerHTML = '<option value="">-- Seleccionar --</option>' +
+      (window.baseDatosDocentes||[]).map(function(d){
+        var n=(d.nombre||'').replace(/"/g,'&quot;');
+        return '<option value="'+n+'">'+n+'</option>';
+      }).join('');
+  }
+  mostrarNotificacion('Docente eliminado.', 'warning', 4000);
+  cerrarModal('modal-editor-docente');
+}
+
+/* =====================================================================
+   EDITOR DE ALUMNOS — funciones
+   ===================================================================== */
+
+function abrirEdicionAlumnos() {
+  if (sistemaEnMantenimiento) return;
+  if (!window.usuarioAdmin) {
+    var p = prompt('Contrasena de administrador:');
+    if (p !== PASS_ADMIN) { alert('Contrasena incorrecta.'); return; }
+  }
+  document.getElementById('ed-alu-buscar').value = '';
+  document.getElementById('ed-alu-resultados').style.display = 'none';
+  document.getElementById('ed-alu-resultados').innerHTML = '';
+  document.getElementById('ed-alu-form').style.display = 'none';
+  document.getElementById('modal-editor-alumno').classList.add('open');
+}
+
+function buscarAlumnoEditor() {
+  var q = (document.getElementById('ed-alu-buscar').value || '').trim().toLowerCase();
+  var resCont = document.getElementById('ed-alu-resultados');
+  if (!q || q.length < 2) { resCont.style.display = 'none'; return; }
+  function norm(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+  var resultados = (window.baseDatosAlumnos||[]).filter(function(a){
+    return norm(a.nombre).includes(norm(q)) || String(a.nie||'').includes(q);
+  }).slice(0,15);
+  if (!resultados.length) {
+    resCont.innerHTML = '<p style="padding:8px;color:var(--gray-500);font-size:12px;text-align:center;">Sin resultados.</p>';
+    resCont.style.display = 'block'; return;
+  }
+  var html = '';
+  resultados.forEach(function(a) {
+    var globalIdx = (window.baseDatosAlumnos||[]).indexOf(a);
+    html += '<div onclick="seleccionarAlumnoEditor(' + globalIdx + ')"' +
+      ' style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #f3e8ff;font-size:12px;display:flex;justify-content:space-between;"' +
+      ' onmouseover="this.style.background=\'#f3e8ff\'" onmouseout="this.style.background=\'\'">' +
+      '<span style="font-weight:600;color:#4c1d95;">' + (a.nombre||'') + '</span>' +
+      '<span style="color:#7c3aed;">NIE: ' + (a.nie||'') + ' | ' + (a.grado||'') + ' ' + (a.seccion||'') + '</span>' +
+      '</div>';
+  });
+  resCont.innerHTML = html;
+  resCont.style.display = 'block';
+}
+
+function seleccionarAlumnoEditor(idx) {
+  var a = (window.baseDatosAlumnos||[])[idx];
+  if (!a) return;
+  document.getElementById('ed-alu-nie-original').value = a.nie || '';
+  document.getElementById('ed-alu-nombre').value       = a.nombre   || '';
+  document.getElementById('ed-alu-nie').value          = a.nie      || '';
+  document.getElementById('ed-alu-telefono').value     = a.telefono || '';
+  document.getElementById('ed-alu-grado').value        = a.grado    || '';
+  document.getElementById('ed-alu-seccion').value      = a.seccion  || '';
+  document.getElementById('ed-alu-sexo').value         = a.sexo     || 'M';
+  document.getElementById('ed-alu-resultados').style.display = 'none';
+  document.getElementById('ed-alu-form').style.display = 'block';
+}
+
+async function guardarEdicionAlumno() {
+  var nieOriginal = document.getElementById('ed-alu-nie-original').value.trim();
+  var nombre   = document.getElementById('ed-alu-nombre').value.trim();
+  var nie      = document.getElementById('ed-alu-nie').value.trim();
+  var telefono = document.getElementById('ed-alu-telefono').value.trim();
+  var grado    = document.getElementById('ed-alu-grado').value;
+  var seccion  = document.getElementById('ed-alu-seccion').value;
+  var sexo     = document.getElementById('ed-alu-sexo').value;
+  if (!nombre || !nie) { alert('Nombre y NIE son obligatorios.'); return; }
+  var payload = { nie:nie, nombre:nombre, grado:grado, seccion:seccion, sexo:sexo, telefono:telefono };
+  var arr = window.baseDatosAlumnos || [];
+  var idx = arr.findIndex(function(a){ return a.nie === nieOriginal; });
+  if (idx >= 0) arr[idx] = Object.assign({}, arr[idx], payload);
+  else arr.push(payload);
+  var db = _fbDbEdit();
+  if (db) {
+    try {
+      if (nie !== nieOriginal && nieOriginal) await db.collection('alumnos_inmu').doc(nieOriginal).delete();
+      await db.collection('alumnos_inmu').doc(nie).set(payload, { merge:true });
+    } catch(e) { console.warn('[EditorAlu]', e); }
+  }
+  try { fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',body:JSON.stringify(Object.assign({tipo_post:'actualizar_alumno',nie_original:nieOriginal},payload))}); } catch(e){}
+  mostrarNotificacion('Alumno actualizado correctamente.', 'success', 4000);
+  document.getElementById('ed-alu-form').style.display = 'none';
+  document.getElementById('ed-alu-buscar').value = '';
+  cerrarModal('modal-editor-alumno');
+  var g = document.getElementById('grado-select') ? document.getElementById('grado-select').value : '';
+  var s = document.getElementById('seccion-select') ? document.getElementById('seccion-select').value : '';
+  if (g && s && typeof cargarAlumnos === 'function') cargarAlumnos();
+}
+
+async function eliminarAlumnoEditor() {
+  var nieOriginal = document.getElementById('ed-alu-nie-original').value.trim();
+  var nombre      = document.getElementById('ed-alu-nombre').value.trim();
+  if (!nieOriginal && !nombre) return;
+  if (!confirm('Eliminar al alumno "' + nombre + '" (NIE: ' + nieOriginal + ') permanentemente?')) return;
+  var arr = window.baseDatosAlumnos || [];
+  var idx = arr.findIndex(function(a){ return a.nie === nieOriginal; });
+  if (idx >= 0) arr.splice(idx, 1);
+  var db = _fbDbEdit();
+  if (db && nieOriginal) { try { await db.collection('alumnos_inmu').doc(nieOriginal).delete(); } catch(e){} }
+  try { fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({tipo_post:'eliminar_alumno',nie:nieOriginal,nombre:nombre})}); } catch(e){}
+  mostrarNotificacion('Alumno eliminado.', 'warning', 4000);
+  document.getElementById('ed-alu-form').style.display = 'none';
+  document.getElementById('ed-alu-buscar').value = '';
+  cerrarModal('modal-editor-alumno');
+  var g = document.getElementById('grado-select') ? document.getElementById('grado-select').value : '';
+  var s = document.getElementById('seccion-select') ? document.getElementById('seccion-select').value : '';
+  if (g && s && typeof cargarAlumnos === 'function') cargarAlumnos();
+}
+
+/* =====================================================================
+   BOTONES ADICIONALES ÁREA DE ACTUALIZACIONES (se inyectan al cargar)
+   ===================================================================== */
+(function _inyectarBotonesFirebase() {
+  function intentar() {
+    var wrap = document.getElementById('btn-fb-migrar') ? document.getElementById('btn-fb-migrar').parentElement : null;
+    if (!wrap) { setTimeout(intentar, 800); return; }
+    if (document.getElementById('btn-fb-subir-docentes')) return;
+    function mkBtn(id, label, colors, fn) {
+      var b = document.createElement('button');
+      b.id = id; b.innerHTML = label;
+      b.style.cssText = 'flex:1;min-width:150px;padding:11px 14px;border-radius:10px;border:none;background:' + colors + ';color:white;font-weight:700;font-size:12px;cursor:pointer;';
+      b.onclick = fn; wrap.appendChild(b);
+    }
+    mkBtn('btn-fb-subir-docentes', 'Subir Docentes', 'linear-gradient(135deg,#5F5E5A,#78716c)', function() {
+      var logEl = document.getElementById('fb-update-log');
+      logEl.style.display = 'block'; logEl.innerHTML = 'Subiendo docentes...';
+      if (typeof FB_subirDocentes === 'function') FB_subirDocentes().then(function(){ logEl.innerHTML += 'Docentes subidos.'; }).catch(function(e){ logEl.innerHTML += 'Error: ' + e.message; });
+    });
+    mkBtn('btn-fb-subir-alumnos', 'Subir Alumnos', 'linear-gradient(135deg,#BA7517,#d97706)', function() {
+      var logEl = document.getElementById('fb-update-log');
+      logEl.style.display = 'block'; logEl.innerHTML = 'Subiendo alumnos...';
+      if (typeof FB_subirAlumnos === 'function') FB_subirAlumnos().then(function(){ logEl.innerHTML += 'Alumnos subidos.'; }).catch(function(e){ logEl.innerHTML += 'Error: ' + e.message; });
+    });
+    mkBtn('btn-fb-limpiar-cache', 'Limpiar Cache', 'linear-gradient(135deg,#7c3aed,#9333ea)', function() {
+      if (typeof FB_limpiarCache === 'function') FB_limpiarCache();
+      var logEl = document.getElementById('fb-update-log');
+      logEl.style.display = 'block'; logEl.innerHTML = 'Cache limpiada.';
+      mostrarNotificacion('Cache limpiada.', 'success', 3000);
+    });
+  }
+  setTimeout(intentar, 1200);
+})();
+
 </script>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL EDICIÓN DE DOCENTE
+═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-editor-docente">
+  <div class="modal" style="max-width:520px;width:min(96vw,520px);max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h3 style="color:var(--blue-800);margin:0;">✏️ Editar Docente</h3>
+      <button onclick="cerrarModal('modal-editor-docente')" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--gray-600);">✕</button>
+    </div>
+    <div id="ed-docente-selector-wrap" style="margin-bottom:12px;">
+      <label style="font-size:12px;font-weight:700;color:var(--blue-800);display:block;margin-bottom:4px;">Seleccionar docente</label>
+      <select id="ed-docente-select" onchange="cargarDatosEditorDocente()" style="width:100%;padding:10px;border-radius:8px;border:1px solid #dbeafe;">
+        <option value="">-- Seleccione un docente --</option>
+      </select>
+    </div>
+    <div id="ed-docente-form" style="display:none;">
+      <div style="display:grid;gap:10px;margin-bottom:12px;">
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--blue-800);">Nombre completo</label>
+          <input type="text" id="ed-doc-nombre" style="width:100%;padding:9px;border-radius:7px;border:1px solid #dbeafe;margin-top:3px;">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--blue-800);">Grado orientado</label>
+            <select id="ed-doc-grado" style="width:100%;padding:9px;border-radius:7px;border:1px solid #dbeafe;margin-top:3px;">
+              <option value="">-- Grado --</option>
+              <option>1 General</option><option>1 Adm. Contable</option><option>1 S. Electricos</option>
+              <option>2 General</option><option>2 Adm. Contable</option><option>2 Sist. Electricos</option>
+              <option>3 Adm. Contable</option><option>3 Sist. Electricos</option>
+              <option>Direccion</option><option>DI REFUERZO</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--blue-800);">Sección orientada</label>
+            <select id="ed-doc-seccion" style="width:100%;padding:9px;border-radius:7px;border:1px solid #dbeafe;margin-top:3px;">
+              <option value="">-- Sección --</option>
+              <option>A</option><option>B</option><option>Unica</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--blue-800);">Materia principal</label>
+            <input type="text" id="ed-doc-materia" style="width:100%;padding:9px;border-radius:7px;border:1px solid #dbeafe;margin-top:3px;">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--blue-800);">Escala de notas</label>
+            <select id="ed-doc-escala" style="width:100%;padding:9px;border-radius:7px;border:1px solid #dbeafe;margin-top:3px;">
+              <option value="0-10">0-10</option>
+              <option value="0-5">0-5</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+            <input type="checkbox" id="ed-doc-admin" style="transform:scale(1.2);">
+            <span style="font-weight:600;color:var(--blue-800);">Acceso administrador</span>
+          </label>
+        </div>
+      </div>
+      <div style="background:#f8fbff;border:1px solid #dbeafe;border-radius:8px;padding:10px;margin-bottom:12px;">
+        <div style="font-weight:700;color:#0c447c;font-size:12px;margin-bottom:6px;">Materias asignadas</div>
+        <div id="ed-doc-materias-lista" style="max-height:120px;overflow-y:auto;margin-bottom:8px;"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+          <input type="text" id="ed-doc-nueva-materia" placeholder="Materia" style="padding:7px;border-radius:6px;border:1px solid #dbeafe;font-size:12px;">
+          <select id="ed-doc-nueva-escala" style="padding:7px;border-radius:6px;border:1px solid #dbeafe;font-size:12px;">
+            <option value="0-10">Escala 0-10</option>
+            <option value="0-5">Escala 0-5</option>
+          </select>
+        </div>
+        <button onclick="agregarMateriaEditorDocente()" style="width:100%;padding:7px;border-radius:6px;border:none;background:#185FA5;color:white;font-size:12px;font-weight:700;cursor:pointer;">+ Agregar materia</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="guardarEdicionDocente()" style="flex:2;min-width:120px;padding:11px;border-radius:8px;border:none;background:#1D9E75;color:white;font-weight:700;cursor:pointer;">Guardar cambios</button>
+        <button onclick="eliminarDocenteEditor()" style="flex:1;min-width:90px;padding:11px;border-radius:8px;border:none;background:#dc2626;color:white;font-weight:700;cursor:pointer;">Eliminar</button>
+        <button onclick="cerrarModal('modal-editor-docente')" style="flex:1;min-width:90px;padding:11px;border-radius:8px;border:1px solid var(--gray-300);background:white;font-weight:600;cursor:pointer;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL EDICIÓN DE ALUMNO
+═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-editor-alumno">
+  <div class="modal" style="max-width:500px;width:min(96vw,500px);max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h3 style="color:#7c3aed;margin:0;">Editar Alumno</h3>
+      <button onclick="cerrarModal('modal-editor-alumno')" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--gray-600);">x</button>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12px;font-weight:700;color:#7c3aed;display:block;margin-bottom:4px;">Buscar alumno por nombre o NIE</label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="ed-alu-buscar" placeholder="Nombre o NIE..." style="flex:1;padding:9px;border-radius:7px;border:1px solid #e9d5ff;" oninput="buscarAlumnoEditor()">
+        <button onclick="buscarAlumnoEditor()" style="padding:9px 14px;border-radius:7px;border:none;background:#7c3aed;color:white;font-weight:700;cursor:pointer;">Buscar</button>
+      </div>
+      <div id="ed-alu-resultados" style="max-height:140px;overflow-y:auto;border:1px solid #e9d5ff;border-radius:7px;margin-top:6px;display:none;background:white;"></div>
+    </div>
+    <div id="ed-alu-form" style="display:none;">
+      <input type="hidden" id="ed-alu-nie-original">
+      <div style="display:grid;gap:10px;margin-bottom:12px;">
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#7c3aed;">Nombre completo (Apellidos, Nombres)</label>
+          <input type="text" id="ed-alu-nombre" style="width:100%;padding:9px;border-radius:7px;border:1px solid #e9d5ff;margin-top:3px;">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#7c3aed;">NIE</label>
+            <input type="text" id="ed-alu-nie" style="width:100%;padding:9px;border-radius:7px;border:1px solid #e9d5ff;margin-top:3px;">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#7c3aed;">Telefono</label>
+            <input type="text" id="ed-alu-telefono" style="width:100%;padding:9px;border-radius:7px;border:1px solid #e9d5ff;margin-top:3px;">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#7c3aed;">Grado</label>
+            <select id="ed-alu-grado" style="width:100%;padding:9px;border-radius:7px;border:1px solid #e9d5ff;margin-top:3px;">
+              <option value="">-- Grado --</option>
+              <option>1 General</option><option>1 Adm. Contable</option><option>1 S. Electricos</option>
+              <option>2 General</option><option>2 Adm. Contable</option><option>2 Sist. Electricos</option>
+              <option>3 Adm. Contable</option><option>3 Sist. Electricos</option><option>DI REFUERZO</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#7c3aed;">Seccion</label>
+            <select id="ed-alu-seccion" style="width:100%;padding:9px;border-radius:7px;border:1px solid #e9d5ff;margin-top:3px;">
+              <option value="">-- Seccion --</option>
+              <option>A</option><option>B</option><option>Unica</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#7c3aed;">Sexo</label>
+            <select id="ed-alu-sexo" style="width:100%;padding:9px;border-radius:7px;border:1px solid #e9d5ff;margin-top:3px;">
+              <option value="M">M</option><option value="F">F</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="guardarEdicionAlumno()" style="flex:2;min-width:120px;padding:11px;border-radius:8px;border:none;background:#7c3aed;color:white;font-weight:700;cursor:pointer;">Guardar cambios</button>
+        <button onclick="eliminarAlumnoEditor()" style="flex:1;min-width:90px;padding:11px;border-radius:8px;border:none;background:#dc2626;color:white;font-weight:700;cursor:pointer;">Eliminar</button>
+        <button onclick="cerrarModal('modal-editor-alumno')" style="flex:1;min-width:90px;padding:11px;border-radius:8px;border:1px solid var(--gray-300);background:white;font-weight:600;cursor:pointer;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
 
     <!-- ══════════════════════════════════════════════════════
          MODAL — VER NOTAS POR PERIODO
@@ -22055,31 +22568,23 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
 let _autoPortalActivo = false;
 let _autoPortalUnsub  = null;
 
+/* Auto-portal: se activa automáticamente al cargar alumnos.
+   El botón "Auto" ahora solo muestra el estado — siempre está ON. */
 function toggleAutoPortal(event) {
   if (event) event.stopPropagation();
+  if (typeof mostrarNotificacion === 'function')
+    mostrarNotificacion('📡 Auto-portal activo: los alumnos que marquen aparecen en tiempo real automáticamente.', 'success', 4000);
+}
+
+/* Activar/reactivar el listener del portal para el grado y sección actuales. */
+function _activarAutoPortalParaGradoSeccion(grado, seccion) {
+  if (!grado || !seccion) return;
+  if (_autoPortalUnsub) { _autoPortalUnsub(); _autoPortalUnsub = null; }
+  _autoPortalActivo = false;
+  _iniciarAutoPortal(grado, seccion);
+  _autoPortalActivo = true;
   const btn = document.getElementById('btn-auto-portal');
-  if (_autoPortalActivo) {
-    // Desactivar
-    if (_autoPortalUnsub) { _autoPortalUnsub(); _autoPortalUnsub = null; }
-    _autoPortalActivo = false;
-    if (btn) { btn.textContent = '🔄 Auto'; btn.style.background = '#d1fae5'; btn.style.color = '#065f46'; }
-    if (typeof mostrarNotificacion === 'function')
-      mostrarNotificacion('Auto-portal desactivado.', 'warning', 2500);
-  } else {
-    // Activar
-    const grado   = (document.getElementById('grado-select')?.value   || '').trim();
-    const seccion = (document.getElementById('seccion-select')?.value || '').trim();
-    if (!grado || !seccion) {
-      if (typeof mostrarNotificacion === 'function')
-        mostrarNotificacion('Selecciona grado y sección primero.', 'warning');
-      return;
-    }
-    _iniciarAutoPortal(grado, seccion);
-    _autoPortalActivo = true;
-    if (btn) { btn.textContent = '🟢 Activo'; btn.style.background = '#059669'; btn.style.color = 'white'; }
-    if (typeof mostrarNotificacion === 'function')
-      mostrarNotificacion('✅ Auto-portal activado. Los alumnos que marquen aparecerán en tiempo real.', 'success', 4000);
-  }
+  if (btn) { btn.textContent = '🟢 Activo'; btn.style.background = '#059669'; btn.style.color = 'white'; }
 }
 
 function _iniciarAutoPortal(grado, seccion) {
