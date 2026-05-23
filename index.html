@@ -9,8 +9,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="logo.jpg" type="image/jpeg">
-    <link rel="apple-touch-icon" href="logo.jpg">
+    <link rel="icon" href="logo2.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="logo2.svg">
     <title>Registro de Asistencia — INMU</title>
     <script>
     /* ── Cargador robusto de html2pdf con múltiples CDN ── */
@@ -307,19 +307,20 @@
         }
 
         .header-logo {
-            width: 70px;
-            height: 70px;
+            width: 100px;
+            height: 100px;
             object-fit: contain;
-            background: white;
-            border-radius: 50%;
-            padding: 5px;
+            background: transparent;
+            border-radius: 0;
+            padding: 0;
             cursor: pointer;
+            filter: brightness(0) invert(1);
         }
 
         .web-view .header-logo {
-            width: 100px;
-            height: 100px;
-            padding: 10px;
+            width: 130px;
+            height: 130px;
+            padding: 0;
         }
 
         .header-titles {
@@ -1155,7 +1156,7 @@
 
             /* Header más compacto */
             .header { padding: 8px 10px; gap: 6px; }
-            .header-logo { width: 48px; height: 48px; }
+            .header-logo { width: 64px; height: 64px; }
             .header h1 { font-size: 13px; }
             .header p  { font-size: 11px; }
             .btn-group-nav { flex-direction: row; flex-wrap: wrap; gap: 4px; }
@@ -1203,7 +1204,7 @@
         /* ── TABLET (601px – 900px) ── */
         @media (min-width: 601px) and (max-width: 900px) {
             .container { padding: 0 14px; max-width: 100%; }
-            .header-logo { width: 56px; height: 56px; }
+            .header-logo { width: 75px; height: 75px; }
             .header h1 { font-size: 15px; }
             .filters { grid-template-columns: 1fr 1fr; gap: 12px; }
             .notas-materia-filter { grid-column: 1 / -1; }
@@ -1215,7 +1216,7 @@
         /* ── ESCRITORIO (>900px, solo en web-view) ── */
         .web-view .container { max-width: 900px; }
         .web-view .panel { padding: 24px; }
-        .web-view .header-logo { width: 100px; height: 100px; padding: 10px; }
+        .web-view .header-logo { width: 130px; height: 130px; padding: 0; }
         .web-view .header h1 { font-size: 24px; }
         .web-view .header p  { font-size: 15px; }
         .web-view .btn-nav { font-size: 13px; }
@@ -1500,8 +1501,8 @@
 
     <div class="header" id="header-principal" style="display: none;">
         <div style="display: flex; align-items: center;">
-            <img src="logo.jpg" alt="Logo INMU" class="header-logo" ondblclick="toggleMantenimiento()"
-                title="Doble clic para administrar sistema" onerror="this.onerror=null; this.src='logo2.svg';">
+            <img src="logo2.svg" alt="Logo INMU" class="header-logo" ondblclick="toggleMantenimiento()"
+                title="Doble clic para administrar sistema" onerror="this.onerror=null;">
         </div>
         <div class="header-titles">
             <h1>Sistema de Control de Asistencia</h1>
