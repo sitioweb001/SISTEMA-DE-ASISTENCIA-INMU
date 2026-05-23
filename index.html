@@ -4880,14 +4880,17 @@
                         const n = new Date();
                         return String(n.getDate()).padStart(2,'0') + '_' + String(n.getMonth()+1).padStart(2,'0') + '_' + n.getFullYear();
                     })();
+                    const niesBtn = {};
+                    (alumnosFiltrados || []).forEach(a => {
+                        if (a.nie) niesBtn[String(a.nie).trim()] = true;
+                    });
                     const snap = await db.collection('asistencia_alumnos_inmu')
                         .where('fecha_key', '==', hoy)
-                        .where('grado', '==', grado)
-                        .where('seccion', '==', seccion)
                         .get();
                     snap.forEach(doc => {
                         const d = doc.data();
-                        if (d.nie) mapa[String(d.nie).trim()] = { estado: d.estado || 'presente', hora: d.hora || '' };
+                        const nie = String(d.nie || '').trim();
+                        if (nie && niesBtn[nie]) mapa[nie] = { estado: d.estado || 'presente', hora: d.hora || '' };
                     });
                     console.log('[Marcar Portal] Firestore:', Object.keys(mapa).length, 'registros');
                 }
@@ -22913,18 +22916,25 @@ function _iniciarAutoPortal(grado, seccion) {
       if (!window.firebase || !firebase.apps || !firebase.apps.length) return false;
       const db = firebase.firestore();
       const hoy = _getFechaKeyPortal();
+      // Filtrar solo por fecha_key — evita mismatch de grado con/sin signo °
+      // Los alumnos se filtran en memoria por NIE (fuente de verdad)
       const unsub = db.collection('asistencia_alumnos_inmu')
         .where('fecha_key', '==', hoy)
-        .where('grado', '==', grado)
-        .where('seccion', '==', seccion)
         .onSnapshot(snap => {
+          const niesActuales = {};
+          (window.alumnosFiltrados || []).forEach(a => {
+            if (a.nie) niesActuales[String(a.nie).trim()] = true;
+          });
           const mapa = {};
           snap.forEach(doc => {
             const d = doc.data();
-            if (d.nie) mapa[String(d.nie).trim()] = { estado: d.estado || 'presente', hora: d.hora || '' };
+            const nie = String(d.nie || '').trim();
+            if (nie && niesActuales[nie]) {
+              mapa[nie] = { estado: d.estado || 'presente', hora: d.hora || '' };
+            }
           });
           _pintarPortalAutoUI(mapa);
-          console.log('[AutoPortal] Snapshot actualizado:', Object.keys(mapa).length, 'marcados');
+          console.log('[AutoPortal] Snapshot:', Object.keys(mapa).length, 'marcados de', Object.keys(niesActuales).length, 'alumnos');
         }, e => console.warn('[AutoPortal] Error snapshot:', e));
       _autoPortalUnsub = unsub;
       return true;
@@ -22940,21 +22950,30 @@ function _iniciarAutoPortal(grado, seccion) {
       var alumnoEnDOM = (window.alumnosFiltrados || []).find(function(a) {
         return document.getElementById('asist-portal-' + String(a.nie||'').trim());
       });
-      if (!alumnoEnDOM) return; // DOM aún no tiene las celdas, esperar
+      if (!alumnoEnDOM) return;
       var db = firebase.firestore();
       var hoy = _getFechaKeyPortal();
+      // Buscar por fecha_key solamente (sin filtrar grado/seccion)
+      // para evitar problemas con el signo de grado (° vs nada)
+      // Luego filtrar en memoria por NIE de los alumnos cargados
+      var niesActuales = {};
+      (window.alumnosFiltrados || []).forEach(function(a) {
+        if (a.nie) niesActuales[String(a.nie).trim()] = true;
+      });
       var snap = await db.collection('asistencia_alumnos_inmu')
         .where('fecha_key', '==', hoy)
-        .where('grado', '==', grado)
-        .where('seccion', '==', seccion)
         .get();
       var mapa = {};
       snap.forEach(function(doc) {
         var d = doc.data();
-        if (d.nie) mapa[String(d.nie).trim()] = { estado: d.estado || 'presente', hora: d.hora || '' };
+        var nie = String(d.nie || '').trim();
+        // Solo incluir alumnos que están en la lista actual del docente
+        if (nie && niesActuales[nie]) {
+          mapa[nie] = { estado: d.estado || 'presente', hora: d.hora || '' };
+        }
       });
       _pintarPortalAutoUI(mapa);
-    } catch(e) {}
+    } catch(e) { console.warn('[AutoPortal interval]', e); }
   }, 2000);
 
   // Intentar snapshot en tiempo real PRIMERO
