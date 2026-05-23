@@ -1366,6 +1366,92 @@
             border-radius: 10px;
         }
 
+        @media (max-width: 768px) {
+            .desktop-only {
+                display: none !important;
+            }
+            .header {
+                flex-direction: column;
+                justify-content: center;
+                text-align: center;
+                position: relative;
+                padding-top: 20px;
+                padding-bottom: 20px;
+            }
+            .header-top-row {
+                width: 100% !important;
+                justify-content: center !important;
+                margin-bottom: 15px;
+                position: static !important;
+            }
+            .header-titles {
+                width: 100%;
+                flex: none;
+            }
+            .btn-hamburger {
+                display: block !important;
+                position: absolute;
+                left: 5px;
+                top: 5px;
+                background: none;
+                border: none;
+                color: white;
+                font-size: 32px;
+                cursor: pointer;
+                z-index: 1001;
+                padding: 10px;
+                line-height: 1;
+            }
+            .btn-group-nav {
+                position: fixed;
+                top: 0;
+                left: -300px;
+                width: 260px;
+                height: 100vh;
+                background-color: var(--blue-800);
+                z-index: 1000;
+                flex-direction: column;
+                justify-content: flex-start;
+                padding: 60px 20px 20px;
+                box-shadow: 4px 0 10px rgba(0,0,0,0.3);
+                transition: left 0.3s ease;
+                overflow-y: auto;
+            }
+            .btn-group-nav.open {
+                left: 0;
+            }
+            #hamburger-backdrop {
+                visibility: hidden;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0,0,0,0.4);
+                backdrop-filter: blur(4px);
+                z-index: 999;
+                transition: opacity 0.3s, visibility 0.3s;
+                opacity: 0;
+            }
+            #hamburger-backdrop.open {
+                visibility: visible;
+                opacity: 1;
+            }
+            body.dark .btn-group-nav {
+                background-color: var(--bg-panel);
+            }
+        }
+        @media (min-width: 769px) {
+            .hamburger-only {
+                display: none !important;
+            }
+            .btn-hamburger {
+                display: none !important;
+            }
+            #hamburger-backdrop {
+                display: none !important;
+            }
+        }
 </style>
     <!-- SheetJS para exportar Excel -->
     <script>
@@ -1499,8 +1585,10 @@
         </div>
     </div>
 
+    <div id="hamburger-backdrop" onclick="closeHamburgerMenu()"></div>
     <div class="header" id="header-principal" style="display: none;">
-        <div style="display: flex; align-items: center;">
+        <div class="header-top-row" style="display: flex; align-items: center; position: relative;">
+            <button class="btn-hamburger" id="btn-hamburger" onclick="toggleHamburgerMenu()">☰</button>
             <img src="logo2.svg" alt="Logo INMU" class="header-logo" ondblclick="toggleMantenimiento()"
                 title="Doble clic para administrar sistema" onerror="this.onerror=null;">
         </div>
@@ -1508,27 +1596,57 @@
             <h1>Sistema de Control de Asistencia</h1>
             <p>Instituto Nacional de Mercedes Umaña</p>
         </div>
-        <div class="btn-group-nav">
+        <div class="btn-group-nav" id="sidebar-menu">
             <button class="btn-nav" style="background:#F39C12; color:white; font-weight:bold;"
-                onclick="mostrarNotificaciones()">🔔 Notificaciones</button>
+                onclick="mostrarNotificaciones(); closeHamburgerMenu();">🔔 Notificaciones</button>
             <button class="btn-nav" style="background:#1565C0; color:white; font-weight:bold;"
-                onclick="abrirModalInformeAsistencia()">📊 Informe Asistencia</button>
+                onclick="abrirModalInformeAsistencia(); closeHamburgerMenu();">📊 Informe Asistencia</button>
             <button class="btn-nav" style="background:#0E73D4; color:white; font-weight:bold;"
-                onclick="cambiarVista('informes')">📄 Informes</button>
+                onclick="cambiarVista('informes'); closeHamburgerMenu();">📄 Informes</button>
             <button class="btn-nav" id="btn-copiar-portal" style="background:#4A5568; color:white; font-weight:bold;"
-                onclick="copiarEnlacePortal()">📋 Copiar enlace del portal</button>
+                onclick="copiarEnlacePortal(); closeHamburgerMenu();">📋 Copiar enlace del portal</button>
             <button type="button" class="btn-nav" style="background:#2C5282; color:white; font-weight:bold;"
-                onclick="inmuElegirCarpetaDescargas()" title="PDF, TXT y Excel se guardarán aquí en la app de escritorio">📂 Carpeta de descargas</button>
+                onclick="inmuElegirCarpetaDescargas(); closeHamburgerMenu();" title="PDF, TXT y Excel se guardarán aquí en la app de escritorio">📂 Carpeta de descargas</button>
             <button id="btn-install-pwa" class="btn-nav" style="background:#0C447C; display:none;"
-                onclick="mostrarInstallPrompt()">📥 Instalar app</button>
+                onclick="mostrarInstallPrompt(); closeHamburgerMenu();">📥 Instalar app</button>
             <span id="install-pwa-helper"
                 style="display:none; align-self:center; font-size:12px; color:#F8F9FA; margin-left:10px; max-width:400px;"></span>
             <button class="btn-nav" style="background:#1D9E75; color:white; font-weight:bold;"
-                onclick="cambiarVista('docente')">✍️ Pasar Lista</button>
+                onclick="cambiarVista('docente'); closeHamburgerMenu();">✍️ Pasar Lista</button>
             <button class="btn-nav" style="background:#8E44AD; color:white; font-weight:bold;"
-                onclick="mostrarResumenDelDia()">📊 Ver resumen del día</button>
+                onclick="mostrarResumenDelDia(); closeHamburgerMenu();">📊 Ver resumen del día</button>
+
+            <hr class="hamburger-only" style="width:100%; border:0; border-top:1px solid rgba(255,255,255,0.2); margin: 10px 0;">
+            <button class="btn-nav hamburger-only" style="background:#5F5E5A; color:white; font-weight:bold;"
+                onclick="pedirPasswordDocente(); closeHamburgerMenu();">👨‍🏫 Añadir Docente</button>
+            <button class="btn-nav hamburger-only" style="background:#00796B; color:white; font-weight:bold;"
+                onclick="pedirPasswordAsignarMateria(); closeHamburgerMenu();">📚 ASIGNAR MATERIA</button>
+            <button class="btn-nav hamburger-only" style="background:#1565C0; color:white; font-weight:bold;"
+                onclick="abrirEdicionDocentes(); closeHamburgerMenu();">✏️ EDICIÓN DOCENTES</button>
+            <button class="btn-nav hamburger-only" style="background:#BA7517; color:white; font-weight:bold;"
+                onclick="pedirPasswordNuevo(); closeHamburgerMenu();">➕ Nuevo Alumno</button>
+            <button class="btn-nav hamburger-only" style="background:#7c3aed; color:white; font-weight:bold;"
+                onclick="abrirEdicionAlumnos(); closeHamburgerMenu();">✏️ EDICIÓN ALUMNO</button>
+            <button class="btn-nav hamburger-only" style="background:var(--green-600); color:white; font-weight:bold;"
+                onclick="pedirPasswordSub(); closeHamburgerMenu();">📊 Sub-Dirección</button>
         </div>
     </div>
+    <script>
+        function toggleHamburgerMenu() {
+            var menu = document.getElementById('sidebar-menu');
+            var backdrop = document.getElementById('hamburger-backdrop');
+            menu.classList.toggle('open');
+            backdrop.classList.toggle('open');
+        }
+        function closeHamburgerMenu() {
+            var menu = document.getElementById('sidebar-menu');
+            var backdrop = document.getElementById('hamburger-backdrop');
+            if (menu && menu.classList.contains('open')) {
+                menu.classList.remove('open');
+                backdrop.classList.remove('open');
+            }
+        }
+    </script>
 
     <div class="container" id="container-principal" style="display: none;">
 
@@ -1689,11 +1807,11 @@
                 🚪 Cerrar Sesión Segura
             </button>
 
-            <div style="margin-top: 20px; display:flex; flex-direction:column; align-items:center; gap:10px;">
+            <div class="desktop-only" style="margin-top: 20px; display:flex; flex-direction:column; align-items:center; gap:10px;">
                 <button class="btn-nav" style="background:#5F5E5A; max-width: 260px; width:100%;"
                     onclick="pedirPasswordDocente()">👨‍🏫 Añadir Docente</button>
-                <button class="btn-nav" style="background:#0C447C; max-width: 260px; width:100%;"
-                    onclick="pedirPasswordAsignarMateria()">ASIGNAR MATERIA</button>
+                <button class="btn-nav" style="background:#00796B; max-width: 260px; width:100%;"
+                    onclick="pedirPasswordAsignarMateria()">📚 ASIGNAR MATERIA</button>
                 <button class="btn-nav" style="background:#1565C0; max-width: 260px; width:100%;"
                     onclick="abrirEdicionDocentes()">✏️ EDICIÓN DOCENTES</button>
                 <button class="btn-nav" style="background:#BA7517; max-width: 260px; width:100%;"
@@ -2805,7 +2923,8 @@
                 if (installButton) installButton.style.display = 'none';
                 if (installHelper) {
                     if (window.location.protocol === 'file:') {
-                        installHelper.textContent = 'No se puede instalar la PWA desde un archivo local. Usa localhost o un servidor HTTPS.';
+                        installHelper.textContent = '';
+                        installHelper.style.display = 'none';
                     } else if (!('serviceWorker' in navigator)) {
                         installHelper.textContent = 'Tu navegador no soporta Service Worker; la instalación PWA no está disponible.';
                     } else {
