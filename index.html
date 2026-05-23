@@ -4583,7 +4583,7 @@
             // Auto-portal: activar automaticamente al cargar lista
             const _apG = document.getElementById('grado-select')?.value?.trim() || '';
             const _apS = document.getElementById('seccion-select')?.value?.trim() || '';
-            if (_apG && _apS) setTimeout(() => _activarAutoPortalParaGradoSeccion(_apG, _apS), 400);
+            if (_apG && _apS) setTimeout(() => _activarAutoPortalParaGradoSeccion(_apG, _apS), 800);
         }
 
         function filtrarStudentList() {
@@ -4870,18 +4870,44 @@
 
             if (btn) { btn.textContent = '⏳ Cargando...'; btn.style.opacity = '0.6'; btn.disabled = true; }
 
-            const url  = `${SCRIPT_URL}?tipo=asistencia_diaria_grado&grado=${encodeURIComponent(grado)}&seccion=${encodeURIComponent(seccion)}`;
-            let mapa   = {};
+            let mapa = {};
+
+            // ── Leer desde Firestore primero (rápido, misma fuente que auto-portal) ──
             try {
-                mapa = await gasGet(url, 15000) || {};
-            } catch(err) {
-                mostrarNotificacion('❌ No se pudo conectar al servidor.', 'warning', 4000);
-                if (btn) { btn.textContent = '✅ Marcar desde Portal'; btn.style.opacity = '1'; btn.disabled = false; }
-                return;
+                if (window.firebase && firebase.apps && firebase.apps.length) {
+                    const db  = firebase.firestore();
+                    const hoy = (function() {
+                        const n = new Date();
+                        return String(n.getDate()).padStart(2,'0') + '_' + String(n.getMonth()+1).padStart(2,'0') + '_' + n.getFullYear();
+                    })();
+                    const snap = await db.collection('asistencia_alumnos_inmu')
+                        .where('fecha_key', '==', hoy)
+                        .where('grado', '==', grado)
+                        .where('seccion', '==', seccion)
+                        .get();
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        if (d.nie) mapa[String(d.nie).trim()] = { estado: d.estado || 'presente', hora: d.hora || '' };
+                    });
+                    console.log('[Marcar Portal] Firestore:', Object.keys(mapa).length, 'registros');
+                }
+            } catch(fbErr) {
+                console.warn('[Marcar Portal] Firestore falló, usando GAS:', fbErr);
+                // Fallback al GAS
+                try {
+                    const url = SCRIPT_URL + '?tipo=asistencia_diaria_grado&grado=' + encodeURIComponent(grado) + '&seccion=' + encodeURIComponent(seccion);
+                    mapa = await gasGet(url, 15000) || {};
+                } catch(gasErr) {
+                    mostrarNotificacion('Sin conexión al servidor.', 'warning', 4000);
+                    if (btn) { btn.textContent = '✅ Marcar desde Portal'; btn.style.opacity = '1'; btn.disabled = false; }
+                    return;
+                }
             }
 
-            // Guardar mapa para el PDF
+            // Guardar mapa para el PDF y para el auto-portal (evita conflicto de fuentes)
             window._mapaPortalActual = mapa;
+            // Pintar usando la misma función del auto-portal para consistencia
+            _pintarPortalAutoUI(mapa);
 
             let marcados = 0, yaEstaban = 0;
             alumnosFiltrados.forEach((alumno, index) => {
@@ -21833,7 +21859,8 @@ async function cargarPortalAlumnosHoy() {
     if (gradoFiltro)   query = query.where('grado',   '==', gradoFiltro);
     if (seccionFiltro) query = query.where('seccion', '==', seccionFiltro);
 
-    var snap = await query.orderBy('hora', 'asc').get();
+    // Sin orderBy para no requerir índice compuesto en Firestore
+    var snap = await query.get();
     var registros = [];
     snap.forEach(function(doc) { registros.push(doc.data()); });
 
@@ -22909,16 +22936,21 @@ function _iniciarAutoPortal(grado, seccion) {
   _autoPortalInterval = setInterval(async function() {
     try {
       if (!window.firebase || !firebase.apps || !firebase.apps.length) return;
-      const db = firebase.firestore();
-      const hoy = _getFechaKeyPortal();
-      const snap = await db.collection('asistencia_alumnos_inmu')
+      // Verificar que los elementos del DOM existen antes de pintar
+      var alumnoEnDOM = (window.alumnosFiltrados || []).find(function(a) {
+        return document.getElementById('asist-portal-' + String(a.nie||'').trim());
+      });
+      if (!alumnoEnDOM) return; // DOM aún no tiene las celdas, esperar
+      var db = firebase.firestore();
+      var hoy = _getFechaKeyPortal();
+      var snap = await db.collection('asistencia_alumnos_inmu')
         .where('fecha_key', '==', hoy)
         .where('grado', '==', grado)
         .where('seccion', '==', seccion)
         .get();
-      const mapa = {};
-      snap.forEach(doc => {
-        const d = doc.data();
+      var mapa = {};
+      snap.forEach(function(doc) {
+        var d = doc.data();
         if (d.nie) mapa[String(d.nie).trim()] = { estado: d.estado || 'presente', hora: d.hora || '' };
       });
       _pintarPortalAutoUI(mapa);
