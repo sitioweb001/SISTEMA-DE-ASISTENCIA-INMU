@@ -96,12 +96,18 @@ function _actualizarBotonesYHorario(cfg) {
   // Horario
   if (cfg.horario_inicio && cfg.horario_fin) {
     try {
-      localStorage.setItem('horario_asistencia', JSON.stringify({
+      var horarioData = {
         inicio: cfg.horario_inicio, fin: cfg.horario_fin,
         activo: cfg.modo_alumno_activo !== false,
         acceso_alumnos: cfg.modo_alumno_activo !== false,
         mantenimiento: cfg.mantenimiento === true
-      }));
+      };
+      localStorage.setItem('horario_asistencia', JSON.stringify(horarioData));
+      // Sincronizar config_inmu/horario para que firebase-alumno.js lo lea
+      if (_cfgListo && _cfgDb) {
+        _cfgDb.collection('config_inmu').doc('horario')
+          .set(horarioData, { merge: true }).catch(function(){});
+      }
       var iI = document.getElementById('config-hora-inicio');
       var iF = document.getElementById('config-hora-fin');
       if (iI) iI.value = cfg.horario_inicio;
@@ -293,7 +299,16 @@ function _desactivarPantallaMantenimiento(cfg) {
           ref.set({ modo_alumno_activo: body.activo }, { merge: true }).catch(function(){});
         }
         if (body.tipo_post === 'configurar_horario') {
+          // Guardar en config_inmu/sistema (para INDEX_DOCENTE)
           ref.set({ horario_inicio: body.inicio, horario_fin: body.fin }, { merge: true }).catch(function(){});
+          // También guardar en config_inmu/horario (para firebase-alumno.js del portal alumno)
+          _cfgDb.collection('config_inmu').doc('horario').set({
+            inicio:         body.inicio,
+            fin:            body.fin,
+            activo:         true,
+            acceso_alumnos: true,
+            mantenimiento:  false
+          }, { merge: true }).catch(function(){});
         }
       } catch (_) {}
     }
