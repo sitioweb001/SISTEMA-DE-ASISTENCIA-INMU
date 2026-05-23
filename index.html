@@ -8301,25 +8301,70 @@
         function actualizarListaStatus() {
             const contenedor = document.getElementById('lista-status-docentes');
             if (!contenedor) return;
-            contenedor.innerHTML = '<h4 style="color: var(--blue-800); margin-bottom: 10px;">Estado de Docentes</h4>';
-            const docentes = Object.keys(docentesStatus).sort();
-            if (!docentes.length) {
-                contenedor.innerHTML += '<p style="color:var(--gray-500);font-size:12px;text-align:center;">Sin datos de conexión aún.</p>';
+
+            // Solo mostrar docentes que existen en baseDatosDocentes (docentes reales)
+            const nombresReales = new Set(
+                (window.baseDatosDocentes || []).map(d => (d.nombre || '').trim())
+            );
+
+            // Construir lista: docentes reales primero, ordenados
+            const docentesReales = Array.from(nombresReales).sort();
+
+            // También detectar entradas "fantasma" en presencia_docentes_inmu
+            // (claves en docentesStatus que NO son docentes reales)
+            const fantasmas = Object.keys(docentesStatus).filter(k => !nombresReales.has(k));
+
+            let html = '<h4 style="color: var(--blue-800); margin-bottom: 10px;">Estado de Docentes</h4>';
+
+            if (!docentesReales.length && !fantasmas.length) {
+                html += '<p style="color:var(--gray-500);font-size:12px;text-align:center;">Sin datos de conexión aún.</p>';
+                contenedor.innerHTML = html;
                 return;
             }
-            docentes.forEach(docente => {
-                const status = docentesStatus[docente];
-                const color = status === 'online' ? 'var(--green-600)' : '#94a3b8';
-                const texto = status === 'online' ? '🟢 En línea' : '⚪ No conectado';
-                contenedor.innerHTML += `
-                  <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--gray-100);gap:8px;">
-                    <span style="color:${color};font-weight:600;font-size:13px;flex:1;">${texto} — ${docente}</span>
-                    <button onclick="abrirEditorDocente('${docente.replace(/'/g,"\'")}')"
-                      style="padding:4px 12px;border-radius:6px;border:none;background:#0C447C;color:white;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">
-                      ✏️ Editar
-                    </button>
-                  </div>`;
+
+            // Docentes reales
+            docentesReales.forEach(docente => {
+                const status = docentesStatus[docente] || 'offline';
+                const color  = status === 'online' ? 'var(--green-600)' : '#94a3b8';
+                const texto  = status === 'online' ? '🟢 En línea' : '⚪ No conectado';
+                const dEsc   = docente.replace(/'/g, "\'");
+                html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--gray-100);gap:6px;">' +
+                    '<span style="color:' + color + ';font-weight:600;font-size:13px;flex:1;">' + texto + ' — ' + docente + '</span>' +
+                    '<button onclick="abrirEditorDocente(\'' + dEsc + '\')" style="padding:4px 10px;border-radius:6px;border:none;background:#0C447C;color:white;font-size:11px;font-weight:700;cursor:pointer;">Editar</button>' +
+                    '</div>';
             });
+
+            // Fantasmas — con botón eliminar de presencia
+            if (fantasmas.length) {
+                html += '<div style="margin-top:10px;padding:6px 10px;background:#fef3c7;border-radius:6px;font-size:11px;font-weight:700;color:#92400e;">⚠️ Entradas residuales en Firebase (no son docentes reales):</div>';
+                fantasmas.sort().forEach(docente => {
+                    const dEsc = docente.replace(/'/g, "\'");
+                    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-bottom:1px solid #fde68a;gap:6px;background:#fffbeb;">' +
+                        '<span style="color:#b45309;font-size:12px;flex:1;">🗑️ ' + docente + '</span>' +
+                        '<button onclick="eliminarPresenciaFantasma(\'' + dEsc + '\')" style="padding:4px 10px;border-radius:6px;border:none;background:#dc2626;color:white;font-size:11px;font-weight:700;cursor:pointer;">Eliminar</button>' +
+                        '</div>';
+                });
+            }
+
+            contenedor.innerHTML = html;
+        }
+
+        // Eliminar entrada fantasma de presencia_docentes_inmu
+        async function eliminarPresenciaFantasma(nombre) {
+            if (!confirm('Eliminar "' + nombre + '" de la lista de presencia?')) return;
+            // Eliminar de docentesStatus en memoria
+            delete docentesStatus[nombre];
+            // Eliminar de Firebase
+            try {
+                if (window.firebase && firebase.apps && firebase.apps.length) {
+                    const key = nombre.trim().toLowerCase()
+                        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+                        .replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+                    await firebase.firestore().collection('presencia_docentes_inmu').doc(key).delete();
+                    mostrarNotificacion('Entrada eliminada de Firebase.', 'success', 3000);
+                }
+            } catch(e) { console.warn('Error eliminando presencia:', e); }
+            actualizarListaStatus();
         }
 
         // Iniciar radar de status
