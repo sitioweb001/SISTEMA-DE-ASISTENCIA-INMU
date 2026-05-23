@@ -12,7 +12,28 @@
     <link rel="icon" href="logo.jpg" type="image/jpeg">
     <link rel="apple-touch-icon" href="logo.jpg">
     <title>Registro de Asistencia — INMU</title>
-    <script src="vendor/html2pdf.bundle.min.js" onerror="this.onerror=null; this.src='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';"></script>
+    <script>
+    /* ── Cargador robusto de html2pdf con múltiples CDN ── */
+    (function() {
+      var CDNS = [
+        'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
+        'https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js',
+        'https://unpkg.com/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js'
+      ];
+      function tryLoad(i) {
+        if (i >= CDNS.length) { console.error('html2pdf: todos los CDN fallaron'); return; }
+        var s = document.createElement('script');
+        s.src = CDNS[i];
+        s.onerror = function() { document.head.removeChild(s); tryLoad(i+1); };
+        document.head.appendChild(s);
+      }
+      // Intentar local primero, luego CDNs
+      var local = document.createElement('script');
+      local.src = 'vendor/html2pdf.bundle.min.js';
+      local.onerror = function() { document.head.removeChild(local); tryLoad(0); };
+      document.head.appendChild(local);
+    })();
+    </script>
     <style>
 :root {
             --blue-800: #0C447C;
@@ -1346,7 +1367,26 @@
 
 </style>
     <!-- SheetJS para exportar Excel -->
-    <script src="vendor/xlsx.full.min.js" onerror="this.onerror=null; this.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';"></script>
+    <script>
+    (function() {
+      var XLSX_CDNS = [
+        'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+        'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+        'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
+      ];
+      function tryXLSX(i) {
+        if (i >= XLSX_CDNS.length) { console.error('XLSX: todos los CDN fallaron'); return; }
+        var s = document.createElement('script');
+        s.src = XLSX_CDNS[i];
+        s.onerror = function() { document.head.removeChild(s); tryXLSX(i+1); };
+        document.head.appendChild(s);
+      }
+      var local = document.createElement('script');
+      local.src = 'vendor/xlsx.full.min.js';
+      local.onerror = function() { document.head.removeChild(local); tryXLSX(0); };
+      document.head.appendChild(local);
+    })();
+    </script>
 </head>
 
 <body>
@@ -4308,18 +4348,53 @@
 
             if (todosLosReportes.length > 0 && !fuerzarRefresco) { filtrarReportesSub(); return; }
 
-            container.innerHTML = "Sincronizando reportes desde la nube..."; stats.innerHTML = "";
+            container.innerHTML = "⚡ Cargando reportes..."; stats.innerHTML = "";
+
+            // Fijar filtro a hoy
+            const hoy = new Date();
+            const fechaLocal = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-' + String(hoy.getDate()).padStart(2,'0');
+            const filtroEl = document.getElementById('filtro-fecha-sub');
+            if (filtroEl && !filtroEl.value) filtroEl.value = fechaLocal;
 
             try {
                 const response = await fetch(SCRIPT_URL + "?tipo=reportes");
-                todosLosReportes = await response.json();
+                const data = await response.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    todosLosReportes = data;
+                    filtrarReportesSub();
+                    return;
+                }
+            } catch (e) {
+                console.warn('[cargarReportesSub] GAS falló, intentando Firestore directo:', e);
+            }
 
-                const hoy = new Date();
-                const fechaLocal = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
-                document.getElementById('filtro-fecha-sub').value = fechaLocal;
-
-                filtrarReportesSub();
-            } catch (e) { container.innerHTML = "Error al cargar reportes."; }
+            // Fallback: leer desde Firestore directamente
+            try {
+                if (window.firebase && firebase.apps && firebase.apps.length) {
+                    const snap = await firebase.firestore().collection('reportes_inmu')
+                        .orderBy('fecha_ts','desc').limit(200).get();
+                    const lista = [];
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        // Normalizar fecha: si es Timestamp de Firestore, convertir a ISO
+                        let fecha = d.fecha || '';
+                        if (!fecha && d.fecha_ts) {
+                            try {
+                                const ts = d.fecha_ts.toDate ? d.fecha_ts.toDate() : new Date(d.fecha_ts.seconds * 1000);
+                                fecha = ts.toISOString();
+                            } catch(_) {}
+                        }
+                        lista.push({ ...d, _id: doc.id, fecha });
+                    });
+                    todosLosReportes = lista;
+                    console.log('[cargarReportesSub] Firestore directo:', lista.length, 'reportes');
+                }
+            } catch(e2) {
+                console.warn('[cargarReportesSub] Firestore también falló:', e2);
+                container.innerHTML = "Sin datos de reportes. Verifica conexión.";
+                return;
+            }
+            filtrarReportesSub();
         }
 
         function limpiarFiltroSub() {
