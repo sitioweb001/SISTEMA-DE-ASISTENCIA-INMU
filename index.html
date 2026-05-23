@@ -307,8 +307,8 @@
         }
 
         .header-logo {
-            width: 100px;
-            height: 100px;
+            width: 140px;
+            height: 140px;
             object-fit: contain;
             background: transparent;
             border-radius: 0;
@@ -318,8 +318,8 @@
         }
 
         .web-view .header-logo {
-            width: 130px;
-            height: 130px;
+            width: 160px;
+            height: 160px;
             padding: 0;
         }
 
@@ -1156,7 +1156,7 @@
 
             /* Header más compacto */
             .header { padding: 8px 10px; gap: 6px; }
-            .header-logo { width: 64px; height: 64px; }
+            .header-logo { width: 80px; height: 80px; }
             .header h1 { font-size: 13px; }
             .header p  { font-size: 11px; }
             .btn-group-nav { flex-direction: row; flex-wrap: wrap; gap: 4px; }
@@ -1204,7 +1204,7 @@
         /* ── TABLET (601px – 900px) ── */
         @media (min-width: 601px) and (max-width: 900px) {
             .container { padding: 0 14px; max-width: 100%; }
-            .header-logo { width: 75px; height: 75px; }
+            .header-logo { width: 100px; height: 100px; }
             .header h1 { font-size: 15px; }
             .filters { grid-template-columns: 1fr 1fr; gap: 12px; }
             .notas-materia-filter { grid-column: 1 / -1; }
@@ -1216,7 +1216,7 @@
         /* ── ESCRITORIO (>900px, solo en web-view) ── */
         .web-view .container { max-width: 900px; }
         .web-view .panel { padding: 24px; }
-        .web-view .header-logo { width: 130px; height: 130px; padding: 0; }
+        .web-view .header-logo { width: 160px; height: 160px; padding: 0; }
         .web-view .header h1 { font-size: 24px; }
         .web-view .header p  { font-size: 15px; }
         .web-view .btn-nav { font-size: 13px; }
@@ -23168,7 +23168,7 @@ function _getFechaKeyPortal() {
 }
 
 function _pintarPortalAutoUI(mapa) {
-  (window.alumnosFiltrados || []).forEach(alumno => {
+  (window.alumnosFiltrados || []).forEach((alumno, index) => {
     const nieStr = String(alumno.nie || '').trim();
     const el = document.getElementById('asist-portal-' + nieStr);
     if (!el) return;
@@ -23181,6 +23181,27 @@ function _pintarPortalAutoUI(mapa) {
       el.innerHTML = esP
         ? `⚠️ Permiso${hora ? '<br><small style="font-weight:400">' + hora + '</small>' : ''}`
         : `✅ Marcó${hora ? '<br><small style="font-weight:400">' + hora + '</small>' : ''}`;
+
+      // ── Auto-marcar checkbox si el alumno marcó desde el portal ──────────
+      const chk = document.getElementById('chk-' + index);
+      if (chk && (!chk.dataset.estado || chk.dataset.estado === 'ausente')) {
+        // Solo actúa si el docente NO lo ha marcado manualmente antes
+        if (esP) {
+          chk.checked = false;
+          chk.dataset.estado = 'permiso';
+        } else {
+          chk.checked = true;
+          chk.dataset.estado = 'presente';
+        }
+        const row = chk.closest('.student-row') || document.getElementById('row-' + index);
+        if (row) {
+          row.classList.remove('ausente', 'permiso', 'presente');
+          row.classList.add(esP ? 'permiso' : 'presente');
+        }
+        // Actualizar contadores sin spam de guardado
+        if (typeof actualizarContadoresAsistencia === 'function') actualizarContadoresAsistencia();
+        if (typeof guardarEstadoAsistencia === 'function') guardarEstadoAsistencia();
+      }
     } else {
       el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#991b1b;background:#fee2e2;';
       el.textContent = '🔴 No marcó';
