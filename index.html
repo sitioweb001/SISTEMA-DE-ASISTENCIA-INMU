@@ -1975,8 +1975,8 @@
                             class="btn-resumen">
                             Resumen (Sub-Dirección)
                         </button>
-                        <button onclick="verDocentesEnLinea()" class="btn-docentes-linea">
-                            Ver Alumnos que asistieron hoy
+                        <button onclick="abrirModalAsistenciaPortalHoy()" class="btn-docentes-linea" style="background:#7c3aed;">
+                            👁️ Ver Portal Alumnos Hoy
                         </button>
                     </h2>
 
@@ -4175,8 +4175,11 @@
 
         async function cambiarEstadoLogin() {
             if (sistemaEnMantenimiento) return;
-            const password = prompt("Seguridad: Ingrese la contraseña de administrador para cambiar esta configuración:");
-            if (password !== PASS_ADMIN) return alert("❌ Contraseña incorrecta.");
+            // Si el usuario ya es admin no pedir contraseña de nuevo (ya la ingresó para acceder)
+            if (!window.usuarioAdmin) {
+                const password = prompt("Seguridad: Ingrese la contraseña de administrador:");
+                if (password !== PASS_ADMIN) return alert("❌ Contraseña incorrecta.");
+            }
 
             const btn = document.getElementById("btn-toggle-login");
             btn.disabled = true; btn.innerText = "⏳...";
@@ -7478,23 +7481,64 @@
 
         async function mostrarDetalleEstudiantes(tipo, grado, seccion, docente, fecha) {
             document.getElementById('modal-detalle-estudiantes').classList.add('open');
-            document.getElementById('titulo-detalle-estudiantes').innerText = `Estudiantes: ${tipo}`;
-            const fechaTexto = fecha ? ` | Fecha: ${new Date(fecha).toLocaleDateString('es-ES')}` : '';
-            document.getElementById('subtitulo-detalle-estudiantes').innerText = `Grado: ${grado} | Seç: ${seccion}${fechaTexto}`;
+            document.getElementById('titulo-detalle-estudiantes').innerText = 'Estudiantes: ' + tipo;
+            const fechaTexto = fecha ? ' | Fecha: ' + new Date(fecha).toLocaleDateString('es-ES') : '';
+            document.getElementById('subtitulo-detalle-estudiantes').innerText = 'Grado: ' + grado + ' | Sec: ' + seccion + fechaTexto;
 
             const cont = document.getElementById('lista-detalle-estudiantes');
-            cont.innerHTML = '<p style="text-align:center; color:var(--blue-600); font-weight:bold;">⏳ Cargando datos...</p>';
+            cont.innerHTML = '<p style="text-align:center; color:var(--blue-600); font-weight:bold;">Cargando datos...</p>';
+
+            // ── Buscar primero en todosLosReportes (memoria) ─────────────────────
+            let registro = null;
+
+            if (Array.isArray(todosLosReportes) && todosLosReportes.length > 0) {
+                const normG = (s) => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+                const fechaDate = fecha ? new Date(fecha) : null;
+                const coincide = todosLosReportes.filter(r => {
+                    const rFecha = r.fecha ? new Date(r.fecha) : null;
+                    const mismaFecha = !fechaDate || !rFecha ? true :
+                        rFecha.toDateString() === fechaDate.toDateString();
+                    return normG(r.grado) === normG(grado) &&
+                           normG(r.seccion) === normG(seccion) &&
+                           normG(r.docente) === normG(docente) &&
+                           mismaFecha;
+                });
+                if (coincide.length > 0) registro = coincide[coincide.length - 1];
+            }
+
+            // ── Si no está en memoria, buscar en Firestore directamente ──────────
+            if (!registro && window.firebase && firebase.apps && firebase.apps.length) {
+                try {
+                    const normG = (s) => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+                    const snap = await firebase.firestore().collection('reportes_inmu')
+                        .where('grado', '==', grado)
+                        .where('seccion', '==', seccion)
+                        .orderBy('fecha_ts', 'desc')
+                        .limit(10)
+                        .get();
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        if (!registro && normG(d.docente) === normG(docente)) {
+                            registro = { ...d, _id: doc.id };
+                        }
+                    });
+                } catch(e) { console.warn('[DetalleEst] Firestore:', e); }
+            }
+
+            // ── Fallback al GAS solo si todo lo demás falló ──────────────────────
+            if (!registro) {
+                try {
+                    const response = await fetch(SCRIPT_URL + '?tipo=detalles_asistencia&grado=' + encodeURIComponent(grado) + '&seccion=' + encodeURIComponent(seccion) + '&docente=' + encodeURIComponent(docente) + '&fecha=' + encodeURIComponent(fecha));
+                    const detalles = await response.json();
+                    if (detalles && detalles.length > 0) registro = detalles[0];
+                } catch(e) { console.warn('[DetalleEst] GAS:', e); }
+            }
 
             try {
-                const response = await fetch(`${SCRIPT_URL}?tipo=detalles_asistencia&grado=${encodeURIComponent(grado)}&seccion=${encodeURIComponent(seccion)}&docente=${encodeURIComponent(docente)}&fecha=${encodeURIComponent(fecha)}`);
-                const detalles = await response.json();
-
-                if (!detalles || detalles.length === 0) {
+                if (!registro) {
                     cont.innerHTML = '<p style="text-align:center; color: var(--gray-600);">No hay registros para este grupo.</p>';
                     return;
                 }
-
-                const registro = detalles[0];
                 let lista = [];
                 let titulo = '';
 
@@ -21758,6 +21802,88 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
         }
 
 
+/* ── Ver Portal Alumnos Hoy ─────────────────────────────────────────────── */
+async function abrirModalAsistenciaPortalHoy() {
+  document.getElementById('modal-portal-alumnos-hoy').classList.add('open');
+  await cargarPortalAlumnosHoy();
+}
+
+async function cargarPortalAlumnosHoy() {
+  const gradoFiltro   = (document.getElementById('portal-hoy-grado')?.value   || '').trim();
+  const seccionFiltro = (document.getElementById('portal-hoy-seccion')?.value || '').trim();
+  const listaEl   = document.getElementById('portal-hoy-lista');
+  const resumenEl = document.getElementById('portal-hoy-resumen');
+
+  listaEl.innerHTML = '<p style="text-align:center;color:var(--blue-600);padding:20px;">Cargando...</p>';
+  resumenEl.style.display = 'none';
+
+  // Calcular fecha key de hoy
+  var ahora = new Date();
+  var hoyKey = String(ahora.getDate()).padStart(2,'0') + '_' +
+               String(ahora.getMonth()+1).padStart(2,'0') + '_' + ahora.getFullYear();
+  var hoyTexto = ahora.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+  try {
+    if (!window.firebase || !firebase.apps || !firebase.apps.length) {
+      listaEl.innerHTML = '<p style="text-align:center;color:red;">Firebase no disponible.</p>';
+      return;
+    }
+    var db = firebase.firestore();
+    var query = db.collection('asistencia_alumnos_inmu').where('fecha_key', '==', hoyKey);
+    if (gradoFiltro)   query = query.where('grado',   '==', gradoFiltro);
+    if (seccionFiltro) query = query.where('seccion', '==', seccionFiltro);
+
+    var snap = await query.orderBy('hora', 'asc').get();
+    var registros = [];
+    snap.forEach(function(doc) { registros.push(doc.data()); });
+
+    if (!registros.length) {
+      listaEl.innerHTML = '<p style="text-align:center;color:var(--gray-500);padding:20px;">No hay registros de portal para hoy' +
+        (gradoFiltro ? ' en ' + gradoFiltro + ' ' + seccionFiltro : '') + '.</p>';
+      return;
+    }
+
+    // Agrupar por grado+seccion
+    var grupos = {};
+    registros.forEach(function(r) {
+      var k = (r.grado || '') + ' ' + (r.seccion || '');
+      if (!grupos[k]) grupos[k] = [];
+      grupos[k].push(r);
+    });
+
+    var presentes = registros.filter(function(r){ return r.estado !== 'permiso'; }).length;
+    var permisos  = registros.filter(function(r){ return r.estado === 'permiso';  }).length;
+
+    resumenEl.textContent = '📅 ' + hoyTexto + ' — Total: ' + registros.length +
+      ' marcaron (' + presentes + ' presentes, ' + permisos + ' permisos)';
+    resumenEl.style.display = 'block';
+
+    var html = '';
+    Object.keys(grupos).sort().forEach(function(key) {
+      var lista = grupos[key];
+      html += '<div style="background:#f3e8ff;padding:7px 12px;border-radius:6px;margin-bottom:4px;font-weight:700;color:#7c3aed;font-size:13px;">📚 ' +
+        key + ' (' + lista.length + ' marcaron)</div>';
+      lista.forEach(function(r, i) {
+        var estadoColor = r.estado === 'permiso' ? '#92400e' : '#166534';
+        var estadoBg    = r.estado === 'permiso' ? '#fef3c7' : '#dcfce7';
+        var estadoIcon  = r.estado === 'permiso' ? '⚠️' : '✅';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 12px;border-bottom:1px solid #f3e8ff;font-size:12px;">' +
+          '<span style="flex:1;">' + (i+1) + '. <strong>' + (r.nombre||'') + '</strong></span>' +
+          '<span style="color:var(--gray-500);margin:0 10px;">NIE: ' + (r.nie||'') + '</span>' +
+          '<span style="color:' + estadoColor + ';background:' + estadoBg + ';padding:2px 8px;border-radius:5px;font-weight:700;">' +
+            estadoIcon + ' ' + (r.estado||'presente') + '</span>' +
+          '<span style="color:var(--gray-400);margin-left:8px;font-size:11px;">' + (r.hora||'') + '</span>' +
+          '</div>';
+      });
+    });
+    listaEl.innerHTML = html;
+
+  } catch(e) {
+    console.warn('[PortalHoy]', e);
+    listaEl.innerHTML = '<p style="text-align:center;color:red;padding:20px;">Error: ' + e.message + '</p>';
+  }
+}
+
 /* =====================================================================
    EDITOR DE DOCENTES — funciones
    ===================================================================== */
@@ -22072,6 +22198,45 @@ async function eliminarAlumnoEditor() {
 })();
 
 </script>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     MODAL VER PORTAL ALUMNOS HOY
+═══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-portal-alumnos-hoy">
+  <div class="modal" style="max-width:600px;width:min(96vw,600px);max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <h3 style="color:#7c3aed;margin:0;">👁️ Alumnos que marcaron hoy en el Portal</h3>
+      <button onclick="cerrarModal('modal-portal-alumnos-hoy')" style="background:none;border:none;font-size:20px;cursor:pointer;">✕</button>
+    </div>
+    <!-- Filtros -->
+    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:12px;align-items:end;">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#7c3aed;display:block;margin-bottom:3px;">Grado</label>
+        <select id="portal-hoy-grado" style="width:100%;padding:8px;border-radius:7px;border:1px solid #e9d5ff;">
+          <option value="">— Todos —</option>
+          <option>1 General</option><option>1 Adm. Contable</option><option>1 S. Electricos</option>
+          <option>2 General</option><option>2 Adm. Contable</option><option>2 Sist. Electricos</option>
+          <option>3 Adm. Contable</option><option>3 Sist. Electricos</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#7c3aed;display:block;margin-bottom:3px;">Sección</label>
+        <select id="portal-hoy-seccion" style="width:100%;padding:8px;border-radius:7px;border:1px solid #e9d5ff;">
+          <option value="">— Todas —</option>
+          <option>A</option><option>B</option><option>Unica</option>
+        </select>
+      </div>
+      <button onclick="cargarPortalAlumnosHoy()" style="padding:9px 18px;border-radius:7px;border:none;background:#7c3aed;color:white;font-weight:700;cursor:pointer;white-space:nowrap;">🔄 Actualizar</button>
+    </div>
+    <!-- Resumen -->
+    <div id="portal-hoy-resumen" style="background:#f3e8ff;border-radius:8px;padding:8px 14px;margin-bottom:10px;font-size:13px;font-weight:700;color:#7c3aed;display:none;"></div>
+    <!-- Lista -->
+    <div id="portal-hoy-lista" style="font-size:13px;">
+      <p style="text-align:center;color:var(--gray-500);padding:20px;">Selecciona un grado o presiona Actualizar para ver los datos.</p>
+    </div>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════════════════════════
      MODAL EDICIÓN DE DOCENTE
@@ -22685,8 +22850,9 @@ async function eliminarAlumnoEditor() {
  * sin necesidad de presionar "Sincronizar Asistencia"
  * ════════════════════════════════════════════════════════════════════════════ */
 
-let _autoPortalActivo = false;
-let _autoPortalUnsub  = null;
+let _autoPortalActivo   = false;
+let _autoPortalUnsub    = null;
+let _autoPortalInterval = null;
 
 /* Auto-portal: se activa automáticamente al cargar alumnos.
    El botón "Auto" ahora solo muestra el estado — siempre está ON. */
@@ -22708,35 +22874,60 @@ function _activarAutoPortalParaGradoSeccion(grado, seccion) {
 }
 
 function _iniciarAutoPortal(grado, seccion) {
-  if (_autoPortalUnsub) { _autoPortalUnsub(); _autoPortalUnsub = null; }
-  // Usar FB_activarPortal si está disponible (de firebase-asistencia.js)
-  if (typeof FB_activarPortal === 'function') {
-    FB_activarPortal(grado, seccion);
-    // El listener ya pinta la UI solo — guardamos referencia al botón
-    // Escuchar cambios de grado/sección para desactivar auto si cambian
-    _autoPortalUnsub = function() {
-      if (typeof window._fbUnsubPortalInmu === 'function') window._fbUnsubPortalInmu();
-    };
-    return;
+  if (_autoPortalUnsub) {
+    if (typeof _autoPortalUnsub === 'function') _autoPortalUnsub();
+    clearInterval(_autoPortalInterval);
+    _autoPortalUnsub = null;
   }
-  // Fallback: Firebase directo si firebase-asistencia.js no está cargado
-  try {
-    if (!firebase || !firebase.apps.length) return;
-    const db = firebase.firestore();
-    const hoy = _getFechaKeyPortal();
-    _autoPortalUnsub = db.collection('asistencia_alumnos_inmu')
-      .where('fecha_key', '==', hoy)
-      .where('grado', '==', grado)
-      .where('seccion', '==', seccion)
-      .onSnapshot(snap => {
-        const mapa = {};
-        snap.forEach(doc => {
-          const d = doc.data();
-          if (d.nie) mapa[String(d.nie).trim()] = { estado: d.estado || 'presente', hora: d.hora || '' };
-        });
-        _pintarPortalAutoUI(mapa);
-      }, e => console.warn('[AutoPortal]', e));
-  } catch(e) { console.warn('[AutoPortal] Firebase no disponible:', e); }
+
+  // ── onSnapshot tiempo real ──────────────────────────────────────────────
+  function arrancarSnapshot() {
+    try {
+      if (!window.firebase || !firebase.apps || !firebase.apps.length) return false;
+      const db = firebase.firestore();
+      const hoy = _getFechaKeyPortal();
+      const unsub = db.collection('asistencia_alumnos_inmu')
+        .where('fecha_key', '==', hoy)
+        .where('grado', '==', grado)
+        .where('seccion', '==', seccion)
+        .onSnapshot(snap => {
+          const mapa = {};
+          snap.forEach(doc => {
+            const d = doc.data();
+            if (d.nie) mapa[String(d.nie).trim()] = { estado: d.estado || 'presente', hora: d.hora || '' };
+          });
+          _pintarPortalAutoUI(mapa);
+          console.log('[AutoPortal] Snapshot actualizado:', Object.keys(mapa).length, 'marcados');
+        }, e => console.warn('[AutoPortal] Error snapshot:', e));
+      _autoPortalUnsub = unsub;
+      return true;
+    } catch(e) { console.warn('[AutoPortal]', e); return false; }
+  }
+
+  // ── Polling cada 2 seg como respaldo garantizado ────────────────────────
+  clearInterval(_autoPortalInterval);
+  _autoPortalInterval = setInterval(async function() {
+    try {
+      if (!window.firebase || !firebase.apps || !firebase.apps.length) return;
+      const db = firebase.firestore();
+      const hoy = _getFechaKeyPortal();
+      const snap = await db.collection('asistencia_alumnos_inmu')
+        .where('fecha_key', '==', hoy)
+        .where('grado', '==', grado)
+        .where('seccion', '==', seccion)
+        .get();
+      const mapa = {};
+      snap.forEach(doc => {
+        const d = doc.data();
+        if (d.nie) mapa[String(d.nie).trim()] = { estado: d.estado || 'presente', hora: d.hora || '' };
+      });
+      _pintarPortalAutoUI(mapa);
+    } catch(e) {}
+  }, 2000);
+
+  // Intentar snapshot en tiempo real PRIMERO
+  const snapshotOk = arrancarSnapshot();
+  if (!snapshotOk) console.warn('[AutoPortal] Snapshot no disponible, usando solo polling');
 }
 
 function _getFechaKeyPortal() {
