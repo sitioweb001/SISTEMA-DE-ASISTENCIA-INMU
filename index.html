@@ -306,103 +306,81 @@
             align-items: center;
         }
 
-        /* ── Logo SVG blanco sin fondo ── */
         .header-logo {
-            width: 72px;
-            height: 72px;
+            width: 70px;
+            height: 70px;
             object-fit: contain;
-            background: transparent;
-            border-radius: 0;
-            padding: 0;
+            background: white;
+            border-radius: 50%;
+            padding: 5px;
             cursor: pointer;
-            filter: brightness(0) invert(1); /* SVG se vuelve blanco puro */
-            flex-shrink: 0;
         }
 
         .web-view .header-logo {
-            width: 90px;
-            height: 90px;
+            width: 100px;
+            height: 100px;
+            padding: 10px;
         }
 
         .header-titles {
             flex: 1;
-            text-align: left;
-            padding-left: 14px;
+            text-align: center;
         }
 
-        .web-view .header-titles h1 { font-size: 22px; }
-        .web-view .header-titles p  { font-size: 14px; }
-        .header h1 { font-size: 17px; margin-bottom: 2px; }
-
-        /* ── Botón hamburguesa (solo visible en móvil/tablet) ── */
-        #btn-hamburger {
-            display: none;
-            background: rgba(255,255,255,0.15);
-            border: 2px solid rgba(255,255,255,0.4);
-            border-radius: 8px;
-            color: white;
-            font-size: 22px;
-            width: 44px;
-            height: 44px;
-            cursor: pointer;
-            flex-shrink: 0;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s;
+        .web-view .header-titles h1 {
+            font-size: 26px;
         }
-        #btn-hamburger:hover { background: rgba(255,255,255,0.25); }
 
-        /* ── Menú de navegación ── */
+        .web-view .header-titles p {
+            font-size: 16px;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            margin-bottom: 2px;
+        }
+
         .btn-group-nav {
             display: flex;
-            gap: 6px;
-            flex-direction: row;        /* horizontal por defecto (escritorio) */
+            gap: 8px;
+            flex-direction: column;
             align-items: center;
-            flex-wrap: wrap;
-            justify-content: flex-end;
+            padding: 0 10px;
         }
 
         .btn-nav {
             color: white;
             border: none;
-            padding: 8px 12px;
+            padding: 10px 14px;
             border-radius: 6px;
             font-weight: bold;
             cursor: pointer;
-            font-size: 11px;
+            font-size: 12px;
             text-transform: uppercase;
             text-align: center;
-            min-height: 40px;
-            white-space: nowrap;
-        }
-
-        /* ── Menú desplegable móvil ── */
-        .btn-group-nav.menu-abierto {
-            flex-direction: column;
-            align-items: stretch;
+            min-height: 44px;
+            white-space: normal;
             width: 100%;
-            background: rgba(0,0,0,0.25);
-            border-radius: 8px;
-            padding: 8px;
-            gap: 6px;
-        }
-        .btn-group-nav.menu-abierto .btn-nav {
-            width: 100%;
-            text-align: left;
-            font-size: 13px;
-            padding: 11px 14px;
+            max-width: 260px;
         }
 
         .header {
             background-color: var(--blue-800);
             color: white;
-            padding: 12px 20px;
+            padding: 15px 20px;
+            text-align: center;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             display: flex;
             flex-wrap: wrap;
             justify-content: space-between;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+        }
+
+        .header-titles {
+            flex: 1 1 220px;
+            text-align: center;
+            min-width: 180px;
         }
 
         .container {
@@ -1175,17 +1153,13 @@
             .container { padding: 0 8px; margin: 8px auto; }
             .panel { padding: 12px; border-radius: 8px; }
 
-            /* Header compacto con hamburguesa */
-            .header { padding: 8px 12px; gap: 8px; flex-wrap: nowrap; }
-            .header-logo { width: 44px; height: 44px; }
+            /* Header más compacto */
+            .header { padding: 8px 10px; gap: 6px; }
+            .header-logo { width: 48px; height: 48px; }
             .header h1 { font-size: 13px; }
             .header p  { font-size: 11px; }
-            .header-titles { padding-left: 8px; }
-
-            /* Hamburguesa visible, menú oculto por defecto */
-            #btn-hamburger { display: flex !important; }
-            .btn-group-nav { display: none !important; width: 100%; order: 99; }
-            .btn-group-nav.menu-abierto { display: flex !important; }
+            .btn-group-nav { flex-direction: row; flex-wrap: wrap; gap: 4px; }
+            .btn-nav { font-size: 10px; padding: 6px 8px; min-height: 36px; max-width: 140px; }
 
             /* Filtros apilados */
             .filters { grid-template-columns: 1fr; gap: 8px; }
@@ -1233,26 +1207,18 @@
             .header h1 { font-size: 15px; }
             .filters { grid-template-columns: 1fr 1fr; gap: 12px; }
             .notas-materia-filter { grid-column: 1 / -1; }
-            /* Hamburguesa en tablet también */
-            #btn-hamburger { display: flex !important; }
-            .btn-group-nav { display: none !important; width: 100%; order: 99; }
-            .btn-group-nav.menu-abierto { display: flex !important; }
+            .btn-nav { font-size: 11px; padding: 8px 10px; max-width: 200px; }
             .student-list { overflow-x: auto; overflow-y: hidden; }
             .student-row { grid-template-columns: 40px 2fr 1fr 1fr 1fr 100px 80px; font-size: 13px; min-width: 760px; }
         }
 
-        /* ── ESCRITORIO (>900px) ── */
+        /* ── ESCRITORIO (>900px, solo en web-view) ── */
         .web-view .container { max-width: 900px; }
         .web-view .panel { padding: 24px; }
-        .web-view .header-logo { width: 90px; height: 90px; }
-        .web-view .header h1 { font-size: 22px; }
-        .web-view .header p  { font-size: 14px; }
-        .web-view .btn-nav { font-size: 12px; }
-        /* En escritorio nunca hamburguesa */
-        @media (min-width: 901px) {
-            #btn-hamburger { display: none !important; }
-            .btn-group-nav { display: flex !important; flex-direction: row; flex-wrap: wrap; }
-        }
+        .web-view .header-logo { width: 100px; height: 100px; padding: 10px; }
+        .web-view .header h1 { font-size: 24px; }
+        .web-view .header p  { font-size: 15px; }
+        .web-view .btn-nav { font-size: 13px; }
 
         .qr-grid {
             display: grid;
@@ -1533,24 +1499,15 @@
     </div>
 
     <div class="header" id="header-principal" style="display: none;">
-        <div style="display:flex;align-items:center;flex:1;min-width:0;">
-            <img src="logo2.svg" alt="Logo INMU" class="header-logo" ondblclick="toggleMantenimiento()"
-                title="Doble clic para administrar sistema"
-                onerror="this.onerror=null; this.src='logo.jpg'; this.style.filter='none'; this.style.background='white'; this.style.borderRadius='50%'; this.style.padding='5px';">
-            <div class="header-titles">
-                <h1>Sistema de Control de Asistencia</h1>
-                <p>Instituto Nacional de Mercedes Umaña</p>
-            </div>
+        <div style="display: flex; align-items: center;">
+            <img src="logo.jpg" alt="Logo INMU" class="header-logo" ondblclick="toggleMantenimiento()"
+                title="Doble clic para administrar sistema" onerror="this.onerror=null; this.src='logo2.svg';">
         </div>
-
-        <!-- Botón hamburguesa (móvil/tablet) -->
-        <button id="btn-hamburger" aria-label="Menú" onclick="
-            var m = document.getElementById('nav-menu');
-            var open = m.classList.toggle('menu-abierto');
-            this.textContent = open ? '✕' : '☰';
-        ">☰</button>
-
-        <div class="btn-group-nav" id="nav-menu">
+        <div class="header-titles">
+            <h1>Sistema de Control de Asistencia</h1>
+            <p>Instituto Nacional de Mercedes Umaña</p>
+        </div>
+        <div class="btn-group-nav">
             <button class="btn-nav" style="background:#F39C12; color:white; font-weight:bold;"
                 onclick="mostrarNotificaciones()">🔔 Notificaciones</button>
             <button class="btn-nav" style="background:#1565C0; color:white; font-weight:bold;"
@@ -23210,51 +23167,22 @@ function _getFechaKeyPortal() {
 }
 
 function _pintarPortalAutoUI(mapa) {
-  (window.alumnosFiltrados || []).forEach((alumno, index) => {
+  (window.alumnosFiltrados || []).forEach(alumno => {
     const nieStr = String(alumno.nie || '').trim();
-    const el  = document.getElementById('asist-portal-' + nieStr);
+    const el = document.getElementById('asist-portal-' + nieStr);
+    if (!el) return;
     const reg = mapa[nieStr];
-
     if (reg) {
       const hora = reg.hora || '';
       const esP  = reg.estado === 'permiso';
-
-      // ── Columna Portal ──────────────────────────────────────────────────
-      if (el) {
-        el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;' +
-          (esP ? 'color:#92400e;background:#fef3c7;' : 'color:#166534;background:#dcfce7;');
-        el.innerHTML = esP
-          ? `⚠️ Permiso${hora ? '<br><small style="font-weight:400">' + hora + '</small>' : ''}`
-          : `✅ Marcó${hora ? '<br><small style="font-weight:400">' + hora + '</small>' : ''}`;
-      }
-
-      // ── Auto-marcar checkbox ────────────────────────────────────────────
-      const chk = document.getElementById('chk-' + index);
-      if (chk) {
-        const estadoActual = chk.dataset.estado || (chk.checked ? 'presente' : 'ausente');
-        // Solo actuar si aún está como ausente (no pisar permiso manual ni presente ya marcado)
-        if (estadoActual === 'ausente' && !chk.checked) {
-          const nuevoEstado = esP ? 'permiso' : 'presente';
-          chk.checked    = !esP;           // permiso no lleva check
-          chk.dataset.estado = nuevoEstado;
-          const row = chk.closest('.student-row');
-          if (row) {
-            row.classList.remove('ausente', 'presente', 'permiso');
-            row.classList.add(nuevoEstado);
-          }
-          // Actualizar contadores visualmente
-          if (typeof actualizarContadoresAsistencia === 'function') {
-            actualizarContadoresAsistencia();
-          }
-        }
-      }
-
+      el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;' +
+        (esP ? 'color:#92400e;background:#fef3c7;' : 'color:#166534;background:#dcfce7;');
+      el.innerHTML = esP
+        ? `⚠️ Permiso${hora ? '<br><small style="font-weight:400">' + hora + '</small>' : ''}`
+        : `✅ Marcó${hora ? '<br><small style="font-weight:400">' + hora + '</small>' : ''}`;
     } else {
-      // No marcó en portal
-      if (el) {
-        el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#991b1b;background:#fee2e2;';
-        el.textContent = '🔴 No marcó';
-      }
+      el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#991b1b;background:#fee2e2;';
+      el.textContent = '🔴 No marcó';
     }
   });
 }
