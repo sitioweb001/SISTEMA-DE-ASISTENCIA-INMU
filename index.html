@@ -9,8 +9,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="logo2.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="logo2.svg">
+    <link rel="icon" href="logo.jpg" type="image/jpeg">
+    <link rel="apple-touch-icon" href="logo.jpg">
     <title>Registro de Asistencia — INMU</title>
     <script>
     /* ── Cargador robusto de html2pdf con múltiples CDN ── */
@@ -307,20 +307,19 @@
         }
 
         .header-logo {
-            width: 140px;
-            height: 140px;
+            width: 70px;
+            height: 70px;
             object-fit: contain;
-            background: transparent;
-            border-radius: 0;
-            padding: 0;
+            background: white;
+            border-radius: 50%;
+            padding: 5px;
             cursor: pointer;
-            filter: brightness(0) invert(1);
         }
 
         .web-view .header-logo {
-            width: 160px;
-            height: 160px;
-            padding: 0;
+            width: 100px;
+            height: 100px;
+            padding: 10px;
         }
 
         .header-titles {
@@ -1156,7 +1155,7 @@
 
             /* Header más compacto */
             .header { padding: 8px 10px; gap: 6px; }
-            .header-logo { width: 240px; height: 240px; }
+            .header-logo { width: 48px; height: 48px; }
             .header h1 { font-size: 13px; }
             .header p  { font-size: 11px; }
             .btn-group-nav { flex-direction: row; flex-wrap: wrap; gap: 4px; }
@@ -1204,7 +1203,7 @@
         /* ── TABLET (601px – 900px) ── */
         @media (min-width: 601px) and (max-width: 900px) {
             .container { padding: 0 14px; max-width: 100%; }
-            .header-logo { width: 260px; height: 260px; }
+            .header-logo { width: 56px; height: 56px; }
             .header h1 { font-size: 15px; }
             .filters { grid-template-columns: 1fr 1fr; gap: 12px; }
             .notas-materia-filter { grid-column: 1 / -1; }
@@ -1216,7 +1215,7 @@
         /* ── ESCRITORIO (>900px, solo en web-view) ── */
         .web-view .container { max-width: 900px; }
         .web-view .panel { padding: 24px; }
-        .web-view .header-logo { width: 400px; height: 400px; padding: 0; }
+        .web-view .header-logo { width: 100px; height: 100px; padding: 10px; }
         .web-view .header h1 { font-size: 24px; }
         .web-view .header p  { font-size: 15px; }
         .web-view .btn-nav { font-size: 13px; }
@@ -1366,92 +1365,6 @@
             border-radius: 10px;
         }
 
-        @media (max-width: 768px) {
-            .desktop-only {
-                display: none !important;
-            }
-            .header {
-                flex-direction: column;
-                justify-content: center;
-                text-align: center;
-                position: relative;
-                padding-top: 20px;
-                padding-bottom: 20px;
-            }
-            .header-top-row {
-                width: 100% !important;
-                justify-content: center !important;
-                margin-bottom: 15px;
-                position: static !important;
-            }
-            .header-titles {
-                width: 100%;
-                flex: none;
-            }
-            .btn-hamburger {
-                display: block !important;
-                position: absolute;
-                left: 5px;
-                top: 5px;
-                background: none;
-                border: none;
-                color: white;
-                font-size: 32px;
-                cursor: pointer;
-                z-index: 1001;
-                padding: 10px;
-                line-height: 1;
-            }
-            .btn-group-nav {
-                position: fixed;
-                top: 0;
-                left: -300px;
-                width: 260px;
-                height: 100vh;
-                background-color: var(--blue-800);
-                z-index: 1000;
-                flex-direction: column;
-                justify-content: flex-start;
-                padding: 60px 20px 20px;
-                box-shadow: 4px 0 10px rgba(0,0,0,0.3);
-                transition: left 0.3s ease;
-                overflow-y: auto;
-            }
-            .btn-group-nav.open {
-                left: 0;
-            }
-            #hamburger-backdrop {
-                visibility: hidden;
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100vw;
-                height: 100vh;
-                background: rgba(0,0,0,0.4);
-                backdrop-filter: blur(4px);
-                z-index: 999;
-                transition: opacity 0.3s, visibility 0.3s;
-                opacity: 0;
-            }
-            #hamburger-backdrop.open {
-                visibility: visible;
-                opacity: 1;
-            }
-            body.dark .btn-group-nav {
-                background-color: var(--bg-panel);
-            }
-        }
-        @media (min-width: 769px) {
-            .hamburger-only {
-                display: none !important;
-            }
-            .btn-hamburger {
-                display: none !important;
-            }
-            #hamburger-backdrop {
-                display: none !important;
-            }
-        }
 </style>
     <!-- SheetJS para exportar Excel -->
     <script>
@@ -1585,68 +1498,36 @@
         </div>
     </div>
 
-    <div id="hamburger-backdrop" onclick="closeHamburgerMenu()"></div>
     <div class="header" id="header-principal" style="display: none;">
-        <div class="header-top-row" style="display: flex; align-items: center; position: relative;">
-            <button class="btn-hamburger" id="btn-hamburger" onclick="toggleHamburgerMenu()">☰</button>
-            <img src="logo2.svg" alt="Logo INMU" class="header-logo" ondblclick="toggleMantenimiento()"
-                title="Doble clic para administrar sistema" onerror="this.onerror=null;">
+        <div style="display: flex; align-items: center;">
+            <img src="logo.jpg" alt="Logo INMU" class="header-logo" ondblclick="toggleMantenimiento()"
+                title="Doble clic para administrar sistema" onerror="this.onerror=null; this.src='logo2.svg';">
         </div>
         <div class="header-titles">
             <h1>Sistema de Control de Asistencia</h1>
             <p>Instituto Nacional de Mercedes Umaña</p>
         </div>
-        <div class="btn-group-nav" id="sidebar-menu">
+        <div class="btn-group-nav">
             <button class="btn-nav" style="background:#F39C12; color:white; font-weight:bold;"
-                onclick="mostrarNotificaciones(); closeHamburgerMenu();">🔔 Notificaciones</button>
+                onclick="mostrarNotificaciones()">🔔 Notificaciones</button>
             <button class="btn-nav" style="background:#1565C0; color:white; font-weight:bold;"
-                onclick="abrirModalInformeAsistencia(); closeHamburgerMenu();">📊 Informe Asistencia</button>
+                onclick="abrirModalInformeAsistencia()">📊 Informe Asistencia</button>
             <button class="btn-nav" style="background:#0E73D4; color:white; font-weight:bold;"
-                onclick="cambiarVista('informes'); closeHamburgerMenu();">📄 Informes</button>
+                onclick="cambiarVista('informes')">📄 Informes</button>
             <button class="btn-nav" id="btn-copiar-portal" style="background:#4A5568; color:white; font-weight:bold;"
-                onclick="copiarEnlacePortal(); closeHamburgerMenu();">📋 Copiar enlace del portal</button>
+                onclick="copiarEnlacePortal()">📋 Copiar enlace del portal</button>
             <button type="button" class="btn-nav" style="background:#2C5282; color:white; font-weight:bold;"
-                onclick="inmuElegirCarpetaDescargas(); closeHamburgerMenu();" title="PDF, TXT y Excel se guardarán aquí en la app de escritorio">📂 Carpeta de descargas</button>
+                onclick="inmuElegirCarpetaDescargas()" title="PDF, TXT y Excel se guardarán aquí en la app de escritorio">📂 Carpeta de descargas</button>
             <button id="btn-install-pwa" class="btn-nav" style="background:#0C447C; display:none;"
-                onclick="mostrarInstallPrompt(); closeHamburgerMenu();">📥 Instalar app</button>
+                onclick="mostrarInstallPrompt()">📥 Instalar app</button>
             <span id="install-pwa-helper"
                 style="display:none; align-self:center; font-size:12px; color:#F8F9FA; margin-left:10px; max-width:400px;"></span>
             <button class="btn-nav" style="background:#1D9E75; color:white; font-weight:bold;"
-                onclick="cambiarVista('docente'); closeHamburgerMenu();">✍️ Pasar Lista</button>
+                onclick="cambiarVista('docente')">✍️ Pasar Lista</button>
             <button class="btn-nav" style="background:#8E44AD; color:white; font-weight:bold;"
-                onclick="mostrarResumenDelDia(); closeHamburgerMenu();">📊 Ver resumen del día</button>
-
-            <hr class="hamburger-only" style="width:100%; border:0; border-top:1px solid rgba(255,255,255,0.2); margin: 10px 0;">
-            <button class="btn-nav hamburger-only" style="background:#5F5E5A; color:white; font-weight:bold;"
-                onclick="pedirPasswordDocente(); closeHamburgerMenu();">👨‍🏫 Añadir Docente</button>
-            <button class="btn-nav hamburger-only" style="background:#00796B; color:white; font-weight:bold;"
-                onclick="pedirPasswordAsignarMateria(); closeHamburgerMenu();">📚 ASIGNAR MATERIA</button>
-            <button class="btn-nav hamburger-only" style="background:#1565C0; color:white; font-weight:bold;"
-                onclick="abrirEdicionDocentes(); closeHamburgerMenu();">✏️ EDICIÓN DOCENTES</button>
-            <button class="btn-nav hamburger-only" style="background:#BA7517; color:white; font-weight:bold;"
-                onclick="pedirPasswordNuevo(); closeHamburgerMenu();">➕ Nuevo Alumno</button>
-            <button class="btn-nav hamburger-only" style="background:#7c3aed; color:white; font-weight:bold;"
-                onclick="abrirEdicionAlumnos(); closeHamburgerMenu();">✏️ EDICIÓN ALUMNO</button>
-            <button class="btn-nav hamburger-only" style="background:var(--green-600); color:white; font-weight:bold;"
-                onclick="pedirPasswordSub(); closeHamburgerMenu();">📊 Sub-Dirección</button>
+                onclick="mostrarResumenDelDia()">📊 Ver resumen del día</button>
         </div>
     </div>
-    <script>
-        function toggleHamburgerMenu() {
-            var menu = document.getElementById('sidebar-menu');
-            var backdrop = document.getElementById('hamburger-backdrop');
-            menu.classList.toggle('open');
-            backdrop.classList.toggle('open');
-        }
-        function closeHamburgerMenu() {
-            var menu = document.getElementById('sidebar-menu');
-            var backdrop = document.getElementById('hamburger-backdrop');
-            if (menu && menu.classList.contains('open')) {
-                menu.classList.remove('open');
-                backdrop.classList.remove('open');
-            }
-        }
-    </script>
 
     <div class="container" id="container-principal" style="display: none;">
 
@@ -1703,6 +1584,8 @@
                         <button class="btn-action" onclick="seleccionarArchivoLocal()" style="color:#16a34a;border-color:#86efac;background:#f0fdf4;">📂 Local</button>
                         <button id="btn-sync-asist" class="btn-action" onclick="sincronizarAsistenciaAlumnos()" style="color:#7c3aed;border-color:#c4b5fd;background:#f5f3ff;">📡 Sincronizar Asistencia</button>
                         <button id="btn-sync-marcar" class="btn-action" onclick="sincronizarYMarcarPortal()" style="color:#059669;border-color:#6ee7b7;background:#ecfdf5;">✅ Marcar desde Portal</button>
+                        <button id="btn-agregar-alumno-seccion" class="btn-action" onclick="abrirAgregarAlumnoSeccion()" style="color:#b45309;border-color:#fcd34d;background:#fffbeb;display:none;">➕ Añadir Alumno</button>
+                        <button id="btn-quitar-alumno-seccion" class="btn-action" onclick="abrirQuitarAlumnoSeccion()" style="color:#dc2626;border-color:#fca5a5;background:#fff1f2;display:none;">➖ Quitar Alumno</button>
                         <!-- CONTROLES DE LISTADO DE ALUMNOS -->
                         <div id="controles-lista-alumnos" style="margin-top:10px; display:none; gap:8px; flex-wrap:wrap; align-items:center;">
                             <button id="btn-toggle-lista" class="btn-action" onclick="toggleLista()">
@@ -1807,15 +1690,17 @@
                 🚪 Cerrar Sesión Segura
             </button>
 
-            <div class="desktop-only" style="margin-top: 20px; display:flex; flex-direction:column; align-items:center; gap:10px;">
+            <div style="margin-top: 20px; display:flex; flex-direction:column; align-items:center; gap:10px;">
                 <button class="btn-nav" style="background:#5F5E5A; max-width: 260px; width:100%;"
                     onclick="pedirPasswordDocente()">👨‍🏫 Añadir Docente</button>
-                <button class="btn-nav" style="background:#00796B; max-width: 260px; width:100%;"
-                    onclick="pedirPasswordAsignarMateria()">📚 ASIGNAR MATERIA</button>
+                <button class="btn-nav" style="background:#0C447C; max-width: 260px; width:100%;"
+                    onclick="pedirPasswordAsignarMateria()">ASIGNAR MATERIA</button>
                 <button class="btn-nav" style="background:#1565C0; max-width: 260px; width:100%;"
                     onclick="abrirEdicionDocentes()">✏️ EDICIÓN DOCENTES</button>
                 <button class="btn-nav" style="background:#BA7517; max-width: 260px; width:100%;"
                     onclick="pedirPasswordNuevo()">➕ Nuevo Alumno</button>
+                <button class="btn-nav" style="background:#c2410c; max-width: 260px; width:100%;"
+                    onclick="abrirAsignarAlumnoGrado()">📋 Asignar Alumno a Grado</button>
                 <button class="btn-nav" style="background:#7c3aed; max-width: 260px; width:100%;"
                     onclick="abrirEdicionAlumnos()">✏️ EDICIÓN ALUMNO</button>
                 <button class="btn-nav" style="background:var(--green-600); max-width: 260px; width:100%;"
@@ -2315,21 +2200,40 @@
         <!-- MODALES DE FORMULARIOS -->
         <!-- ═══════════════════════════════════════════════════ -->
         <div class="modal-overlay" id="modal-alumno">
-            <div class="modal">
-                <h3>Nuevo Estudiante</h3>
-                <input type="text" id="new-nombre" placeholder="Apellidos, Nombres"
-                    style="width:100%; padding:10px; margin-bottom:10px;">
-                <select id="new-sexo" style="width:100%; padding:10px; margin-bottom:10px;">
+            <div class="modal" style="max-width:480px;width:min(96vw,480px);">
+                <h3 style="color:var(--blue-800);margin-bottom:14px;">➕ Nuevo Estudiante</h3>
+                <div style="display:grid;gap:9px;">
+                  <input type="text" id="new-nombre" placeholder="Apellidos, Nombres *"
+                    style="width:100%;padding:10px;border-radius:7px;border:1px solid #dbeafe;">
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    <select id="new-grado-modal" style="padding:10px;border-radius:7px;border:1px solid #dbeafe;">
+                      <option value="">-- Grado * --</option>
+                      <option>1 General</option><option>1 Adm. Contable</option><option>1 S. Electricos</option>
+                      <option>2 General</option><option>2 Adm. Contable</option><option>2 Sist. Electricos</option>
+                      <option>3 Adm. Contable</option><option>3 Sist. Electricos</option>
+                      <option>DI REFUERZO</option>
+                    </select>
+                    <select id="new-seccion-modal" style="padding:10px;border-radius:7px;border:1px solid #dbeafe;">
+                      <option value="">-- Seccion * --</option>
+                      <option>A</option><option>B</option><option>Unica</option>
+                    </select>
+                  </div>
+                  <select id="new-sexo" style="padding:10px;border-radius:7px;border:1px solid #dbeafe;">
                     <option value="M">Masculino (M)</option>
                     <option value="F">Femenino (F)</option>
-                </select>
-                <input type="text" id="new-nie" placeholder="NIE" style="width:100%; padding:10px; margin-bottom:10px;">
-                <input type="text" id="new-telefono" placeholder="Teléfono"
-                    style="width:100%; padding:10px; margin-bottom:15px;">
-                <div style="display:flex; gap:10px;">
-                    <button onclick="cerrarModal('modal-alumno')" style="flex:1; padding:10px;">Cancelar</button>
+                  </select>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    <input type="text" id="new-nie" placeholder="NIE *"
+                      style="padding:10px;border-radius:7px;border:1px solid #dbeafe;">
+                    <input type="text" id="new-telefono" placeholder="Telefono"
+                      style="padding:10px;border-radius:7px;border:1px solid #dbeafe;">
+                  </div>
+                  <p style="font-size:11px;color:var(--gray-500);margin:0;">* El grado y seccion se tomaranm del selector si los dejas en blanco.</p>
+                </div>
+                <div style="display:flex;gap:10px;margin-top:14px;">
+                    <button onclick="cerrarModal('modal-alumno')" style="flex:1;padding:11px;border-radius:8px;border:1px solid #ddd;background:white;font-weight:600;">Cancelar</button>
                     <button onclick="guardarAlumno()" id="btn-save-cloud"
-                        style="flex:1; padding:10px; background:var(--blue-600); color:white; border:none; border-radius:6px;">Guardar</button>
+                        style="flex:2;padding:11px;background:var(--blue-600);color:white;border:none;border-radius:8px;font-weight:700;">Guardar</button>
                 </div>
             </div>
         </div>
@@ -2584,6 +2488,34 @@
             <div id="di-resultados" style="max-height:320px; overflow:auto; border:1px solid #e3edf8; border-radius:10px; padding:8px; background:#fff;"></div>
             <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
                 <button onclick="cerrarModal('modal-di-refuerzo')" style="padding:10px 16px;">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: AGREGAR ALUMNO A SECCIÓN -->
+    <div class="modal-overlay" id="modal-agregar-seccion">
+        <div class="modal-content" style="max-width:720px; width:92%; border-radius:18px;">
+            <h3 id="as-modal-titulo" style="margin-top:0; color:#0C447C;">Añadir Alumno a Sección</h3>
+            <p id="as-modal-subtitulo" style="margin:0 0 12px; font-size:13px; color:#5f6c7b;"></p>
+            <input type="text" id="as-buscador" placeholder="Buscar por nombre o NIE..." oninput="filtrarAgregarSeccion()"
+                style="width:100%; padding:10px; margin-bottom:12px; border:1px solid #d6e3f3; border-radius:8px; box-sizing:border-box;">
+            <div id="as-resultados" style="max-height:320px; overflow:auto; border:1px solid #e3edf8; border-radius:10px; padding:8px; background:#fff;"></div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+                <button onclick="cerrarModal('modal-agregar-seccion')" style="padding:10px 16px;">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: QUITAR ALUMNO DE SECCIÓN -->
+    <div class="modal-overlay" id="modal-quitar-seccion">
+        <div class="modal-content" style="max-width:720px; width:92%; border-radius:18px;">
+            <h3 id="qs-modal-titulo" style="margin-top:0; color:#b91c1c;">Quitar Alumno de Sección</h3>
+            <p id="qs-modal-subtitulo" style="margin:0 0 12px; font-size:13px; color:#5f6c7b;"></p>
+            <input type="text" id="qs-buscador" placeholder="Buscar por nombre o NIE..." oninput="filtrarQuitarSeccion()"
+                style="width:100%; padding:10px; margin-bottom:12px; border:1px solid #fca5a5; border-radius:8px; box-sizing:border-box;">
+            <div id="qs-resultados" style="max-height:320px; overflow:auto; border:1px solid #fee2e2; border-radius:10px; padding:8px; background:#fff;"></div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+                <button onclick="cerrarModal('modal-quitar-seccion')" style="padding:10px 16px;">Cerrar</button>
             </div>
         </div>
     </div>
@@ -2923,8 +2855,7 @@
                 if (installButton) installButton.style.display = 'none';
                 if (installHelper) {
                     if (window.location.protocol === 'file:') {
-                        installHelper.textContent = '';
-                        installHelper.style.display = 'none';
+                        installHelper.textContent = 'No se puede instalar la PWA desde un archivo local. Usa localhost o un servidor HTTPS.';
                     } else if (!('serviceWorker' in navigator)) {
                         installHelper.textContent = 'Tu navegador no soporta Service Worker; la instalación PWA no está disponible.';
                     } else {
@@ -4841,6 +4772,175 @@
             await cargarAlumnos();
         }
 
+        // ── Quitar Alumno de Sección ──────────────────────────────────────
+        let _qsResultadosActuales = [];
+
+        function abrirQuitarAlumnoSeccion() {
+            const grado   = document.getElementById('grado-select').value.trim();
+            const seccion = document.getElementById('seccion-select').value.trim();
+            if (!grado || !seccion) { alert('Seleccione un grado y una sección primero.'); return; }
+            const titulo    = document.getElementById('qs-modal-titulo');
+            const subtitulo = document.getElementById('qs-modal-subtitulo');
+            const input     = document.getElementById('qs-buscador');
+            const cont      = document.getElementById('qs-resultados');
+            if (titulo)    titulo.textContent    = `Quitar Alumno de ${grado} ${seccion}`;
+            if (subtitulo) subtitulo.textContent = `Estos alumnos están actualmente en ${grado} ${seccion}. Al presionar "Quitar" se moverán a Sin Sección (puede reasignarlos después).`;
+            if (input) input.value = '';
+            abrirModal('modal-quitar-seccion');
+            if (cont) cont.innerHTML = `<div style="padding:14px; color:#5f6c7b; text-align:center;">Cargando estudiantes...</div>`;
+            requestAnimationFrame(() => filtrarQuitarSeccion());
+            setTimeout(() => { if (input) input.focus(); }, 50);
+        }
+
+        function _obtenerAlumnosEnSeccion() {
+            const grado   = normalizarTexto(document.getElementById('grado-select').value);
+            const seccion = normalizarTexto(document.getElementById('seccion-select').value);
+            return (baseDatosAlumnos || []).filter(a =>
+                normalizarTexto(a.grado) === grado && normalizarTexto(a.seccion) === seccion
+            );
+        }
+
+        function filtrarQuitarSeccion() {
+            const filtro = normalizarTexto((document.getElementById('qs-buscador') || {}).value);
+            const lista  = _obtenerAlumnosEnSeccion().filter(a => {
+                if (!filtro) return true;
+                return normalizarTexto(a.nombre || '').includes(filtro) || normalizarTexto(a.nie || '').includes(filtro);
+            });
+            _renderizarResultadosQuitar(lista);
+        }
+
+        function _renderizarResultadosQuitar(lista) {
+            const cont = document.getElementById('qs-resultados');
+            if (!cont) return;
+            _qsResultadosActuales = lista.slice();
+            if (!lista.length) {
+                cont.innerHTML = `<div style="padding:14px; color:#5f6c7b; text-align:center;">No hay alumnos en esta sección.</div>`;
+                return;
+            }
+            cont.innerHTML = lista.map((a, idx) => `
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px; border-bottom:1px solid #fde8e8;">
+                    <div style="min-width:0;">
+                        <div style="font-weight:bold; color:#1f2937;">${a.nombre || ''}</div>
+                        <div style="font-size:12px; color:#6b7280;">NIE: ${a.nie || 'N/A'} | ${a.grado || ''} ${a.seccion || ''}</div>
+                    </div>
+                    <button type="button" class="btn-action" onclick="ejecutarQuitarAlumnoSeccion(${idx})" style="white-space:nowrap;color:#dc2626;border-color:#fca5a5;background:#fff1f2;">Quitar</button>
+                </div>`).join('');
+        }
+
+        async function ejecutarQuitarAlumnoSeccion(indice) {
+            const alumno = _qsResultadosActuales[indice];
+            if (!alumno) return;
+            if (!confirm(`¿Quitar a ${alumno.nombre} de esta sección?`)) return;
+            const btn = document.querySelector(`#qs-resultados button[onclick="ejecutarQuitarAlumnoSeccion(${indice})"]`);
+            if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify({
+                        tipo_post: 'actualizar_alumno',
+                        nie: alumno.nie,
+                        nombre: alumno.nombre,
+                        grado: '',
+                        seccion: ''
+                    })
+                });
+                // Actualizar en memoria local
+                const local = (baseDatosAlumnos || []).find(a => normalizarTexto(a.nie) === normalizarTexto(alumno.nie));
+                if (local) { local.grado = ''; local.seccion = ''; }
+            } catch(e) {
+                console.warn('Error al quitar alumno:', e);
+            }
+            cerrarModal('modal-quitar-seccion');
+            await cargarAlumnos();
+        }
+        // ─────────────────────────────────────────────────────────────────
+
+        // ── Agregar Alumno a Sección ──────────────────────────────────────
+        let _asResultadosActuales = [];
+
+        function abrirAgregarAlumnoSeccion() {
+            const grado   = document.getElementById('grado-select').value.trim();
+            const seccion = document.getElementById('seccion-select').value.trim();
+            if (!grado || !seccion) { alert('Seleccione un grado y una sección primero.'); return; }
+            const titulo    = document.getElementById('as-modal-titulo');
+            const subtitulo = document.getElementById('as-modal-subtitulo');
+            const input     = document.getElementById('as-buscador');
+            const cont      = document.getElementById('as-resultados');
+            if (titulo)    titulo.textContent    = `Añadir Alumno a ${grado} ${seccion}`;
+            if (subtitulo) subtitulo.textContent = `Los alumnos que se muestran no están actualmente en ${grado} ${seccion}. Al presionar "Agregar" se asignará ese alumno a esta sección.`;
+            if (input) input.value = '';
+            abrirModal('modal-agregar-seccion');
+            if (cont) cont.innerHTML = `<div style="padding:14px; color:#5f6c7b; text-align:center;">Cargando estudiantes...</div>`;
+            requestAnimationFrame(() => filtrarAgregarSeccion());
+            setTimeout(() => { if (input) input.focus(); }, 50);
+        }
+
+        function _obtenerCandidatosSeccion() {
+            const grado   = normalizarTexto(document.getElementById('grado-select').value);
+            const seccion = normalizarTexto(document.getElementById('seccion-select').value);
+            return (baseDatosAlumnos || []).filter(a => {
+                return normalizarTexto(a.grado) !== grado || normalizarTexto(a.seccion) !== seccion;
+            });
+        }
+
+        function filtrarAgregarSeccion() {
+            const filtro = normalizarTexto((document.getElementById('as-buscador') || {}).value);
+            const lista  = _obtenerCandidatosSeccion().filter(a => {
+                if (!filtro) return true;
+                return normalizarTexto(a.nombre || '').includes(filtro) || normalizarTexto(a.nie || '').includes(filtro);
+            });
+            _renderizarResultadosSeccion(lista);
+        }
+
+        function _renderizarResultadosSeccion(lista) {
+            const cont = document.getElementById('as-resultados');
+            if (!cont) return;
+            _asResultadosActuales = lista.slice();
+            if (!lista.length) {
+                cont.innerHTML = `<div style="padding:14px; color:#5f6c7b; text-align:center;">No hay coincidencias.</div>`;
+                return;
+            }
+            cont.innerHTML = lista.map((a, idx) => `
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px; border-bottom:1px solid #edf2f7;">
+                    <div style="min-width:0;">
+                        <div style="font-weight:bold; color:#1f2937;">${a.nombre || ''}</div>
+                        <div style="font-size:12px; color:#6b7280;">NIE: ${a.nie || 'N/A'} | ${a.grado || ''} ${a.seccion || ''}</div>
+                    </div>
+                    <button type="button" class="btn-action" onclick="ejecutarAgregarAlumnoSeccion(${idx})" style="white-space:nowrap;">Agregar</button>
+                </div>`).join('');
+        }
+
+        async function ejecutarAgregarAlumnoSeccion(indice) {
+            const alumno  = _asResultadosActuales[indice];
+            if (!alumno) return;
+            const nuevoGrado   = document.getElementById('grado-select').value.trim();
+            const nuevaSeccion = document.getElementById('seccion-select').value.trim();
+            const btn = document.querySelector(`#as-resultados button[onclick="ejecutarAgregarAlumnoSeccion(${indice})"]`);
+            if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify({
+                        tipo_post: 'actualizar_alumno',
+                        nie: alumno.nie,
+                        nombre: alumno.nombre,
+                        grado: nuevoGrado,
+                        seccion: nuevaSeccion
+                    })
+                });
+                // Actualizar en memoria local para reflejar el cambio al instante
+                const local = (baseDatosAlumnos || []).find(a => normalizarTexto(a.nie) === normalizarTexto(alumno.nie));
+                if (local) { local.grado = nuevoGrado; local.seccion = nuevaSeccion; }
+            } catch(e) {
+                console.warn('Error al mover alumno:', e);
+            }
+            cerrarModal('modal-agregar-seccion');
+            await cargarAlumnos();
+        }
+        // ─────────────────────────────────────────────────────────────────
+
         function toggleFila(event, index) {
             // Evitar que el doble clic dispare el toggle
             if (event.detail > 1) return;
@@ -4992,15 +5092,14 @@
 
             let mapa = {};
 
-            // ── Leer desde Firestore primero (rápido, misma fuente que auto-portal) ──
-            const hoy = (function() {
-                const n = new Date();
-                return String(n.getDate()).padStart(2,'0') + '_' + String(n.getMonth()+1).padStart(2,'0') + '_' + n.getFullYear();
-            })();
-            let snapTotal = 0;
+            // Leer desde Firestore por NIE (no por grado/seccion para evitar mismatch del signo °)
             try {
                 if (window.firebase && firebase.apps && firebase.apps.length) {
                     const db  = firebase.firestore();
+                    const hoy = (function() {
+                        const n = new Date();
+                        return String(n.getDate()).padStart(2,'0') + '_' + String(n.getMonth()+1).padStart(2,'0') + '_' + n.getFullYear();
+                    })();
                     const niesBtn = {};
                     (alumnosFiltrados || []).forEach(a => {
                         if (a.nie) niesBtn[String(a.nie).trim()] = true;
@@ -5008,17 +5107,15 @@
                     const snap = await db.collection('asistencia_alumnos_inmu')
                         .where('fecha_key', '==', hoy)
                         .get();
-                    snapTotal = snap.size;
                     snap.forEach(doc => {
                         const d = doc.data();
                         const nie = String(d.nie || '').trim();
                         if (nie && niesBtn[nie]) mapa[nie] = { estado: d.estado || 'presente', hora: d.hora || '' };
                     });
-                    console.log('[Marcar Portal] Firestore:', Object.keys(mapa).length, 'coinciden de', snap.size, 'docs totales para fecha', hoy);
+                    console.log('[Marcar Portal] Firestore:', Object.keys(mapa).length, 'registros');
                 }
             } catch(fbErr) {
                 console.warn('[Marcar Portal] Firestore falló, usando GAS:', fbErr);
-                // Fallback al GAS
                 try {
                     const url = SCRIPT_URL + '?tipo=asistencia_diaria_grado&grado=' + encodeURIComponent(grado) + '&seccion=' + encodeURIComponent(seccion);
                     mapa = await gasGet(url, 15000) || {};
@@ -5029,10 +5126,8 @@
                 }
             }
 
-            // Guardar mapa para el PDF y para el auto-portal (evita conflicto de fuentes)
+            // Guardar mapa para el PDF
             window._mapaPortalActual = mapa;
-            // Pintar usando la misma función del auto-portal para consistencia
-            _pintarPortalAutoUI(mapa);
 
             let marcados = 0, yaEstaban = 0;
             alumnosFiltrados.forEach((alumno, index) => {
@@ -5042,48 +5137,36 @@
 
                 if (info) {
                     const hora = info.hora || '';
-                    const esPermiso = info.estado === 'permiso';
-                    // Actualizar columna Portal con estilo consistente
+                    // Actualizar columna Portal
                     if (portalDiv) {
-                        if (esPermiso) {
-                            portalDiv.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#92400e;background:#fef3c7;';
-                            portalDiv.innerHTML = `⚠️ Permiso${hora ? '<br><small style="font-weight:400">' + hora + '</small>' : ''}`;
-                        } else {
-                            portalDiv.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#166534;background:#dcfce7;';
-                            portalDiv.innerHTML = `✅ Marcó${hora ? '<br><small style="font-weight:400">' + hora + '</small>' : ''}`;
-                        }
+                        portalDiv.innerHTML = `<span style="color:#16a34a;">✅ Marcó</span><br><span style="color:#6b7280;font-size:10px;">${hora}</span>`;
                     }
-                    // Buscar checkbox por índice real (indexReal = index cuando no hay paginación)
-                    // Buscar también por id de fila para mayor seguridad
-                    const rowEl = document.getElementById(`row-${index}`);
+                    // Auto-marcar checkbox si no está ya marcado
                     const chk = document.getElementById(`chk-${index}`);
                     if (chk && !chk.checked && (!chk.dataset.estado || chk.dataset.estado === 'ausente')) {
                         chk.checked = true;
-                        chk.dataset.estado = esPermiso ? 'permiso' : 'presente';
-                        // Actualizar fila visualmente (div.student-row, no tr)
-                        const row = chk.closest('.student-row') || rowEl;
-                        if (row) { row.classList.remove('ausente'); row.classList.add(esPermiso ? 'permiso' : 'presente'); }
+                        chk.dataset.estado = 'presente';
+                        // Actualizar fila visualmente
+                        const row = chk.closest('tr');
+                        if (row) { row.classList.remove('ausente'); row.classList.add('presente'); }
                         marcados++;
                     } else {
                         yaEstaban++;
                     }
                 } else {
-                    if (portalDiv && (portalDiv.innerHTML.includes('✅') || portalDiv.innerHTML.includes('⚠️'))) {
+                    if (portalDiv && portalDiv.innerHTML.includes('✅')) {
                         // ya tenía la marca, no borrar
                     } else if (portalDiv) {
-                        portalDiv.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#991b1b;background:#fee2e2;';
-                        portalDiv.textContent = '🔴 No marcó';
+                        portalDiv.innerHTML = `<span style="color:#ef4444;">● No marcó</span>`;
                     }
                 }
             });
 
             const total = Object.keys(mapa).length;
-            if (snapTotal > 0 && total === 0) {
-                mostrarNotificacion(`📡 Firebase tiene ${snapTotal} registros hoy pero ninguno coincide con los NIEs de esta lista. Verifica que el grado y sección sean exactamente iguales.`, 'warning', 7000);
-            } else if (total === 0) {
-                mostrarNotificacion('📡 Sin registros en portal hoy. (Fecha buscada: ' + hoy + ')', 'info', 5000);
+            if (total === 0) {
+                mostrarNotificacion('📡 Sin registros en portal hoy.', 'info', 3000);
             } else {
-                mostrarNotificacion(`✅ ${marcados} alumno(s) marcado(s) desde portal. ${yaEstaban} ya estaban. (${total} coincidencias en Firebase)`, 'success', 4000);
+                mostrarNotificacion(`✅ ${marcados} alumno(s) marcado(s) desde portal. ${yaEstaban} ya estaban.`, 'success', 4000);
             }
 
             if (btn) { btn.textContent = '✅ Marcar desde Portal'; btn.style.opacity = '1'; btn.disabled = false; }
@@ -7588,10 +7671,56 @@
         }
 
         async function guardarAlumno() {
-            const n = { tipo_post: "alumno", grado: document.getElementById('grado-select').value, seccion: document.getElementById('seccion-select').value, nombre: document.getElementById('new-nombre').value, sexo: document.getElementById('new-sexo').value, nie: document.getElementById('new-nie').value, telefono: document.getElementById('new-telefono').value };
-            if (!n.nombre || !n.grado) return alert("Faltan datos");
-            await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(n) });
-            cerrarModal('modal-alumno'); setTimeout(inicializarBaseDatos, 1000);
+            // Tomar grado/seccion del modal si están llenos, si no del selector global
+            const gradoModal   = (document.getElementById('new-grado-modal')?.value   || '').trim();
+            const seccionModal = (document.getElementById('new-seccion-modal')?.value || '').trim();
+            const n = {
+                tipo_post: "alumno",
+                grado:    gradoModal   || document.getElementById('grado-select').value,
+                seccion:  seccionModal || document.getElementById('seccion-select').value,
+                nombre:   document.getElementById('new-nombre').value.trim(),
+                sexo:     document.getElementById('new-sexo').value,
+                nie:      document.getElementById('new-nie').value.trim(),
+                telefono: document.getElementById('new-telefono').value.trim()
+            };
+            if (!n.nombre) return alert("Ingresa el nombre del alumno.");
+            if (!n.grado)  return alert("Selecciona un grado.");
+            if (!n.nie)    return alert("Ingresa el NIE.");
+
+            // Guardar en Firebase
+            try {
+                if (window.firebase && firebase.apps && firebase.apps.length) {
+                    await firebase.firestore().collection('alumnos_inmu').doc(n.nie).set({
+                        nie: n.nie, nombre: n.nombre, grado: n.grado,
+                        seccion: n.seccion, sexo: n.sexo, telefono: n.telefono
+                    }, { merge: true });
+                }
+            } catch(e) { console.warn('[guardarAlumno] Firebase:', e); }
+
+            // Agregar a memoria local
+            if (window.baseDatosAlumnos) {
+                const idx = window.baseDatosAlumnos.findIndex(a => a.nie === n.nie);
+                if (idx >= 0) window.baseDatosAlumnos[idx] = { ...window.baseDatosAlumnos[idx], ...n };
+                else window.baseDatosAlumnos.push(n);
+            }
+
+            // Guardar en GAS como respaldo
+            fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(n) }).catch(() => {});
+
+            mostrarNotificacion('Alumno guardado: ' + n.nombre, 'success', 4000);
+            cerrarModal('modal-alumno');
+
+            // Limpiar campos
+            ['new-nombre','new-nie','new-telefono'].forEach(id => {
+                const el = document.getElementById(id); if (el) el.value = '';
+            });
+            const gm = document.getElementById('new-grado-modal');   if (gm) gm.value = '';
+            const sm = document.getElementById('new-seccion-modal'); if (sm) sm.value = '';
+
+            // Recargar lista si el grado coincide con el actual
+            const gradoActual = document.getElementById('grado-select')?.value;
+            const secActual   = document.getElementById('seccion-select')?.value;
+            if (gradoActual && secActual && typeof cargarAlumnos === 'function') cargarAlumnos();
         }
 
         async function cerrarSesion() {
@@ -8636,16 +8765,38 @@
             if (!confirm('Eliminar "' + nombre + '" de la lista de presencia?')) return;
             // Eliminar de docentesStatus en memoria
             delete docentesStatus[nombre];
-            // Eliminar de Firebase
+            // Eliminar de Firebase — buscar por clave normalizada Y por campo docente
             try {
                 if (window.firebase && firebase.apps && firebase.apps.length) {
+                    const db = firebase.firestore();
+                    const col = db.collection('presencia_docentes_inmu');
+                    // 1. Intentar borrar por clave normalizada
                     const key = nombre.trim().toLowerCase()
                         .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
                         .replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
-                    await firebase.firestore().collection('presencia_docentes_inmu').doc(key).delete();
-                    mostrarNotificacion('Entrada eliminada de Firebase.', 'success', 3000);
+                    try { await col.doc(key).delete(); } catch(_) {}
+                    // 2. Buscar por campo docente (por si la clave es diferente)
+                    const snap = await col.where('docente','==', nombre).get();
+                    const batch = db.batch();
+                    snap.forEach(doc => batch.delete(doc.ref));
+                    if (!snap.empty) await batch.commit();
+                    // 3. Buscar docs donde el id contiene el nombre normalizado
+                    const snapAll = await col.get();
+                    const batch2 = db.batch();
+                    let extra = 0;
+                    snapAll.forEach(doc => {
+                        const d = doc.data();
+                        if ((d.docente||'').toLowerCase() === nombre.toLowerCase()) {
+                            batch2.delete(doc.ref); extra++;
+                        }
+                    });
+                    if (extra > 0) await batch2.commit();
+                    mostrarNotificacion('Eliminado: ' + nombre, 'success', 3000);
                 }
-            } catch(e) { console.warn('Error eliminando presencia:', e); }
+            } catch(e) {
+                console.warn('Error eliminando presencia:', e);
+                mostrarNotificacion('Error al eliminar. Ver consola.', 'error', 3000);
+            }
             actualizarListaStatus();
         }
 
@@ -21918,6 +22069,18 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
 
             if (cont) cont.style.display = mostrar ? 'flex' : 'none';
 
+            // Mostrar "Añadir Alumno" y "Quitar Alumno" cuando hay grado/sección normal seleccionado
+            const btnAgregar = document.getElementById('btn-agregar-alumno-seccion');
+            const btnQuitar  = document.getElementById('btn-quitar-alumno-seccion');
+            if (btnAgregar || btnQuitar) {
+                const gNorm = normalizarTexto(grado);
+                const esDiReccion  = gNorm === 'direccion' || gNorm === 'dirección';
+                const esDiRefuerzo = gNorm === 'di refuerzo';
+                const visible = (grado && seccion && !esDiReccion && !esDiRefuerzo) ? '' : 'none';
+                if (btnAgregar) btnAgregar.style.display = visible;
+                if (btnQuitar)  btnQuitar.style.display  = visible;
+            }
+
             if (!mostrar) {
                 listaContraida = false;
                 const lista = document.getElementById('tabla-alumnos');
@@ -21971,18 +22134,16 @@ async function abrirModalAsistenciaPortalHoy() {
   await cargarPortalAlumnosHoy();
 }
 
-// Almacena todos los registros del portal para filtrado local
-window._portalHoyRegistrosTodos = [];
-
 async function cargarPortalAlumnosHoy() {
-  var gradoFiltro   = (document.getElementById('portal-hoy-grado')?.value   || '').trim();
-  var seccionFiltro = (document.getElementById('portal-hoy-seccion')?.value || '').trim();
-  var listaEl   = document.getElementById('portal-hoy-lista');
-  var resumenEl = document.getElementById('portal-hoy-resumen');
+  const gradoFiltro   = (document.getElementById('portal-hoy-grado')?.value   || '').trim();
+  const seccionFiltro = (document.getElementById('portal-hoy-seccion')?.value || '').trim();
+  const listaEl   = document.getElementById('portal-hoy-lista');
+  const resumenEl = document.getElementById('portal-hoy-resumen');
 
-  listaEl.innerHTML = '<p style="text-align:center;color:var(--blue-600);padding:20px;">⏳ Cargando...</p>';
+  listaEl.innerHTML = '<p style="text-align:center;color:var(--blue-600);padding:20px;">Cargando...</p>';
   resumenEl.style.display = 'none';
 
+  // Calcular fecha key de hoy
   var ahora = new Date();
   var hoyKey = String(ahora.getDate()).padStart(2,'0') + '_' +
                String(ahora.getMonth()+1).padStart(2,'0') + '_' + ahora.getFullYear();
@@ -21990,208 +22151,154 @@ async function cargarPortalAlumnosHoy() {
 
   try {
     if (!window.firebase || !firebase.apps || !firebase.apps.length) {
-      listaEl.innerHTML = '<p style="text-align:center;color:red;">Firebase no disponible.</p>'; return;
+      listaEl.innerHTML = '<p style="text-align:center;color:red;">Firebase no disponible.</p>';
+      return;
     }
     var db = firebase.firestore();
     var query = db.collection('asistencia_alumnos_inmu').where('fecha_key', '==', hoyKey);
     if (gradoFiltro)   query = query.where('grado',   '==', gradoFiltro);
     if (seccionFiltro) query = query.where('seccion', '==', seccionFiltro);
 
+    // Sin orderBy para no requerir índice compuesto en Firestore
     var snap = await query.get();
     var registros = [];
     snap.forEach(function(doc) { registros.push(doc.data()); });
-    window._portalHoyRegistrosTodos = registros;
-    window._portalHoyFecha = hoyTexto;
-    window._portalHoyKey   = hoyKey;
-    _renderPortalHoy();
-  } catch(e) {
-    console.warn('[PortalHoy]', e);
-    document.getElementById('portal-hoy-lista').innerHTML =
-      '<p style="text-align:center;color:red;padding:20px;">Error: ' + e.message + '</p>';
-  }
-}
 
-function _renderPortalHoy() {
-  var listaEl   = document.getElementById('portal-hoy-lista');
-  var resumenEl = document.getElementById('portal-hoy-resumen');
-  var registros = window._portalHoyRegistrosTodos || [];
-  var hoyTexto  = window._portalHoyFecha || '';
-  var gradoFiltro   = (document.getElementById('portal-hoy-grado')?.value   || '').trim();
-  var seccionFiltro = (document.getElementById('portal-hoy-seccion')?.value || '').trim();
+    if (!registros.length) {
+      listaEl.innerHTML = '<p style="text-align:center;color:var(--gray-500);padding:20px;">No hay registros de portal para hoy' +
+        (gradoFiltro ? ' en ' + gradoFiltro + ' ' + seccionFiltro : '') + '.</p>';
+      return;
+    }
 
-  // Filtro sexo
-  var sexoFiltro = (document.getElementById('portal-hoy-sexo')?.value || '').trim();
-  // Filtro estado
-  var estadoFiltro = (document.getElementById('portal-hoy-estado')?.value || '').trim();
+    // Agrupar por grado+seccion
+    var grupos = {};
+    registros.forEach(function(r) {
+      var k = (r.grado || '') + ' ' + (r.seccion || '');
+      if (!grupos[k]) grupos[k] = [];
+      grupos[k].push(r);
+    });
 
-  var filtrados = registros.filter(function(r) {
-    if (sexoFiltro   && (r.sexo   || '').toUpperCase() !== sexoFiltro.toUpperCase()) return false;
-    if (estadoFiltro === 'presente' && r.estado === 'permiso') return false;
-    if (estadoFiltro === 'permiso'  && r.estado !== 'permiso') return false;
-    return true;
-  });
+    var presentes = registros.filter(function(r){ return r.estado !== 'permiso'; }).length;
+    var permisos  = registros.filter(function(r){ return r.estado === 'permiso';  }).length;
 
-  if (!filtrados.length) {
-    resumenEl.style.display = 'none';
-    listaEl.innerHTML = '<p style="text-align:center;color:var(--gray-500);padding:20px;">No hay registros' +
-      (registros.length ? ' con ese filtro' : ' de portal para hoy' +
-        (gradoFiltro ? ' en ' + gradoFiltro + ' ' + seccionFiltro : '')) + '.</p>';
-    return;
-  }
+    resumenEl.textContent = '📅 ' + hoyTexto + ' — Total: ' + registros.length +
+      ' marcaron (' + presentes + ' presentes, ' + permisos + ' permisos)';
+    resumenEl.style.display = 'block';
 
-  var nPresentes = filtrados.filter(function(r){ return r.estado !== 'permiso'; }).length;
-  var nPermisos  = filtrados.filter(function(r){ return r.estado === 'permiso';  }).length;
-  var nM = filtrados.filter(function(r){ return (r.sexo||'').toUpperCase()==='M'; }).length;
-  var nF = filtrados.filter(function(r){ return (r.sexo||'').toUpperCase()==='F'; }).length;
-
-  resumenEl.innerHTML = '📅 ' + hoyTexto + ' &nbsp;|&nbsp; Total: <strong>' + filtrados.length +
-    '</strong> &nbsp;✅ ' + nPresentes + ' presentes &nbsp;⚠️ ' + nPermisos + ' permisos' +
-    ' &nbsp;|&nbsp; 👦 ' + nM + ' M &nbsp; 👧 ' + nF + ' F';
-  resumenEl.style.display = 'block';
-
-  // Agrupar por grado+seccion
-  var grupos = {};
-  filtrados.forEach(function(r) {
-    var k = (r.grado || '') + ' ' + (r.seccion || '');
-    if (!grupos[k]) grupos[k] = [];
-    grupos[k].push(r);
-  });
-
-  var html = '';
-  Object.keys(grupos).sort().forEach(function(key) {
-    var lista = grupos[key];
-    var nPG = lista.filter(function(r){ return r.estado !== 'permiso'; }).length;
-    var nPerm = lista.filter(function(r){ return r.estado === 'permiso'; }).length;
-    html += '<div style="background:#f3e8ff;padding:7px 12px;border-radius:6px;margin:6px 0 2px;font-weight:700;color:#7c3aed;font-size:13px;">📚 ' +
-      key + ' — ' + lista.length + ' registros (' + nPG + ' presentes, ' + nPerm + ' permisos)</div>';
-    lista.sort(function(a,b){ return (a.nombre||'').localeCompare(b.nombre||''); })
-      .forEach(function(r, i) {
-        var esP = r.estado === 'permiso';
-        var estadoColor = esP ? '#92400e' : '#166534';
-        var estadoBg    = esP ? '#fef3c7' : '#dcfce7';
-        var estadoIcon  = esP ? '⚠️' : '✅';
-        var sexoBadge = (r.sexo||'').toUpperCase() === 'M'
-          ? '<span style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;margin-right:4px;">M</span>'
-          : (r.sexo||'').toUpperCase() === 'F'
-            ? '<span style="background:#fce7f3;color:#9d174d;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;margin-right:4px;">F</span>'
-            : '';
+    var html = '';
+    Object.keys(grupos).sort().forEach(function(key) {
+      var lista = grupos[key];
+      html += '<div style="background:#f3e8ff;padding:7px 12px;border-radius:6px;margin-bottom:4px;font-weight:700;color:#7c3aed;font-size:13px;">📚 ' +
+        key + ' (' + lista.length + ' marcaron)</div>';
+      lista.forEach(function(r, i) {
+        var estadoColor = r.estado === 'permiso' ? '#92400e' : '#166534';
+        var estadoBg    = r.estado === 'permiso' ? '#fef3c7' : '#dcfce7';
+        var estadoIcon  = r.estado === 'permiso' ? '⚠️' : '✅';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 12px;border-bottom:1px solid #f3e8ff;font-size:12px;">' +
-          '<span style="flex:1;">' + (i+1) + '. ' + sexoBadge + '<strong>' + (r.nombre||'') + '</strong></span>' +
-          '<span style="color:var(--gray-500);margin:0 6px;font-size:11px;">NIE: ' + (r.nie||'') + '</span>' +
-          '<span style="color:' + estadoColor + ';background:' + estadoBg + ';padding:2px 7px;border-radius:5px;font-weight:700;font-size:11px;">' +
-            estadoIcon + ' ' + (esP ? 'permiso' : 'presente') + '</span>' +
-          '<span style="color:var(--gray-400);margin-left:6px;font-size:11px;">' + (r.hora||'') + '</span>' +
+          '<span style="flex:1;">' + (i+1) + '. <strong>' + (r.nombre||'') + '</strong></span>' +
+          '<span style="color:var(--gray-500);margin:0 10px;">NIE: ' + (r.nie||'') + '</span>' +
+          '<span style="color:' + estadoColor + ';background:' + estadoBg + ';padding:2px 8px;border-radius:5px;font-weight:700;">' +
+            estadoIcon + ' ' + (r.estado||'presente') + '</span>' +
+          '<span style="color:var(--gray-400);margin-left:8px;font-size:11px;">' + (r.hora||'') + '</span>' +
           '</div>';
       });
-  });
-  listaEl.innerHTML = html;
+    });
+    listaEl.innerHTML = html;
+
+  } catch(e) {
+    console.warn('[PortalHoy]', e);
+    listaEl.innerHTML = '<p style="text-align:center;color:red;padding:20px;">Error: ' + e.message + '</p>';
+  }
 }
 
-async function exportarPDFPortalHoy() {
-  var registros = window._portalHoyRegistrosTodos || [];
-  var hoyTexto  = window._portalHoyFecha || new Date().toLocaleDateString('es-ES');
-  var gradoFiltro   = (document.getElementById('portal-hoy-grado')?.value   || '').trim();
-  var seccionFiltro = (document.getElementById('portal-hoy-seccion')?.value || '').trim();
-  var sexoFiltro    = (document.getElementById('portal-hoy-sexo')?.value    || '').trim();
-  var estadoFiltro  = (document.getElementById('portal-hoy-estado')?.value  || '').trim();
-
-  var filtrados = registros.filter(function(r) {
-    if (sexoFiltro   && (r.sexo||'').toUpperCase() !== sexoFiltro.toUpperCase()) return false;
-    if (estadoFiltro === 'presente' && r.estado === 'permiso') return false;
-    if (estadoFiltro === 'permiso'  && r.estado !== 'permiso') return false;
-    return true;
-  });
-
-  if (!filtrados.length) { mostrarNotificacion('No hay registros para exportar.', 'warning'); return; }
-
-  var nPresentes = filtrados.filter(function(r){ return r.estado !== 'permiso'; }).length;
-  var nPermisos  = filtrados.filter(function(r){ return r.estado === 'permiso';  }).length;
-  var nM = filtrados.filter(function(r){ return (r.sexo||'').toUpperCase()==='M'; }).length;
-  var nF = filtrados.filter(function(r){ return (r.sexo||'').toUpperCase()==='F'; }).length;
-
-  // Agrupar
-  var grupos = {};
-  filtrados.forEach(function(r) {
-    var k = (r.grado||'') + ' ' + (r.seccion||'');
-    if (!grupos[k]) grupos[k] = [];
-    grupos[k].push(r);
-  });
-
-  var filas = '';
-  Object.keys(grupos).sort().forEach(function(key) {
-    var lista = grupos[key];
-    filas += '<tr style="background:#ede9fe;"><td colspan="6" style="padding:7px 10px;font-weight:700;color:#6d28d9;font-size:13px;">📚 ' + key + ' (' + lista.length + ')</td></tr>';
-    lista.sort(function(a,b){ return (a.nombre||'').localeCompare(b.nombre||''); })
-      .forEach(function(r, i) {
-        var esP = r.estado === 'permiso';
-        filas += '<tr style="' + (i%2===1?'background:#faf5ff;':'') + '">' +
-          '<td style="border:1px solid #ddd;padding:5px;text-align:center;">' + (i+1) + '</td>' +
-          '<td style="border:1px solid #ddd;padding:5px;">' + (r.nombre||'') + '</td>' +
-          '<td style="border:1px solid #ddd;padding:5px;text-align:center;">' + (r.sexo||'-') + '</td>' +
-          '<td style="border:1px solid #ddd;padding:5px;text-align:center;">' + (r.nie||'-') + '</td>' +
-          '<td style="border:1px solid #ddd;padding:5px;text-align:center;color:' + (esP?'#92400e':'#166534') + ';font-weight:700;">' +
-            (esP ? '⚠️ Permiso' : '✅ Presente') + '</td>' +
-          '<td style="border:1px solid #ddd;padding:5px;text-align:center;">' + (r.hora||'-') + '</td>' +
-          '</tr>';
-      });
-  });
-
-  var tituloFiltro = [gradoFiltro, seccionFiltro, sexoFiltro ? 'Sexo: '+sexoFiltro : '', estadoFiltro ? 'Estado: '+estadoFiltro : ''].filter(Boolean).join(' · ') || 'Todos los grados';
-
-  var html = `<div style="font-family:Arial,sans-serif;padding:15px;max-width:750px;margin:auto;">
-    <h2 style="color:#6d28d9;text-align:center;margin-bottom:4px;">Instituto Nacional de Mercedes Umaña</h2>
-    <h3 style="text-align:center;margin:0 0 4px;font-size:15px;">Portal de Alumnos — Asistencia del Día</h3>
-    <p style="text-align:center;color:#666;font-size:12px;margin:0 0 10px;">${hoyTexto}</p>
-    <p style="text-align:center;font-size:12px;color:#6d28d9;margin:0 0 12px;"><strong>Filtro:</strong> ${tituloFiltro}</p>
-    <div style="display:flex;gap:14px;justify-content:center;margin-bottom:14px;flex-wrap:wrap;">
-      <span style="background:#dcfce7;color:#166534;padding:4px 12px;border-radius:8px;font-weight:700;font-size:13px;">✅ Presentes: ${nPresentes}</span>
-      <span style="background:#fef3c7;color:#92400e;padding:4px 12px;border-radius:8px;font-weight:700;font-size:13px;">⚠️ Permisos: ${nPermisos}</span>
-      <span style="background:#dbeafe;color:#1e40af;padding:4px 12px;border-radius:8px;font-weight:700;font-size:13px;">👦 M: ${nM}</span>
-      <span style="background:#fce7f3;color:#9d174d;padding:4px 12px;border-radius:8px;font-weight:700;font-size:13px;">👧 F: ${nF}</span>
-      <span style="background:#f3e8ff;color:#6d28d9;padding:4px 12px;border-radius:8px;font-weight:700;font-size:13px;">Total: ${filtrados.length}</span>
-    </div>
-    <table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <thead><tr style="background:#6d28d9;color:white;">
-        <th style="border:1px solid #ddd;padding:6px;">#</th>
-        <th style="border:1px solid #ddd;padding:6px;text-align:left;">Nombre</th>
-        <th style="border:1px solid #ddd;padding:6px;">Sexo</th>
-        <th style="border:1px solid #ddd;padding:6px;">NIE</th>
-        <th style="border:1px solid #ddd;padding:6px;">Estado</th>
-        <th style="border:1px solid #ddd;padding:6px;">Hora</th>
-      </tr></thead>
-      <tbody>${filas}</tbody>
-    </table>
-    <p style="text-align:right;font-size:10px;color:#999;margin-top:10px;">Generado: ${new Date().toLocaleString('es-ES')}</p>
-  </div>`;
-
-  if (typeof html2pdf === 'undefined') { mostrarNotificacion('html2pdf no disponible aún.', 'warning'); return; }
-
-  var btn = document.getElementById('btn-pdf-portal-hoy');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generando...'; }
-
-  var container = document.createElement('div');
-  container.innerHTML = html;
-  document.body.appendChild(container);
-
-  var ahora = new Date();
-  var nombreArchivo = 'Portal_Alumnos_' + String(ahora.getDate()).padStart(2,'0') + '-' +
-    String(ahora.getMonth()+1).padStart(2,'0') + '-' + ahora.getFullYear() +
-    (gradoFiltro ? '_' + gradoFiltro.replace(/\s+/g,'_') : '') + '.pdf';
-
-  try {
-    await html2pdf().set({
-      margin: 10, filename: nombreArchivo,
-      image: { type: 'jpeg', quality: 0.9 },
-      html2canvas: { scale: 1.4, useCORS: true },
-      jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
-    }).from(container).save();
-    mostrarNotificacion('✅ PDF generado correctamente.', 'success', 3000);
-  } catch(e) {
-    alert('Error al generar PDF: ' + e.message);
-  } finally {
-    document.body.removeChild(container);
-    if (btn) { btn.disabled = false; btn.textContent = '📥 Exportar PDF'; }
+/* ── Asignar Alumno a Grado/Sección ─────────────────────────────────── */
+function abrirAsignarAlumnoGrado() {
+  if (!window.usuarioAdmin) {
+    var p = prompt('Contrasena de administrador:');
+    if (p !== PASS_ADMIN) { alert('Incorrecta.'); return; }
   }
+  document.getElementById('asignar-alu-buscar').value = '';
+  document.getElementById('asignar-alu-resultados').style.display = 'none';
+  document.getElementById('asignar-alu-form').style.display = 'none';
+  document.getElementById('modal-asignar-alumno-grado').classList.add('open');
+}
+
+function buscarAlumnoAsignar() {
+  var q = (document.getElementById('asignar-alu-buscar').value || '').trim().toLowerCase();
+  var resCont = document.getElementById('asignar-alu-resultados');
+  if (!q || q.length < 2) { resCont.style.display = 'none'; return; }
+  function norm(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+  var resultados = (window.baseDatosAlumnos||[]).filter(function(a){
+    return norm(a.nombre).includes(norm(q)) || String(a.nie||'').includes(q);
+  }).slice(0,12);
+  if (!resultados.length) {
+    resCont.innerHTML = '<p style="padding:8px;color:var(--gray-500);font-size:12px;text-align:center;">Sin resultados.</p>';
+    resCont.style.display = 'block'; return;
+  }
+  var html = '';
+  resultados.forEach(function(a) {
+    var globalIdx = (window.baseDatosAlumnos||[]).indexOf(a);
+    html += '<div onclick="seleccionarAlumnoAsignar(' + globalIdx + ')"' +
+      ' style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #fed7aa;font-size:12px;background:white;"' +
+      ' onmouseover="this.style.background=\x27#fff7ed\x27" onmouseout="this.style.background=\x27white\x27">' +
+      '<strong style="color:#c2410c;">' + (a.nombre||'') + '</strong>' +
+      ' <span style="color:var(--gray-500);">NIE: ' + (a.nie||'') + ' | ' + (a.grado||'') + ' ' + (a.seccion||'') + '</span>' +
+      '</div>';
+  });
+  resCont.innerHTML = html;
+  resCont.style.display = 'block';
+}
+
+function seleccionarAlumnoAsignar(idx) {
+  var a = (window.baseDatosAlumnos||[])[idx];
+  if (!a) return;
+  document.getElementById('asignar-alu-nie').value = a.nie || '';
+  document.getElementById('asignar-alu-info').textContent = a.nombre || '';
+  document.getElementById('asignar-alu-grado-actual').textContent =
+    'Grado actual: ' + (a.grado||'') + ' ' + (a.seccion||'') + ' | NIE: ' + (a.nie||'');
+  document.getElementById('asignar-nuevo-grado').value   = a.grado   || '';
+  document.getElementById('asignar-nueva-seccion').value = a.seccion || '';
+  document.getElementById('asignar-alu-resultados').style.display = 'none';
+  document.getElementById('asignar-alu-form').style.display = 'block';
+}
+
+async function confirmarAsignarAlumnoGrado() {
+  var nie      = document.getElementById('asignar-alu-nie').value.trim();
+  var grado    = document.getElementById('asignar-nuevo-grado').value;
+  var seccion  = document.getElementById('asignar-nueva-seccion').value;
+  var nombre   = document.getElementById('asignar-alu-info').textContent;
+  if (!nie)    { alert('Alumno no seleccionado.'); return; }
+  if (!grado)  { alert('Selecciona un grado.'); return; }
+  if (!seccion){ alert('Selecciona una seccion.'); return; }
+
+  // Actualizar en memoria
+  var arr = window.baseDatosAlumnos || [];
+  var idx = arr.findIndex(function(a){ return a.nie === nie; });
+  if (idx >= 0) { arr[idx].grado = grado; arr[idx].seccion = seccion; }
+
+  // Firebase
+  try {
+    if (window.firebase && firebase.apps && firebase.apps.length) {
+      await firebase.firestore().collection('alumnos_inmu').doc(nie)
+        .set({ grado: grado, seccion: seccion }, { merge: true });
+    }
+  } catch(e) { console.warn('[AsignarGrado] Firebase:', e); }
+
+  // GAS
+  try {
+    fetch(SCRIPT_URL, { method:'POST', mode:'no-cors',
+      body: JSON.stringify({ tipo_post:'actualizar_alumno', nie:nie, nombre:nombre, grado:grado, seccion:seccion }) });
+  } catch(e) {}
+
+  mostrarNotificacion(nombre + ' asignado a ' + grado + ' ' + seccion, 'success', 4000);
+  document.getElementById('asignar-alu-form').style.display = 'none';
+  document.getElementById('asignar-alu-buscar').value = '';
+  cerrarModal('modal-asignar-alumno-grado');
+
+  // Recargar lista si aplica
+  var g = document.getElementById('grado-select')?.value;
+  var s = document.getElementById('seccion-select')?.value;
+  if (g && s && typeof cargarAlumnos === 'function') cargarAlumnos();
 }
 
 /* =====================================================================
@@ -22514,16 +22621,16 @@ async function eliminarAlumnoEditor() {
      MODAL VER PORTAL ALUMNOS HOY
 ═══════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-portal-alumnos-hoy">
-  <div class="modal" style="max-width:650px;width:min(96vw,650px);max-height:90vh;overflow-y:auto;">
+  <div class="modal" style="max-width:600px;width:min(96vw,600px);max-height:90vh;overflow-y:auto;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
       <h3 style="color:#7c3aed;margin:0;">👁️ Alumnos que marcaron hoy en el Portal</h3>
       <button onclick="cerrarModal('modal-portal-alumnos-hoy')" style="background:none;border:none;font-size:20px;cursor:pointer;">✕</button>
     </div>
-    <!-- Filtros fila 1: Grado + Sección + Actualizar -->
-    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:end;">
+    <!-- Filtros -->
+    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:12px;align-items:end;">
       <div>
         <label style="font-size:11px;font-weight:700;color:#7c3aed;display:block;margin-bottom:3px;">Grado</label>
-        <select id="portal-hoy-grado" onchange="cargarPortalAlumnosHoy()" style="width:100%;padding:8px;border-radius:7px;border:1px solid #e9d5ff;">
+        <select id="portal-hoy-grado" style="width:100%;padding:8px;border-radius:7px;border:1px solid #e9d5ff;">
           <option value="">— Todos —</option>
           <option>1 General</option><option>1 Adm. Contable</option><option>1 S. Electricos</option>
           <option>2 General</option><option>2 Adm. Contable</option><option>2 Sist. Electricos</option>
@@ -22532,38 +22639,73 @@ async function eliminarAlumnoEditor() {
       </div>
       <div>
         <label style="font-size:11px;font-weight:700;color:#7c3aed;display:block;margin-bottom:3px;">Sección</label>
-        <select id="portal-hoy-seccion" onchange="cargarPortalAlumnosHoy()" style="width:100%;padding:8px;border-radius:7px;border:1px solid #e9d5ff;">
+        <select id="portal-hoy-seccion" style="width:100%;padding:8px;border-radius:7px;border:1px solid #e9d5ff;">
           <option value="">— Todas —</option>
           <option>A</option><option>B</option><option>Unica</option>
         </select>
       </div>
       <button onclick="cargarPortalAlumnosHoy()" style="padding:9px 18px;border-radius:7px;border:none;background:#7c3aed;color:white;font-weight:700;cursor:pointer;white-space:nowrap;">🔄 Actualizar</button>
     </div>
-    <!-- Filtros fila 2: Sexo + Estado + PDF -->
-    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:12px;align-items:end;">
-      <div>
-        <label style="font-size:11px;font-weight:700;color:#7c3aed;display:block;margin-bottom:3px;">Sexo</label>
-        <select id="portal-hoy-sexo" onchange="_renderPortalHoy()" style="width:100%;padding:8px;border-radius:7px;border:1px solid #e9d5ff;">
-          <option value="">— Todos —</option>
-          <option value="M">Masculino (M)</option>
-          <option value="F">Femenino (F)</option>
-        </select>
-      </div>
-      <div>
-        <label style="font-size:11px;font-weight:700;color:#7c3aed;display:block;margin-bottom:3px;">Estado</label>
-        <select id="portal-hoy-estado" onchange="_renderPortalHoy()" style="width:100%;padding:8px;border-radius:7px;border:1px solid #e9d5ff;">
-          <option value="">— Todos —</option>
-          <option value="presente">✅ Solo presentes</option>
-          <option value="permiso">⚠️ Solo permisos</option>
-        </select>
-      </div>
-      <button id="btn-pdf-portal-hoy" onclick="exportarPDFPortalHoy()" style="padding:9px 14px;border-radius:7px;border:none;background:#059669;color:white;font-weight:700;cursor:pointer;white-space:nowrap;">📥 Exportar PDF</button>
-    </div>
     <!-- Resumen -->
-    <div id="portal-hoy-resumen" style="background:#f3e8ff;border-radius:8px;padding:8px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:#7c3aed;display:none;"></div>
+    <div id="portal-hoy-resumen" style="background:#f3e8ff;border-radius:8px;padding:8px 14px;margin-bottom:10px;font-size:13px;font-weight:700;color:#7c3aed;display:none;"></div>
     <!-- Lista -->
     <div id="portal-hoy-lista" style="font-size:13px;">
       <p style="text-align:center;color:var(--gray-500);padding:20px;">Selecciona un grado o presiona Actualizar para ver los datos.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL ASIGNAR ALUMNO A GRADO/SECCIÓN
+═══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-asignar-alumno-grado">
+  <div class="modal" style="max-width:500px;width:min(96vw,500px);max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <h3 style="color:#c2410c;margin:0;">📋 Asignar Alumno a Grado/Sección</h3>
+      <button onclick="cerrarModal('modal-asignar-alumno-grado')" style="background:none;border:none;font-size:20px;cursor:pointer;">✕</button>
+    </div>
+    <p style="font-size:12px;color:var(--gray-500);margin-bottom:12px;">
+      Usa esto cuando un alumno ya existe en Firebase pero está en el grado/sección incorrecto, o para agregar un alumno existente a otro grado.
+    </p>
+    <!-- Buscar alumno -->
+    <div style="margin-bottom:12px;">
+      <label style="font-size:11px;font-weight:700;color:#c2410c;display:block;margin-bottom:4px;">Buscar alumno por nombre o NIE</label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="asignar-alu-buscar" placeholder="Nombre o NIE..." style="flex:1;padding:9px;border-radius:7px;border:1px solid #fed7aa;" oninput="buscarAlumnoAsignar()">
+        <button onclick="buscarAlumnoAsignar()" style="padding:9px 14px;border-radius:7px;border:none;background:#c2410c;color:white;font-weight:700;cursor:pointer;">🔍</button>
+      </div>
+      <div id="asignar-alu-resultados" style="max-height:130px;overflow-y:auto;border:1px solid #fed7aa;border-radius:7px;margin-top:6px;display:none;background:white;"></div>
+    </div>
+    <!-- Datos del alumno seleccionado -->
+    <div id="asignar-alu-form" style="display:none;">
+      <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px;margin-bottom:12px;">
+        <div style="font-size:13px;font-weight:700;color:#c2410c;" id="asignar-alu-info"></div>
+        <div style="font-size:11px;color:var(--gray-500);margin-top:2px;" id="asignar-alu-grado-actual"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#c2410c;">Nuevo Grado</label>
+          <select id="asignar-nuevo-grado" style="width:100%;padding:9px;border-radius:7px;border:1px solid #fed7aa;margin-top:3px;">
+            <option value="">-- Grado --</option>
+            <option>1 General</option><option>1 Adm. Contable</option><option>1 S. Electricos</option>
+            <option>2 General</option><option>2 Adm. Contable</option><option>2 Sist. Electricos</option>
+            <option>3 Adm. Contable</option><option>3 Sist. Electricos</option><option>DI REFUERZO</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#c2410c;">Nueva Sección</label>
+          <select id="asignar-nueva-seccion" style="width:100%;padding:9px;border-radius:7px;border:1px solid #fed7aa;margin-top:3px;">
+            <option value="">-- Sección --</option>
+            <option>A</option><option>B</option><option>Unica</option>
+          </select>
+        </div>
+      </div>
+      <input type="hidden" id="asignar-alu-nie">
+      <div style="display:flex;gap:8px;">
+        <button onclick="confirmarAsignarAlumnoGrado()" style="flex:2;padding:11px;border-radius:8px;border:none;background:#c2410c;color:white;font-weight:700;cursor:pointer;">✅ Asignar</button>
+        <button onclick="cerrarModal('modal-asignar-alumno-grado')" style="flex:1;padding:11px;border-radius:8px;border:1px solid #ddd;background:white;font-weight:600;cursor:pointer;">Cancelar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -23287,7 +23429,7 @@ function _getFechaKeyPortal() {
 }
 
 function _pintarPortalAutoUI(mapa) {
-  (window.alumnosFiltrados || []).forEach((alumno, index) => {
+  (window.alumnosFiltrados || []).forEach(alumno => {
     const nieStr = String(alumno.nie || '').trim();
     const el = document.getElementById('asist-portal-' + nieStr);
     if (!el) return;
@@ -23300,27 +23442,6 @@ function _pintarPortalAutoUI(mapa) {
       el.innerHTML = esP
         ? `⚠️ Permiso${hora ? '<br><small style="font-weight:400">' + hora + '</small>' : ''}`
         : `✅ Marcó${hora ? '<br><small style="font-weight:400">' + hora + '</small>' : ''}`;
-
-      // ── Auto-marcar checkbox si el alumno marcó desde el portal ──────────
-      const chk = document.getElementById('chk-' + index);
-      if (chk && (!chk.dataset.estado || chk.dataset.estado === 'ausente')) {
-        // Solo actúa si el docente NO lo ha marcado manualmente antes
-        if (esP) {
-          chk.checked = false;
-          chk.dataset.estado = 'permiso';
-        } else {
-          chk.checked = true;
-          chk.dataset.estado = 'presente';
-        }
-        const row = chk.closest('.student-row') || document.getElementById('row-' + index);
-        if (row) {
-          row.classList.remove('ausente', 'permiso', 'presente');
-          row.classList.add(esP ? 'permiso' : 'presente');
-        }
-        // Actualizar contadores sin spam de guardado
-        if (typeof actualizarContadoresAsistencia === 'function') actualizarContadoresAsistencia();
-        if (typeof guardarEstadoAsistencia === 'function') guardarEstadoAsistencia();
-      }
     } else {
       el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#991b1b;background:#fee2e2;';
       el.textContent = '🔴 No marcó';
