@@ -1703,8 +1703,18 @@
                         <button class="btn-action" onclick="seleccionarArchivoLocal()" style="color:#16a34a;border-color:#86efac;background:#f0fdf4;">📂 Local</button>
                         <button id="btn-sync-asist" class="btn-action" onclick="sincronizarAsistenciaAlumnos()" style="color:#7c3aed;border-color:#c4b5fd;background:#f5f3ff;">📡 Sincronizar Asistencia</button>
                         <button id="btn-sync-marcar" class="btn-action" onclick="sincronizarYMarcarPortal()" style="color:#059669;border-color:#6ee7b7;background:#ecfdf5;">✅ Marcar desde Portal</button>
-                        <!-- CONTROLES DE LISTADO DE ALUMNOS -->
-                        <div id="controles-lista-alumnos" style="margin-top:10px; display:none; gap:8px; flex-wrap:wrap; align-items:center;">
+                    </div>
+                </div>
+                
+                <!-- BOTONES DE AÑADIR/QUITAR ALUMNO -->
+                <div style="display:flex; justify-content:center; gap:15px; margin-bottom:15px; flex-wrap:wrap; width:100%;">
+                    <button class="btn-action" onclick="pedirPasswordNuevo()" style="color:#b45309; border-color:#fcd34d; background:transparent; font-weight:bold;">➕ Añadir Alumno</button>
+                    <button class="btn-action" onclick="abrirEdicionAlumnos()" style="color:#ef4444; border-color:#fca5a5; background:transparent; font-weight:bold;">➖ Quitar Alumno</button>
+                </div>
+
+                <div class="acciones-asistencia" style="margin-bottom:15px;">
+                    <!-- CONTROLES DE LISTADO DE ALUMNOS -->
+                    <div id="controles-lista-alumnos" style="display:none; gap:8px; flex-wrap:wrap; align-items:center;">
                             <button id="btn-toggle-lista" class="btn-action" onclick="toggleLista()">
                                 📋 Contraer lista
                             </button>
@@ -4368,6 +4378,17 @@
             if (sistemaEnMantenimiento) return;
             if (window.usuarioAdmin) return document.getElementById('modal-alumno').classList.add('open');
             if (prompt("Contraseña:") === PASS_ADMIN) document.getElementById('modal-alumno').classList.add('open'); else alert("Incorrecta.");
+        }
+
+        function abrirAsignarAlumnoGrado() {
+            if (typeof abrirEdicionAlumnos === 'function') {
+                abrirEdicionAlumnos();
+                if (typeof mostrarNotificacion === 'function') {
+                    mostrarNotificacion("Usa el panel de Edición de Alumnos para cambiar de grado a un estudiante.", "info");
+                }
+            } else {
+                alert("La función de edición de alumnos no está disponible.");
+            }
         }
 
         async function inmuElegirCarpetaDescargas() {
@@ -8641,9 +8662,12 @@
             // Eliminar de Firebase
             try {
                 if (window.firebase && firebase.apps && firebase.apps.length) {
-                    const key = nombre.trim().toLowerCase()
+                    let key = nombre.trim().toLowerCase()
                         .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
                         .replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+                    if (window.docentesIds && window.docentesIds[nombre]) {
+                        key = window.docentesIds[nombre]; // Usar ID real de Firebase
+                    }
                     await firebase.firestore().collection('presencia_docentes_inmu').doc(key).delete();
                     mostrarNotificacion('Entrada eliminada de Firebase.', 'success', 3000);
                 }
