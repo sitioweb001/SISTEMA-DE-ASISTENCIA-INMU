@@ -4508,7 +4508,7 @@
                 if (!responseAlu.ok || !responseDoc.ok || !responseCatalogo.ok) throw new Error("Error");
 
                 baseDatosAlumnos = await responseAlu.json();
-                baseDatosAlumnos.sort((a, b) => a.nombre.localeCompare(b.nombre));
+                baseDatosAlumnos.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
                 cargarAlumnos();
 
                 baseDatosDocentes = await responseDoc.json();
@@ -7678,7 +7678,7 @@
                 // Guardar en Firestore directamente para mayor velocidad
                 if (window.firebase && firebase.firestore) {
                     const db = firebase.firestore();
-                    const key = n.nie || n.nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_');
+                    const key = n.nie || (n.nombre || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_');
                     await db.collection('alumnos_inmu').doc(key).set({
                         nombre: n.nombre,
                         nie: n.nie,
@@ -7688,6 +7688,12 @@
                         seccion: n.seccion,
                         actualizado: new Date().toISOString()
                     }, { merge: true });
+
+                    if (window.baseDatosAlumnos) {
+                        const idx = window.baseDatosAlumnos.findIndex(x => x.nie === n.nie || (x.nombre && n.nombre && x.nombre.toLowerCase() === n.nombre.toLowerCase()));
+                        if (idx !== -1) Object.assign(window.baseDatosAlumnos[idx], n);
+                        else window.baseDatosAlumnos.push(n);
+                    }
                 }
                 
                 // Backup a Google Sheets de fondo
@@ -7767,6 +7773,15 @@
                     seccion: seccion,
                     actualizado: new Date().toISOString()
                 }, { merge: true });
+                
+                if (window.baseDatosAlumnos) {
+                    let aluIndex = window.baseDatosAlumnos.findIndex(a => a.nie === docId || (a.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_') === docId);
+                    if (aluIndex !== -1) {
+                        window.baseDatosAlumnos[aluIndex].grado = grado;
+                        window.baseDatosAlumnos[aluIndex].seccion = seccion;
+                    }
+                }
+
                 if (typeof mostrarNotificacion === 'function') mostrarNotificacion("Alumno asignado a " + grado + " " + seccion, "success");
                 cerrarModal('modal-anadir-alumno');
                 if (typeof cargarAlumnos === 'function') cargarAlumnos();
@@ -7790,7 +7805,7 @@
             } else {
                 let html = '';
                 window.alumnosFiltrados.forEach(alumno => {
-                    const key = alumno.nie || alumno.nombre.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_');
+                    const key = alumno.nie || (alumno.nombre || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_');
                     html += `<div class="item-quitar-alumno" data-nombre="${(alumno.nombre||'').toLowerCase()}" data-nie="${alumno.nie||''}" style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
                         <div>
                             <strong>${alumno.nombre}</strong><br>
@@ -7828,6 +7843,15 @@
                     seccion: "",
                     actualizado: new Date().toISOString()
                 }, { merge: true });
+                
+                if (window.baseDatosAlumnos) {
+                    let aluIndex = window.baseDatosAlumnos.findIndex(a => a.nie === docId || (a.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_') === docId);
+                    if (aluIndex !== -1) {
+                        window.baseDatosAlumnos[aluIndex].grado = "Baja";
+                        window.baseDatosAlumnos[aluIndex].seccion = "";
+                    }
+                }
+
                 if (typeof mostrarNotificacion === 'function') mostrarNotificacion("Alumno removido del grado.", "success");
                 cerrarModal('modal-quitar-alumno');
                 if (typeof cargarAlumnos === 'function') cargarAlumnos();
@@ -8882,7 +8906,7 @@
             // Eliminar de Firebase
             try {
                 if (window.firebase && firebase.apps && firebase.apps.length) {
-                    let key = nombre.trim().toLowerCase()
+                    let key = (nombre || '').trim().toLowerCase()
                         .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
                         .replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
                     if (window.docentesIds && window.docentesIds[nombre]) {
