@@ -1708,8 +1708,8 @@
                 
                 <!-- BOTONES DE AÑADIR/QUITAR ALUMNO -->
                 <div style="display:flex; justify-content:center; gap:15px; margin-bottom:15px; flex-wrap:wrap; width:100%;">
-                    <button class="btn-action" onclick="pedirPasswordNuevo()" style="color:#b45309; border-color:#fcd34d; background:transparent; font-weight:bold;">➕ Añadir Alumno</button>
-                    <button class="btn-action" onclick="abrirEdicionAlumnos()" style="color:#ef4444; border-color:#fca5a5; background:transparent; font-weight:bold;">➖ Quitar Alumno</button>
+                    <button class="btn-action" onclick="abrirAnadirAlumno()" style="color:#b45309; border-color:#fcd34d; background:transparent; font-weight:bold;">➕ Añadir Alumno</button>
+                    <button class="btn-action" onclick="abrirQuitarAlumno()" style="color:#ef4444; border-color:#fca5a5; background:transparent; font-weight:bold;">➖ Quitar Alumno</button>
                 </div>
 
                 <div class="acciones-asistencia" style="margin-bottom:15px;">
@@ -2336,8 +2336,26 @@
                     <option value="F">Femenino (F)</option>
                 </select>
                 <input type="text" id="new-nie" placeholder="NIE" style="width:100%; padding:10px; margin-bottom:10px;">
-                <input type="text" id="new-telefono" placeholder="Teléfono"
-                    style="width:100%; padding:10px; margin-bottom:15px;">
+                <input type="text" id="new-telefono" placeholder="Teléfono (Opcional)" style="width:100%; padding:10px; margin-bottom:10px;">
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <select id="new-grado" style="flex:1; padding:10px;">
+                        <option value="">-- Grado --</option>
+                        <option value="1° General">1° General</option>
+                        <option value="1° Adm. Contable">1° Adm. Contable</option>
+                        <option value="1° S. Eléctricos">1° S. Eléctricos</option>
+                        <option value="2° General">2° General</option>
+                        <option value="2° Adm. Contable">2° Adm. Contable</option>
+                        <option value="2° Sist. Eléctricos">2° Sist. Eléctricos</option>
+                        <option value="3° Adm. Contable">3° Adm. Contable</option>
+                        <option value="3° Sist. Eléctricos">3° Sist. Eléctricos</option>
+                    </select>
+                    <select id="new-seccion" style="flex:1; padding:10px;">
+                        <option value="">-- Sección --</option>
+                        <option value="A">"A"</option>
+                        <option value="B">"B"</option>
+                        <option value="Única">Única</option>
+                    </select>
+                </div>
                 <div style="display:flex; gap:10px;">
                     <button onclick="cerrarModal('modal-alumno')" style="flex:1; padding:10px;">Cancelar</button>
                     <button onclick="guardarAlumno()" id="btn-save-cloud"
@@ -7611,10 +7629,185 @@
         }
 
         async function guardarAlumno() {
-            const n = { tipo_post: "alumno", grado: document.getElementById('grado-select').value, seccion: document.getElementById('seccion-select').value, nombre: document.getElementById('new-nombre').value, sexo: document.getElementById('new-sexo').value, nie: document.getElementById('new-nie').value, telefono: document.getElementById('new-telefono').value };
-            if (!n.nombre || !n.grado) return alert("Faltan datos");
-            await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(n) });
-            cerrarModal('modal-alumno'); setTimeout(inicializarBaseDatos, 1000);
+            const btn = document.getElementById('btn-save-cloud');
+            if (btn) btn.disabled = true;
+
+            const n = { 
+                tipo_post: "alumno", 
+                grado: document.getElementById('new-grado').value || document.getElementById('grado-select').value, 
+                seccion: document.getElementById('new-seccion').value || document.getElementById('seccion-select').value, 
+                nombre: document.getElementById('new-nombre').value.trim(), 
+                sexo: document.getElementById('new-sexo').value, 
+                nie: document.getElementById('new-nie').value.trim(), 
+                telefono: document.getElementById('new-telefono').value.trim() 
+            };
+
+            if (!n.nombre || !n.nie || !n.grado || !n.seccion) {
+                if (btn) btn.disabled = false;
+                return alert("Faltan datos obligatorios (Nombre, NIE, Grado y Sección).");
+            }
+
+            try {
+                // Guardar en Firestore directamente para mayor velocidad
+                if (window.firebase && firebase.firestore) {
+                    const db = firebase.firestore();
+                    const key = n.nie || n.nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_');
+                    await db.collection('alumnos_inmu').doc(key).set({
+                        nombre: n.nombre,
+                        nie: n.nie,
+                        sexo: n.sexo,
+                        telefono: n.telefono,
+                        grado: n.grado,
+                        seccion: n.seccion,
+                        actualizado: new Date().toISOString()
+                    }, { merge: true });
+                }
+                
+                // Backup a Google Sheets de fondo
+                fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(n) }).catch(e=>console.warn(e));
+                
+                if (typeof mostrarNotificacion === 'function') mostrarNotificacion("Alumno guardado exitosamente.", "success");
+                
+                // Limpiar campos
+                document.getElementById('new-nombre').value = '';
+                document.getElementById('new-nie').value = '';
+                document.getElementById('new-telefono').value = '';
+                document.getElementById('new-grado').value = '';
+                document.getElementById('new-seccion').value = '';
+                
+                cerrarModal('modal-alumno');
+                // Refrescar lista si es del grado actual
+                if (n.grado === document.getElementById('grado-select').value && n.seccion === document.getElementById('seccion-select').value) {
+                    if (typeof cargarAlumnos === 'function') cargarAlumnos();
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Error al guardar alumno: " + err.message);
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        // LÓGICA AÑADIR/QUITAR ALUMNO A CLASE
+        function abrirAnadirAlumno() {
+            const grado = document.getElementById('grado-select').value;
+            const seccion = document.getElementById('seccion-select').value;
+            if (!grado || !seccion) return alert("Selecciona un Grado y Sección en el portal primero.");
+            document.getElementById('resultados-anadir-alumno').innerHTML = '';
+            document.getElementById('search-anadir-alumno').value = '';
+            document.getElementById('modal-anadir-alumno').classList.add('open');
+        }
+
+        async function buscarAlumnoParaAnadir() {
+            const query = document.getElementById('search-anadir-alumno').value.trim().toLowerCase();
+            if (!query) return alert("Ingresa un nombre o NIE para buscar.");
+            const resDiv = document.getElementById('resultados-anadir-alumno');
+            resDiv.innerHTML = 'Buscando...';
+            try {
+                const db = firebase.firestore();
+                const snapshot = await db.collection('alumnos_inmu').get();
+                let html = '';
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const nombre = (data.nombre || '').toLowerCase();
+                    const nie = (data.nie || '').toLowerCase();
+                    if (nombre.includes(query) || nie.includes(query)) {
+                        const esDelGradoActual = data.grado === document.getElementById('grado-select').value && data.seccion === document.getElementById('seccion-select').value;
+                        html += `<div style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <strong>${data.nombre}</strong><br>
+                                <span style="color:#666;">NIE: ${data.nie} | Grado actual: ${data.grado || 'Ninguno'} "${data.seccion || ''}"</span>
+                            </div>
+                            <button onclick="asignarAlumnoAGrado('${doc.id}')" ${esDelGradoActual ? 'disabled style="background:#ccc; color:#fff; border:none; padding:5px 10px; border-radius:4px;"' : 'style="background:var(--green-600); color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;"'}>
+                                ${esDelGradoActual ? 'Ya asignado' : 'Asignar aquí'}
+                            </button>
+                        </div>`;
+                    }
+                });
+                resDiv.innerHTML = html || 'No se encontraron resultados.';
+            } catch (err) {
+                console.error(err);
+                resDiv.innerHTML = '<span style="color:red">Error en la búsqueda</span>';
+            }
+        }
+
+        async function asignarAlumnoAGrado(docId) {
+            const grado = document.getElementById('grado-select').value;
+            const seccion = document.getElementById('seccion-select').value;
+            try {
+                await firebase.firestore().collection('alumnos_inmu').doc(docId).set({
+                    grado: grado,
+                    seccion: seccion,
+                    actualizado: new Date().toISOString()
+                }, { merge: true });
+                if (typeof mostrarNotificacion === 'function') mostrarNotificacion("Alumno asignado a " + grado + " " + seccion, "success");
+                cerrarModal('modal-anadir-alumno');
+                if (typeof cargarAlumnos === 'function') cargarAlumnos();
+            } catch (err) {
+                console.error(err);
+                alert("Error al asignar: " + err.message);
+            }
+        }
+
+        function abrirQuitarAlumno() {
+            const grado = document.getElementById('grado-select').value;
+            const seccion = document.getElementById('seccion-select').value;
+            if (!grado || !seccion) return alert("Selecciona un Grado y Sección en el portal primero.");
+            
+            const resDiv = document.getElementById('resultados-quitar-alumno');
+            resDiv.innerHTML = '';
+            document.getElementById('search-quitar-alumno').value = '';
+            
+            if (!window.alumnosFiltrados || window.alumnosFiltrados.length === 0) {
+                resDiv.innerHTML = 'No hay alumnos en este grado.';
+            } else {
+                let html = '';
+                window.alumnosFiltrados.forEach(alumno => {
+                    const key = alumno.nie || alumno.nombre.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_');
+                    html += `<div class="item-quitar-alumno" data-nombre="${(alumno.nombre||'').toLowerCase()}" data-nie="${alumno.nie||''}" style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong>${alumno.nombre}</strong><br>
+                            <span style="color:#666;">NIE: ${alumno.nie}</span>
+                        </div>
+                        <button onclick="quitarAlumnoDeGrado('${key}')" style="background:#dc2626; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">
+                            Desvincular
+                        </button>
+                    </div>`;
+                });
+                resDiv.innerHTML = html;
+            }
+            document.getElementById('modal-quitar-alumno').classList.add('open');
+        }
+
+        function filtrarQuitarAlumno() {
+            const query = document.getElementById('search-quitar-alumno').value.toLowerCase();
+            const items = document.querySelectorAll('.item-quitar-alumno');
+            items.forEach(item => {
+                const nombre = item.getAttribute('data-nombre');
+                const nie = item.getAttribute('data-nie');
+                if (nombre.includes(query) || nie.includes(query)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        async function quitarAlumnoDeGrado(docId) {
+            if(!confirm("¿Seguro que deseas desvincular a este alumno de la clase actual? No se eliminará de la base de datos general, pero ya no aparecerá en la lista de este grado.")) return;
+            try {
+                await firebase.firestore().collection('alumnos_inmu').doc(docId).set({
+                    grado: "Baja",
+                    seccion: "",
+                    actualizado: new Date().toISOString()
+                }, { merge: true });
+                if (typeof mostrarNotificacion === 'function') mostrarNotificacion("Alumno removido del grado.", "success");
+                cerrarModal('modal-quitar-alumno');
+                if (typeof cargarAlumnos === 'function') cargarAlumnos();
+            } catch (err) {
+                console.error(err);
+                alert("Error al remover: " + err.message);
+            }
         }
 
         async function cerrarSesion() {
