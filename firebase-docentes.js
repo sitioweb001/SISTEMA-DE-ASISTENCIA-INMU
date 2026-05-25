@@ -75,7 +75,7 @@
     if (!_listo || !_db) throw new Error('Firebase no disponible');
     const snap = await _race(_db.collection(nombre).get(), TIMEOUT_FB);
     const lista = [];
-    snap.forEach(doc => lista.push(doc.data()));
+    snap.forEach(doc => lista.push(Object.assign({ _docId: doc.id }, doc.data())));
     return lista;
   }
 
