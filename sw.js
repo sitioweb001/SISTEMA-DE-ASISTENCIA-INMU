@@ -1,9 +1,14 @@
-const CACHE_NAME = 'asistencia-inmu-pwa-v3';
+const CACHE_NAME = 'asistencia-inmu-pwa-v4';
 const URLS_TO_CACHE = [
   './index.html',
   './manifest.json',
   './logo.jpg',
   './plantilla_notas.xls',
+  './firebase-config.js',
+  './firebase-docentes.js',
+  './firebase-asistencia.js',
+  './firebase-reportes.js',
+  './firebase-setup.js',
   './vendor/html2pdf.bundle.min.js',
   './vendor/xlsx.full.min.js',
   './vendor/pdf.min.js',
