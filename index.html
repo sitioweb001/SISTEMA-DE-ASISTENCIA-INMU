@@ -2331,7 +2331,7 @@
             <div class="modal" style="text-align: center;">
                 <h3 style="color: var(--blue-800); margin-bottom: 10px;">Añadir Alumno al Grado Actual</h3>
                 <p style="margin-bottom: 15px; font-size: 14px;">Busca por Nombre o NIE para asignar al grado y sección seleccionados.</p>
-                <input type="text" id="search-anadir-alumno" placeholder="Buscar por Nombre o NIE..." style="width:100%; padding:10px; margin-bottom:10px; border:1px solid var(--border-color, #ccc); border-radius:4px; background:var(--bg-input, #fff); color:var(--text-primary, #000);">
+                <input type="text" id="search-anadir-alumno" placeholder="Buscar por Nombre o NIE..." oninput="_programarBusquedaAlumnoParaAnadir()" onkeydown="if(event.key==='Enter'){event.preventDefault();buscarAlumnoParaAnadir();}" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid var(--border-color, #ccc); border-radius:4px; background:var(--bg-input, #fff); color:var(--text-primary, #000);">
                 <button onclick="buscarAlumnoParaAnadir()" class="btn-guardar" style="width:100%; margin-bottom:15px; background:var(--blue-600); color:white; border:none; padding:10px; border-radius:4px; font-weight:bold; cursor:pointer;">Buscar</button>
                 <div id="resultados-anadir-alumno" style="max-height: 250px; overflow-y: auto; text-align: left; margin-bottom: 15px;"></div>
                 <div class="modal-actions">
@@ -2881,6 +2881,7 @@
                     if (!Array.isArray(catalogoMaterias) || catalogoMaterias.length === 0) {
                         catalogoMaterias = getCatalogoMateriasFallback();
                     }
+                    sincronizarReferenciasAlumnos();
                     inicializarMateriasUI();
 
                     const cont = document.getElementById('tabla-alumnos');
@@ -2936,6 +2937,7 @@
                 { grado: '5', seccion: 'A', nombre: 'Andrés Morales', sexo: 'M', nie: '12356', telefono: '12345689' },
                 { grado: '6', seccion: 'A', nombre: 'Camila Ruiz', sexo: 'F', nie: '12357', telefono: '12345690' }
             ];
+            sincronizarReferenciasAlumnos();
             const cont = document.getElementById('tabla-alumnos');
             if (cont) {
                 cont.innerHTML = `<div style="padding:20px; text-align:center; color:#185FA5;">⛔ Modo offline activado. Datos de ejemplo cargados. Seleccione grado y sección.</div>`;
@@ -3012,6 +3014,13 @@
         window.alumnosFiltrados  = alumnosFiltrados;
         window.docentesStatus    = docentesStatus;
         window.todosLosReportes  = todosLosReportes;
+
+        function sincronizarReferenciasAlumnos() {
+            if (!Array.isArray(baseDatosAlumnos)) baseDatosAlumnos = [];
+            if (!Array.isArray(alumnosFiltrados)) alumnosFiltrados = [];
+            window.baseDatosAlumnos = baseDatosAlumnos;
+            window.alumnosFiltrados = alumnosFiltrados;
+        }
 
         let baseDatosDiRefuerzo = [];
         let diResultadosActuales = [];
@@ -4509,6 +4518,7 @@
 
                 baseDatosAlumnos = await responseAlu.json();
                 baseDatosAlumnos.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+                sincronizarReferenciasAlumnos();
                 cargarAlumnos();
 
                 baseDatosDocentes = await responseDoc.json();
@@ -4695,6 +4705,7 @@
             if (!grado || !seccion) {
                 contenedor.innerHTML = '<div style="padding: 20px; text-align: center; color: #5F5E5A;">Seleccione un grado y una sección.</div>';
                 alumnosFiltrados = [];
+                sincronizarReferenciasAlumnos();
                 modoDiRefuerzo = false;
                 actualizarControlesLista();
                 return;
@@ -4714,6 +4725,7 @@
                 alumnosFiltrados = baseDatosAlumnos.filter(a => normalizarTexto(a.grado) === grado && normalizarTexto(a.seccion) === seccion);
             cargarNotasGuardadas(document.getElementById('grado-select')?.value||'', document.getElementById('seccion-select')?.value||'');
             }
+            sincronizarReferenciasAlumnos();
 
             if (alumnosFiltrados.length === 0) {
                 contenedor.innerHTML = modoDiRefuerzo
@@ -7229,14 +7241,14 @@
             }
         }
 
-        function mostrarNotificacion(mensaje, tipo) {
+        function mostrarNotificacion(mensaje, tipo, duracion) {
             const colores = { success: '#1D9E75', warning: '#F39C12', error: 'var(--red-600)', info: '#185FA5' };
             const color = colores[tipo] || colores.info;
             const toast = document.createElement('div');
-            toast.style.cssText = `position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;background:${color};color:white;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:bold;max-width:320px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.25);`;
+            toast.style.cssText = `position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;background:${color};color:white;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:bold;max-width:320px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.25);animation:alumno-toast-in .18s ease-out;`;
             toast.textContent = mensaje;
             document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3500);
+            setTimeout(() => toast.remove(), duracion || 3500);
         }
 
         // =========================================================================
@@ -7690,6 +7702,78 @@
             if (idxFiltrado !== -1) {
                 Object.assign(listaFiltrada[idxFiltrado], cambios || {});
             }
+            if (Array.isArray(window.baseDatosAlumnos)) baseDatosAlumnos = window.baseDatosAlumnos;
+            if (Array.isArray(window.alumnosFiltrados)) alumnosFiltrados = window.alumnosFiltrados;
+            sincronizarReferenciasAlumnos();
+        }
+
+        function _asegurarEstilosGestionAlumnos() {
+            if (document.getElementById('gestion-alumnos-anim-css')) return;
+            const style = document.createElement('style');
+            style.id = 'gestion-alumnos-anim-css';
+            style.textContent = `
+                @keyframes alumno-spin { to { transform: rotate(360deg); } }
+                @keyframes alumno-card-in { from { opacity:0; transform: translateY(5px); } to { opacity:1; transform: translateY(0); } }
+                @keyframes alumno-row-flash { 0% { background:#d1fae5; transform:scale(.995); } 100% { background:transparent; transform:scale(1); } }
+                @keyframes alumno-toast-in { from { opacity:0; transform:translate(-50%, 8px); } to { opacity:1; transform:translate(-50%, 0); } }
+            `;
+            document.head.appendChild(style);
+        }
+
+        function _htmlEstadoGestionAlumnos(mensaje) {
+            _asegurarEstilosGestionAlumnos();
+            return `<div style="display:flex;align-items:center;justify-content:center;gap:9px;padding:14px;color:var(--blue-800);font-weight:700;">
+                <span style="width:16px;height:16px;border-radius:50%;border:3px solid #bfdbfe;border-top-color:var(--blue-600);display:inline-block;animation:alumno-spin .75s linear infinite;"></span>
+                <span>${mensaje}</span>
+            </div>`;
+        }
+
+        function _botonCargando(btn, texto) {
+            _asegurarEstilosGestionAlumnos();
+            if (!btn) return function(){};
+            const previo = { html: btn.innerHTML, disabled: btn.disabled, opacity: btn.style.opacity };
+            btn.disabled = true;
+            btn.style.opacity = '0.75';
+            btn.innerHTML = `<span style="display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.55);border-top-color:white;border-radius:50%;vertical-align:-2px;margin-right:6px;animation:alumno-spin .75s linear infinite;"></span>${texto}`;
+            return function restaurar() {
+                btn.innerHTML = previo.html;
+                btn.disabled = previo.disabled;
+                btn.style.opacity = previo.opacity;
+            };
+        }
+
+        function _resaltarAlumnoEnLista(ref, tipo) {
+            setTimeout(function() {
+                const nie = _textoAlumnoSeguro(ref && ref.nie);
+                const nombreKey = _claveAlumnoSeguro(ref && ref.nombre);
+                const rows = Array.from(document.querySelectorAll('#tabla-alumnos .student-row:not(.student-header)'));
+                const row = rows.find(function(el) {
+                    const txt = el.textContent || '';
+                    return (nie && txt.includes(nie)) || (nombreKey && _claveAlumnoSeguro(txt).includes(nombreKey));
+                });
+                if (!row) return;
+                row.style.animation = 'alumno-row-flash 1.1s ease-out';
+                row.style.borderLeft = tipo === 'quitar' ? '4px solid #dc2626' : '4px solid #16a34a';
+                setTimeout(function() {
+                    row.style.animation = '';
+                    row.style.borderLeft = '';
+                }, 1200);
+            }, 120);
+        }
+
+        let _timerBusquedaAnadirAlumno = null;
+
+        function _programarBusquedaAlumnoParaAnadir() {
+            clearTimeout(_timerBusquedaAnadirAlumno);
+            _timerBusquedaAnadirAlumno = setTimeout(function() {
+                buscarAlumnoParaAnadir(true);
+            }, 180);
+        }
+
+        function _escAlumnoHtml(valor) {
+            return String(valor == null ? '' : valor)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
         async function _resolverDocumentoAlumno(ref) {
@@ -7868,6 +7952,7 @@
 
         // LÓGICA AÑADIR/QUITAR ALUMNO A CLASE
         function abrirAnadirAlumno() {
+            _asegurarEstilosGestionAlumnos();
             const grado = document.getElementById('grado-select').value;
             const seccion = document.getElementById('seccion-select').value;
             if (!grado || !seccion) return alert("Selecciona un Grado y Sección en el portal primero.");
@@ -7876,31 +7961,45 @@
             document.getElementById('modal-anadir-alumno').classList.add('open');
         }
 
-        async function buscarAlumnoParaAnadir() {
+        async function buscarAlumnoParaAnadir(silencioso) {
             const query = document.getElementById('search-anadir-alumno').value.trim().toLowerCase();
-            if (!query) return alert("Ingresa un nombre o NIE para buscar.");
+            if (!query) {
+                document.getElementById('resultados-anadir-alumno').innerHTML = '';
+                if (!silencioso) alert("Ingresa un nombre o NIE para buscar.");
+                return;
+            }
             const resDiv = document.getElementById('resultados-anadir-alumno');
-            resDiv.innerHTML = 'Buscando...';
+            resDiv.innerHTML = _htmlEstadoGestionAlumnos('Buscando alumno...');
             try {
-                const db = firebase.firestore();
-                const snapshot = await db.collection('alumnos_inmu').get();
+                sincronizarReferenciasAlumnos();
+                let lista = (window.baseDatosAlumnos || []).map(function(a) {
+                    return Object.assign({ _docId: a._docId || a.nie || _claveAlumnoSeguro(a.nombre) }, a);
+                });
+                if (!lista.length && window.firebase && firebase.firestore) {
+                    const snap = await firebase.firestore().collection('alumnos_inmu').get();
+                    snap.forEach(function(doc) {
+                        lista.push(Object.assign({ _docId: doc.id }, doc.data() || {}));
+                    });
+                    baseDatosAlumnos = lista.slice();
+                    sincronizarReferenciasAlumnos();
+                }
                 let html = '';
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    const nombre = (data.nombre || '').toLowerCase();
+                lista.filter(function(data) {
+                    const nombre = normalizarTexto(data.nombre || '');
                     const nie = String(data.nie || '').toLowerCase();
-                    if (nombre.includes(query) || nie.includes(query)) {
+                    return nombre.includes(normalizarTexto(query)) || nie.includes(query);
+                }).slice(0, 25).forEach(data => {
+                        const docId = data._docId || data.nie || _claveAlumnoSeguro(data.nombre);
                         const esDelGradoActual = data.grado === document.getElementById('grado-select').value && data.seccion === document.getElementById('seccion-select').value;
-                        html += `<div style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                        html += `<div style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;animation:alumno-card-in .18s ease-out;">
                             <div>
-                                <strong>${data.nombre}</strong><br>
-                                <span style="color:#666;">NIE: ${data.nie} | Grado actual: ${data.grado || 'Ninguno'} "${data.seccion || ''}"</span>
+                                <strong>${_escAlumnoHtml(data.nombre)}</strong><br>
+                                <span style="color:#666;">NIE: ${_escAlumnoHtml(data.nie)} | Grado actual: ${_escAlumnoHtml(data.grado || 'Ninguno')} "${_escAlumnoHtml(data.seccion || '')}"</span>
                             </div>
-                            <button onclick='asignarAlumnoAGrado(${JSON.stringify(doc.id)}, ${JSON.stringify(data.nie || '')}, ${JSON.stringify(data.nombre || '')})' ${esDelGradoActual ? 'disabled style="background:#ccc; color:#fff; border:none; padding:5px 10px; border-radius:4px;"' : 'style="background:var(--green-600); color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;"'}>
+                            <button onclick='asignarAlumnoAGrado(${JSON.stringify(docId)}, ${JSON.stringify(data.nie || '')}, ${JSON.stringify(data.nombre || '')}, this)' ${esDelGradoActual ? 'disabled style="background:#ccc; color:#fff; border:none; padding:5px 10px; border-radius:4px;"' : 'style="background:var(--green-600); color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;"'}>
                                 ${esDelGradoActual ? 'Ya asignado' : 'Asignar aquí'}
                             </button>
                         </div>`;
-                    }
                 });
                 resDiv.innerHTML = html || 'No se encontraron resultados.';
             } catch (err) {
@@ -7909,10 +8008,13 @@
             }
         }
 
-        async function asignarAlumnoAGrado(docId, nie, nombre) {
+        async function asignarAlumnoAGrado(docId, nie, nombre, btn) {
             const grado = document.getElementById('grado-select').value;
             const seccion = document.getElementById('seccion-select').value;
+            const restaurarBtn = _botonCargando(btn, 'Agregando...');
+            const resDiv = document.getElementById('resultados-anadir-alumno');
             try {
+                if (resDiv) resDiv.insertAdjacentHTML('afterbegin', _htmlEstadoGestionAlumnos('Agregando al grado actual...'));
                 const refAlumno = { docId: docId, nie: nie, nombre: nombre };
                 const guardado = await _guardarAlumnoEnFirestore(refAlumno, {
                     grado: grado,
@@ -7927,16 +8029,20 @@
                     _docId: guardado.docId
                 }, { agregarSiNoExiste: true });
 
-                if (typeof mostrarNotificacion === 'function') mostrarNotificacion("Alumno asignado a " + grado + " " + seccion, "success");
+                if (typeof mostrarNotificacion === 'function') mostrarNotificacion("Alumno asignado a " + grado + " " + seccion, "success", 4500);
                 cerrarModal('modal-anadir-alumno');
-                if (typeof cargarAlumnos === 'function') cargarAlumnos();
+                if (typeof cargarAlumnos === 'function') await cargarAlumnos();
+                _resaltarAlumnoEnLista({ nie: nie || (guardado.data || {}).nie, nombre: nombre || (guardado.data || {}).nombre }, 'agregar');
             } catch (err) {
                 console.error(err);
                 alert("Error al asignar: " + err.message);
+            } finally {
+                restaurarBtn();
             }
         }
 
         function abrirQuitarAlumno() {
+            _asegurarEstilosGestionAlumnos();
             const grado = document.getElementById('grado-select').value;
             const seccion = document.getElementById('seccion-select').value;
             if (!grado || !seccion) return alert("Selecciona un Grado y Sección en el portal primero.");
@@ -7956,7 +8062,7 @@
                             <strong>${alumno.nombre}</strong><br>
                             <span style="color:#666;">NIE: ${alumno.nie}</span>
                         </div>
-                        <button onclick='quitarAlumnoDeGrado(${JSON.stringify(key)}, ${JSON.stringify(alumno.nie || '')}, ${JSON.stringify(alumno.nombre || '')})' style="background:#dc2626; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">
+                        <button onclick='quitarAlumnoDeGrado(${JSON.stringify(key)}, ${JSON.stringify(alumno.nie || '')}, ${JSON.stringify(alumno.nombre || '')}, this)' style="background:#dc2626; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">
                             Desvincular
                         </button>
                     </div>`;
@@ -7980,8 +8086,9 @@
             });
         }
 
-        async function quitarAlumnoDeGrado(docId, nie, nombre) {
+        async function quitarAlumnoDeGrado(docId, nie, nombre, btn) {
             if(!confirm("¿Seguro que deseas desvincular a este alumno de la clase actual? No se eliminará de la base de datos general, pero ya no aparecerá en la lista de este grado.")) return;
+            const restaurarBtn = _botonCargando(btn, 'Quitando...');
             try {
                 const refAlumno = { docId: docId, nie: nie, nombre: nombre };
                 const guardado = await _guardarAlumnoEnFirestore(refAlumno, {
@@ -7997,12 +8104,14 @@
                     _docId: guardado.docId
                 });
 
-                if (typeof mostrarNotificacion === 'function') mostrarNotificacion("Alumno removido del grado.", "success");
+                if (typeof mostrarNotificacion === 'function') mostrarNotificacion("Alumno removido del grado.", "success", 4500);
                 cerrarModal('modal-quitar-alumno');
-                if (typeof cargarAlumnos === 'function') cargarAlumnos();
+                if (typeof cargarAlumnos === 'function') await cargarAlumnos();
             } catch (err) {
                 console.error(err);
                 alert("Error al remover: " + err.message);
+            } finally {
+                restaurarBtn();
             }
         }
 
@@ -21511,6 +21620,7 @@
                     if (response.ok) {
                         alumnos = await response.json();
                         baseDatosAlumnos = Array.isArray(alumnos) ? alumnos : [];
+                        sincronizarReferenciasAlumnos();
                     }
                 } catch (e) {
                     console.warn('Error cargando base de alumnos:', e);
@@ -22798,6 +22908,7 @@ function abrirEdicionAlumnos() {
 }
 
 function buscarAlumnoEditor() {
+  sincronizarReferenciasAlumnos();
   var q = (document.getElementById('ed-alu-buscar').value || '').trim().toLowerCase();
   var resCont = document.getElementById('ed-alu-resultados');
   if (!q || q.length < 2) { resCont.style.display = 'none'; return; }
@@ -22840,6 +22951,9 @@ function seleccionarAlumnoEditor(idx) {
 }
 
 async function guardarEdicionAlumno() {
+  _asegurarEstilosGestionAlumnos();
+  var btn = document.activeElement && document.activeElement.tagName === 'BUTTON' ? document.activeElement : null;
+  var restaurarBtn = _botonCargando(btn, 'Guardando...');
   var docIdOriginal = document.getElementById('ed-alu-docid-original').value.trim();
   var nieOriginal = document.getElementById('ed-alu-nie-original').value.trim();
   var nombre   = document.getElementById('ed-alu-nombre').value.trim();
@@ -22848,26 +22962,32 @@ async function guardarEdicionAlumno() {
   var grado    = document.getElementById('ed-alu-grado').value;
   var seccion  = document.getElementById('ed-alu-seccion').value;
   var sexo     = document.getElementById('ed-alu-sexo').value;
-  if (!nombre || !nie) { alert('Nombre y NIE son obligatorios.'); return; }
+  if (!nombre || !nie) { restaurarBtn(); alert('Nombre y NIE son obligatorios.'); return; }
   var payload = { nie:nie, nombre:nombre, grado:grado, seccion:seccion, sexo:sexo, telefono:telefono };
   var refAlumno = { docId: docIdOriginal, nie: nieOriginal, nombre: nombre };
-  var db = _fbDbEdit();
-  if (db) {
-    try {
+  try {
+    var db = _fbDbEdit();
+    if (db) {
       var guardado = await _guardarAlumnoEnFirestore(refAlumno, payload, { docId: nie });
       payload._docId = guardado.docId;
       document.getElementById('ed-alu-docid-original').value = guardado.docId;
-    } catch(e) { console.warn('[EditorAlu]', e); }
+    }
+    _actualizarAlumnoEnMemoria(refAlumno, payload, { agregarSiNoExiste:true });
+    try { fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',body:JSON.stringify(Object.assign({tipo_post:'actualizar_alumno',nie_original:nieOriginal},payload))}); } catch(e){}
+    mostrarNotificacion('Alumno actualizado correctamente.', 'success', 4500);
+    document.getElementById('ed-alu-form').style.display = 'none';
+    document.getElementById('ed-alu-buscar').value = '';
+    cerrarModal('modal-editor-alumno');
+    var g = document.getElementById('grado-select') ? document.getElementById('grado-select').value : '';
+    var s = document.getElementById('seccion-select') ? document.getElementById('seccion-select').value : '';
+    if (g && s && typeof cargarAlumnos === 'function') await cargarAlumnos();
+    _resaltarAlumnoEnLista({ nie: nie, nombre: nombre }, 'agregar');
+  } catch(e) {
+    console.warn('[EditorAlu]', e);
+    alert('Error al guardar alumno: ' + e.message);
+  } finally {
+    restaurarBtn();
   }
-  _actualizarAlumnoEnMemoria(refAlumno, payload, { agregarSiNoExiste:true });
-  try { fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',body:JSON.stringify(Object.assign({tipo_post:'actualizar_alumno',nie_original:nieOriginal},payload))}); } catch(e){}
-  mostrarNotificacion('Alumno actualizado correctamente.', 'success', 4000);
-  document.getElementById('ed-alu-form').style.display = 'none';
-  document.getElementById('ed-alu-buscar').value = '';
-  cerrarModal('modal-editor-alumno');
-  var g = document.getElementById('grado-select') ? document.getElementById('grado-select').value : '';
-  var s = document.getElementById('seccion-select') ? document.getElementById('seccion-select').value : '';
-  if (g && s && typeof cargarAlumnos === 'function') cargarAlumnos();
 }
 
 async function eliminarAlumnoEditor() {
