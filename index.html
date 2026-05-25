@@ -1367,6 +1367,20 @@
         }
 
         @media (max-width: 768px) {
+            .btn-hamburger {
+                display: block !important;
+                position: absolute;
+                left: 0px;
+                top: 0px;
+                padding: 10px;
+                margin: 0;
+                background: none;
+                border: none;
+                color: white;
+                font-size: 24px;
+                cursor: pointer;
+                z-index: 1000;
+            }
             .desktop-only {
                 display: none !important;
             }
@@ -1387,20 +1401,6 @@
             .header-titles {
                 width: 100%;
                 flex: none;
-            }
-            .btn-hamburger {
-                display: block !important;
-                position: absolute;
-                left: 5px;
-                top: 5px;
-                background: none;
-                border: none;
-                color: white;
-                font-size: 32px;
-                cursor: pointer;
-                z-index: 1001;
-                padding: 10px;
-                line-height: 1;
             }
             .btn-group-nav {
                 position: fixed;
@@ -1546,7 +1546,7 @@
     <!-- ═══════════════════════════════════════════════════ -->
     <!-- MODAL MENÚ ALTERNATIVO -->
     <!-- ═══════════════════════════════════════════════════ -->
-    <div class="modal-overlay" id="modal-inicio-dropdown">
+    <div class="modal-overlay" id="modal-inicio-dropdown" style="background: var(--bg-app) !important;">
         <div class="modal">
             <h2 style="color: var(--blue-800); text-align: center; margin-bottom: 5px;">Seleccione Docente</h2>
 
@@ -1619,7 +1619,7 @@
             <hr class="hamburger-only" style="width:100%; border:0; border-top:1px solid rgba(255,255,255,0.2); margin: 10px 0;">
             <button class="btn-nav hamburger-only" style="background:#5F5E5A; color:white; font-weight:bold;"
                 onclick="pedirPasswordDocente(); closeHamburgerMenu();">👨‍🏫 Añadir Docente</button>
-            <button class="btn-nav hamburger-only" style="background:#00796B; color:white; font-weight:bold;"
+            <button class="btn-nav hamburger-only" style="background:#D97706; color:white; font-weight:bold;"
                 onclick="pedirPasswordAsignarMateria(); closeHamburgerMenu();">📚 ASIGNAR MATERIA</button>
             <button class="btn-nav hamburger-only" style="background:#1565C0; color:white; font-weight:bold;"
                 onclick="abrirEdicionDocentes(); closeHamburgerMenu();">✏️ EDICIÓN DOCENTES</button>
@@ -1820,7 +1820,7 @@
             <div class="desktop-only" style="margin-top: 20px; display:flex; flex-direction:column; align-items:center; gap:10px;">
                 <button class="btn-nav" style="background:#5F5E5A; max-width: 260px; width:100%;"
                     onclick="pedirPasswordDocente()">👨‍🏫 Añadir Docente</button>
-                <button class="btn-nav" style="background:#00796B; max-width: 260px; width:100%;"
+                <button class="btn-nav" style="background:#D97706; color:white; font-weight:bold; max-width: 260px; width:100%;"
                     onclick="pedirPasswordAsignarMateria()">📚 ASIGNAR MATERIA</button>
                 <button class="btn-nav" style="background:#1565C0; max-width: 260px; width:100%;"
                     onclick="abrirEdicionDocentes()">✏️ EDICIÓN DOCENTES</button>
@@ -2326,6 +2326,33 @@
         <!-- ═══════════════════════════════════════════════════ -->
         <!-- MODALES DE FORMULARIOS -->
         <!-- ═══════════════════════════════════════════════════ -->
+        <!-- Modal Añadir Alumno a Clase Actual -->
+        <div class="modal-overlay" id="modal-anadir-alumno">
+            <div class="modal" style="text-align: center;">
+                <h3 style="color: var(--blue-800); margin-bottom: 10px;">Añadir Alumno al Grado Actual</h3>
+                <p style="margin-bottom: 15px; font-size: 14px;">Busca por Nombre o NIE para asignar al grado y sección seleccionados.</p>
+                <input type="text" id="search-anadir-alumno" placeholder="Buscar por Nombre o NIE..." style="width:100%; padding:10px; margin-bottom:10px; border:1px solid var(--border-color, #ccc); border-radius:4px; background:var(--bg-input, #fff); color:var(--text-primary, #000);">
+                <button onclick="buscarAlumnoParaAnadir()" class="btn-guardar" style="width:100%; margin-bottom:15px; background:var(--blue-600); color:white; border:none; padding:10px; border-radius:4px; font-weight:bold; cursor:pointer;">Buscar</button>
+                <div id="resultados-anadir-alumno" style="max-height: 250px; overflow-y: auto; text-align: left; margin-bottom: 15px;"></div>
+                <div class="modal-actions">
+                    <button class="btn-cancelar" onclick="cerrarModal('modal-anadir-alumno')">Cerrar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Quitar Alumno de Clase Actual -->
+        <div class="modal-overlay" id="modal-quitar-alumno">
+            <div class="modal" style="text-align: center;">
+                <h3 style="color: var(--red-600); margin-bottom: 10px;">Quitar Alumno del Grado Actual</h3>
+                <p style="margin-bottom: 15px; font-size: 14px;">Remueve un estudiante del grado y sección seleccionados (quedará dado de baja, no se borrará su historial).</p>
+                <input type="text" id="search-quitar-alumno" placeholder="Filtrar en esta clase..." oninput="filtrarQuitarAlumno()" style="width:100%; padding:10px; margin-bottom:15px; border:1px solid var(--border-color, #ccc); border-radius:4px; background:var(--bg-input, #fff); color:var(--text-primary, #000);">
+                <div id="resultados-quitar-alumno" style="max-height: 250px; overflow-y: auto; text-align: left; margin-bottom: 15px;"></div>
+                <div class="modal-actions">
+                    <button class="btn-cancelar" onclick="cerrarModal('modal-quitar-alumno')">Cerrar</button>
+                </div>
+            </div>
+        </div>
+
         <div class="modal-overlay" id="modal-alumno">
             <div class="modal">
                 <h3>Nuevo Estudiante</h3>
