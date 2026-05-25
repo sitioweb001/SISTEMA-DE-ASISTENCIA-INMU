@@ -7655,6 +7655,158 @@
             if (modal) modal.classList.remove('open');
         }
 
+        function _textoAlumnoSeguro(valor) {
+            return String(valor == null ? '' : valor).trim();
+        }
+
+        function _claveAlumnoSeguro(valor) {
+            return _textoAlumnoSeguro(valor).toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+        }
+
+        function _coincideAlumnoRef(alumno, ref) {
+            if (!alumno || !ref) return false;
+            const docId = _textoAlumnoSeguro(ref.docId);
+            const nie = _textoAlumnoSeguro(ref.nie);
+            const nombreKey = _claveAlumnoSeguro(ref.nombre);
+            return (docId && (_textoAlumnoSeguro(alumno._docId) === docId || _textoAlumnoSeguro(alumno.nie) === docId))
+                || (nie && _textoAlumnoSeguro(alumno.nie) === nie)
+                || (nombreKey && _claveAlumnoSeguro(alumno.nombre) === nombreKey);
+        }
+
+        function _actualizarAlumnoEnMemoria(ref, cambios, opciones) {
+            const opts = opciones || {};
+            const lista = Array.isArray(window.baseDatosAlumnos) ? window.baseDatosAlumnos : [];
+            const idx = lista.findIndex(a => _coincideAlumnoRef(a, ref));
+            if (idx !== -1) {
+                Object.assign(lista[idx], cambios || {});
+            } else if (opts.agregarSiNoExiste) {
+                lista.push(Object.assign({}, ref || {}, cambios || {}));
+            }
+
+            const listaFiltrada = Array.isArray(window.alumnosFiltrados) ? window.alumnosFiltrados : [];
+            const idxFiltrado = listaFiltrada.findIndex(a => _coincideAlumnoRef(a, ref));
+            if (idxFiltrado !== -1) {
+                Object.assign(listaFiltrada[idxFiltrado], cambios || {});
+            }
+        }
+
+        async function _resolverDocumentoAlumno(ref) {
+            if (!window.firebase || !firebase.firestore) return null;
+
+            const db = firebase.firestore();
+            const col = db.collection('alumnos_inmu');
+            const docId = _textoAlumnoSeguro(ref && ref.docId);
+            const nie = _textoAlumnoSeguro(ref && ref.nie);
+            const nombre = _textoAlumnoSeguro(ref && ref.nombre);
+            const candidatos = [];
+
+            [docId, nie, _claveAlumnoSeguro(nombre)].forEach(function(id) {
+                if (id && !candidatos.includes(id)) candidatos.push(id);
+            });
+
+            for (const id of candidatos) {
+                const snap = await col.doc(id).get();
+                if (snap.exists) {
+                    return { docId: snap.id, data: snap.data() || {} };
+                }
+            }
+
+            if (nie) {
+                const snapNie = await col.where('nie', '==', nie).limit(1).get();
+                if (!snapNie.empty) {
+                    const doc = snapNie.docs[0];
+                    return { docId: doc.id, data: doc.data() || {} };
+                }
+            }
+
+            if (nombre) {
+                const snapNombre = await col.where('nombre', '==', nombre).limit(1).get();
+                if (!snapNombre.empty) {
+                    const doc = snapNombre.docs[0];
+                    return { docId: doc.id, data: doc.data() || {} };
+                }
+            }
+
+            if (nombre) {
+                const snapTodos = await col.get();
+                let encontrado = null;
+                snapTodos.forEach(function(doc) {
+                    if (encontrado) return;
+                    const data = doc.data() || {};
+                    if (_claveAlumnoSeguro(data.nombre) === _claveAlumnoSeguro(nombre)) {
+                        encontrado = { docId: doc.id, data: data };
+                    }
+                });
+                if (encontrado) return encontrado;
+            }
+
+            return null;
+        }
+
+        async function _guardarAlumnoEnFirestore(ref, cambios, opciones) {
+            if (!window.firebase || !firebase.firestore) {
+                return {
+                    docId: _textoAlumnoSeguro((cambios || {}).nie || (ref || {}).nie || (ref || {}).docId),
+                    data: Object.assign({}, ref || {}, cambios || {})
+                };
+            }
+
+            const opts = opciones || {};
+            const db = firebase.firestore();
+            const col = db.collection('alumnos_inmu');
+            const actual = await _resolverDocumentoAlumno(ref || cambios || {});
+            const base = actual && actual.data ? actual.data : {};
+            const finalNie = _textoAlumnoSeguro((cambios || {}).nie || (ref || {}).nie || base.nie || (ref || {}).docId);
+            const finalNombre = _textoAlumnoSeguro((cambios || {}).nombre || (ref || {}).nombre || base.nombre);
+            const finalDocId = _textoAlumnoSeguro(opts.docId || finalNie || (ref || {}).docId || (actual && actual.docId) || _claveAlumnoSeguro(finalNombre));
+
+            if (!finalDocId) throw new Error('No se pudo determinar el documento del alumno.');
+
+            const payload = Object.assign({}, base, cambios || {});
+            if (finalNie) payload.nie = finalNie;
+            if (finalNombre) payload.nombre = finalNombre;
+            payload.actualizado = new Date().toISOString();
+
+            await col.doc(finalDocId).set(payload, { merge: true });
+
+            if (actual && actual.docId && actual.docId !== finalDocId) {
+                await col.doc(actual.docId).delete().catch(function(err) {
+                    console.warn('[AlumnoDoc] No pude normalizar doc anterior:', err);
+                });
+            }
+
+            return {
+                docId: finalDocId,
+                data: payload,
+                previoDocId: actual && actual.docId ? actual.docId : ''
+            };
+        }
+
+        async function _eliminarAlumnoEnFirestore(ref) {
+            if (!window.firebase || !firebase.firestore) return 0;
+
+            const db = firebase.firestore();
+            const col = db.collection('alumnos_inmu');
+            const actual = await _resolverDocumentoAlumno(ref || {});
+            const candidatos = [];
+            [actual && actual.docId, ref && ref.docId, ref && ref.nie].forEach(function(id) {
+                id = _textoAlumnoSeguro(id);
+                if (id && !candidatos.includes(id)) candidatos.push(id);
+            });
+
+            let eliminados = 0;
+            for (const id of candidatos) {
+                const snap = await col.doc(id).get();
+                if (snap.exists) {
+                    await col.doc(id).delete();
+                    eliminados++;
+                }
+            }
+            return eliminados;
+        }
+
         async function guardarAlumno() {
             const btn = document.getElementById('btn-save-cloud');
             if (btn) btn.disabled = true;
@@ -7677,23 +7829,16 @@
             try {
                 // Guardar en Firestore directamente para mayor velocidad
                 if (window.firebase && firebase.firestore) {
-                    const db = firebase.firestore();
                     const key = n.nie || (n.nombre || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_');
-                    await db.collection('alumnos_inmu').doc(key).set({
+                    const guardado = await _guardarAlumnoEnFirestore({ docId: key, nie: n.nie, nombre: n.nombre }, {
                         nombre: n.nombre,
                         nie: n.nie,
                         sexo: n.sexo,
                         telefono: n.telefono,
                         grado: n.grado,
-                        seccion: n.seccion,
-                        actualizado: new Date().toISOString()
-                    }, { merge: true });
-
-                    if (window.baseDatosAlumnos) {
-                        const idx = window.baseDatosAlumnos.findIndex(x => x.nie === n.nie || (x.nombre && n.nombre && x.nombre.toLowerCase() === n.nombre.toLowerCase()));
-                        if (idx !== -1) Object.assign(window.baseDatosAlumnos[idx], n);
-                        else window.baseDatosAlumnos.push(n);
-                    }
+                        seccion: n.seccion
+                    }, { docId: key });
+                    _actualizarAlumnoEnMemoria({ docId: guardado.docId, nie: n.nie, nombre: n.nombre }, Object.assign({}, n, { _docId: guardado.docId }), { agregarSiNoExiste: true });
                 }
                 
                 // Backup a Google Sheets de fondo
@@ -7743,7 +7888,7 @@
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     const nombre = (data.nombre || '').toLowerCase();
-                    const nie = (data.nie || '').toLowerCase();
+                    const nie = String(data.nie || '').toLowerCase();
                     if (nombre.includes(query) || nie.includes(query)) {
                         const esDelGradoActual = data.grado === document.getElementById('grado-select').value && data.seccion === document.getElementById('seccion-select').value;
                         html += `<div style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
@@ -7751,7 +7896,7 @@
                                 <strong>${data.nombre}</strong><br>
                                 <span style="color:#666;">NIE: ${data.nie} | Grado actual: ${data.grado || 'Ninguno'} "${data.seccion || ''}"</span>
                             </div>
-                            <button onclick="asignarAlumnoAGrado('${doc.id}')" ${esDelGradoActual ? 'disabled style="background:#ccc; color:#fff; border:none; padding:5px 10px; border-radius:4px;"' : 'style="background:var(--green-600); color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;"'}>
+                            <button onclick='asignarAlumnoAGrado(${JSON.stringify(doc.id)}, ${JSON.stringify(data.nie || '')}, ${JSON.stringify(data.nombre || '')})' ${esDelGradoActual ? 'disabled style="background:#ccc; color:#fff; border:none; padding:5px 10px; border-radius:4px;"' : 'style="background:var(--green-600); color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;"'}>
                                 ${esDelGradoActual ? 'Ya asignado' : 'Asignar aquí'}
                             </button>
                         </div>`;
@@ -7764,23 +7909,23 @@
             }
         }
 
-        async function asignarAlumnoAGrado(docId) {
+        async function asignarAlumnoAGrado(docId, nie, nombre) {
             const grado = document.getElementById('grado-select').value;
             const seccion = document.getElementById('seccion-select').value;
             try {
-                await firebase.firestore().collection('alumnos_inmu').doc(docId).set({
+                const refAlumno = { docId: docId, nie: nie, nombre: nombre };
+                const guardado = await _guardarAlumnoEnFirestore(refAlumno, {
+                    grado: grado,
+                    seccion: seccion
+                });
+
+                _actualizarAlumnoEnMemoria(refAlumno, {
                     grado: grado,
                     seccion: seccion,
-                    actualizado: new Date().toISOString()
-                }, { merge: true });
-                
-                if (window.baseDatosAlumnos) {
-                    let aluIndex = window.baseDatosAlumnos.findIndex(a => a.nie === docId || (a.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_') === docId);
-                    if (aluIndex !== -1) {
-                        window.baseDatosAlumnos[aluIndex].grado = grado;
-                        window.baseDatosAlumnos[aluIndex].seccion = seccion;
-                    }
-                }
+                    nie: _textoAlumnoSeguro(nie || (guardado.data || {}).nie),
+                    nombre: _textoAlumnoSeguro(nombre || (guardado.data || {}).nombre),
+                    _docId: guardado.docId
+                }, { agregarSiNoExiste: true });
 
                 if (typeof mostrarNotificacion === 'function') mostrarNotificacion("Alumno asignado a " + grado + " " + seccion, "success");
                 cerrarModal('modal-anadir-alumno');
@@ -7805,13 +7950,13 @@
             } else {
                 let html = '';
                 window.alumnosFiltrados.forEach(alumno => {
-                    const key = alumno.nie || (alumno.nombre || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_');
+                    const key = alumno._docId || alumno.nie || (alumno.nombre || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_');
                     html += `<div class="item-quitar-alumno" data-nombre="${(alumno.nombre||'').toLowerCase()}" data-nie="${alumno.nie||''}" style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
                         <div>
                             <strong>${alumno.nombre}</strong><br>
                             <span style="color:#666;">NIE: ${alumno.nie}</span>
                         </div>
-                        <button onclick="quitarAlumnoDeGrado('${key}')" style="background:#dc2626; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">
+                        <button onclick='quitarAlumnoDeGrado(${JSON.stringify(key)}, ${JSON.stringify(alumno.nie || '')}, ${JSON.stringify(alumno.nombre || '')})' style="background:#dc2626; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">
                             Desvincular
                         </button>
                     </div>`;
@@ -7835,22 +7980,22 @@
             });
         }
 
-        async function quitarAlumnoDeGrado(docId) {
+        async function quitarAlumnoDeGrado(docId, nie, nombre) {
             if(!confirm("¿Seguro que deseas desvincular a este alumno de la clase actual? No se eliminará de la base de datos general, pero ya no aparecerá en la lista de este grado.")) return;
             try {
-                await firebase.firestore().collection('alumnos_inmu').doc(docId).set({
+                const refAlumno = { docId: docId, nie: nie, nombre: nombre };
+                const guardado = await _guardarAlumnoEnFirestore(refAlumno, {
+                    grado: "Baja",
+                    seccion: ""
+                });
+
+                _actualizarAlumnoEnMemoria(refAlumno, {
                     grado: "Baja",
                     seccion: "",
-                    actualizado: new Date().toISOString()
-                }, { merge: true });
-                
-                if (window.baseDatosAlumnos) {
-                    let aluIndex = window.baseDatosAlumnos.findIndex(a => a.nie === docId || (a.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_') === docId);
-                    if (aluIndex !== -1) {
-                        window.baseDatosAlumnos[aluIndex].grado = "Baja";
-                        window.baseDatosAlumnos[aluIndex].seccion = "";
-                    }
-                }
+                    nie: _textoAlumnoSeguro(nie || (guardado.data || {}).nie),
+                    nombre: _textoAlumnoSeguro(nombre || (guardado.data || {}).nombre),
+                    _docId: guardado.docId
+                });
 
                 if (typeof mostrarNotificacion === 'function') mostrarNotificacion("Alumno removido del grado.", "success");
                 cerrarModal('modal-quitar-alumno');
@@ -22681,7 +22826,9 @@ function buscarAlumnoEditor() {
 function seleccionarAlumnoEditor(idx) {
   var a = (window.baseDatosAlumnos||[])[idx];
   if (!a) return;
+  var docIdInput = document.getElementById('ed-alu-docid-original');
   document.getElementById('ed-alu-nie-original').value = a.nie || '';
+  if (docIdInput) docIdInput.value = a._docId || a.nie || _normKeyEdit(a.nombre || '');
   document.getElementById('ed-alu-nombre').value       = a.nombre   || '';
   document.getElementById('ed-alu-nie').value          = a.nie      || '';
   document.getElementById('ed-alu-telefono').value     = a.telefono || '';
@@ -22693,6 +22840,7 @@ function seleccionarAlumnoEditor(idx) {
 }
 
 async function guardarEdicionAlumno() {
+  var docIdOriginal = document.getElementById('ed-alu-docid-original').value.trim();
   var nieOriginal = document.getElementById('ed-alu-nie-original').value.trim();
   var nombre   = document.getElementById('ed-alu-nombre').value.trim();
   var nie      = document.getElementById('ed-alu-nie').value.trim();
@@ -22702,17 +22850,16 @@ async function guardarEdicionAlumno() {
   var sexo     = document.getElementById('ed-alu-sexo').value;
   if (!nombre || !nie) { alert('Nombre y NIE son obligatorios.'); return; }
   var payload = { nie:nie, nombre:nombre, grado:grado, seccion:seccion, sexo:sexo, telefono:telefono };
-  var arr = window.baseDatosAlumnos || [];
-  var idx = arr.findIndex(function(a){ return a.nie === nieOriginal; });
-  if (idx >= 0) arr[idx] = Object.assign({}, arr[idx], payload);
-  else arr.push(payload);
+  var refAlumno = { docId: docIdOriginal, nie: nieOriginal, nombre: nombre };
   var db = _fbDbEdit();
   if (db) {
     try {
-      if (nie !== nieOriginal && nieOriginal) await db.collection('alumnos_inmu').doc(nieOriginal).delete();
-      await db.collection('alumnos_inmu').doc(nie).set(payload, { merge:true });
+      var guardado = await _guardarAlumnoEnFirestore(refAlumno, payload, { docId: nie });
+      payload._docId = guardado.docId;
+      document.getElementById('ed-alu-docid-original').value = guardado.docId;
     } catch(e) { console.warn('[EditorAlu]', e); }
   }
+  _actualizarAlumnoEnMemoria(refAlumno, payload, { agregarSiNoExiste:true });
   try { fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',body:JSON.stringify(Object.assign({tipo_post:'actualizar_alumno',nie_original:nieOriginal},payload))}); } catch(e){}
   mostrarNotificacion('Alumno actualizado correctamente.', 'success', 4000);
   document.getElementById('ed-alu-form').style.display = 'none';
@@ -22724,15 +22871,16 @@ async function guardarEdicionAlumno() {
 }
 
 async function eliminarAlumnoEditor() {
+  var docIdOriginal = document.getElementById('ed-alu-docid-original').value.trim();
   var nieOriginal = document.getElementById('ed-alu-nie-original').value.trim();
   var nombre      = document.getElementById('ed-alu-nombre').value.trim();
   if (!nieOriginal && !nombre) return;
   if (!confirm('Eliminar al alumno "' + nombre + '" (NIE: ' + nieOriginal + ') permanentemente?')) return;
   var arr = window.baseDatosAlumnos || [];
-  var idx = arr.findIndex(function(a){ return a.nie === nieOriginal; });
+  var idx = arr.findIndex(function(a){ return _coincideAlumnoRef(a, { docId: docIdOriginal, nie: nieOriginal, nombre: nombre }); });
   if (idx >= 0) arr.splice(idx, 1);
   var db = _fbDbEdit();
-  if (db && nieOriginal) { try { await db.collection('alumnos_inmu').doc(nieOriginal).delete(); } catch(e){} }
+  if (db) { try { await _eliminarAlumnoEnFirestore({ docId: docIdOriginal, nie: nieOriginal, nombre: nombre }); } catch(e){} }
   try { fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({tipo_post:'eliminar_alumno',nie:nieOriginal,nombre:nombre})}); } catch(e){}
   mostrarNotificacion('Alumno eliminado.', 'warning', 4000);
   document.getElementById('ed-alu-form').style.display = 'none';
@@ -22938,6 +23086,7 @@ async function eliminarAlumnoEditor() {
     </div>
     <div id="ed-alu-form" style="display:none;">
       <input type="hidden" id="ed-alu-nie-original">
+      <input type="hidden" id="ed-alu-docid-original">
       <div style="display:grid;gap:10px;margin-bottom:12px;">
         <div>
           <label style="font-size:11px;font-weight:700;color:#7c3aed;">Nombre completo (Apellidos, Nombres)</label>
