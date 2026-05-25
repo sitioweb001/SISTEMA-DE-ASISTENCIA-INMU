@@ -294,6 +294,8 @@
               .catch(() => {});
           }
           window.docentesStatus[nombre] = status;
+          if (!window.docentesIds) window.docentesIds = {};
+          window.docentesIds[nombre] = doc.id;
         });
 
         if (typeof actualizarListaStatus === 'function') actualizarListaStatus();
