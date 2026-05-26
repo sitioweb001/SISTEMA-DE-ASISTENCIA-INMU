@@ -4802,7 +4802,7 @@
             if (document.getElementById('modal-notas-periodo')?.style.display === 'block') renderTablaNotas();
         }
 
-        function ejecutarLogin() {
+        async function ejecutarLogin() {
             const userStr = document.getElementById("login-username").value.trim().toLowerCase();
             const passStr = document.getElementById("login-password").value;
             const isRobotChecked = document.getElementById("login-robot-check").checked;
