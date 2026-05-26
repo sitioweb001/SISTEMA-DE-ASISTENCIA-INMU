@@ -6676,22 +6676,24 @@
 
             try {
                 window.scrollTo(0, 0);
-                if (typeof AndroidPDF !== 'undefined') {
-                    const pdfBlob = await html2pdf().set(opt).from(containerHTML).outputPdf('blob');
-                    const reader = new FileReader();
-                    reader.onloadend = function () {
-                        const base64 = reader.result.split(',')[1];
-                        // Clasificar: Reportes_Asistencia/[grado]/
-                        const gradoLimpio = grado.replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'Sin_Grado';
-                        const carpetaReportes = (carpetaPDFUri ? carpetaPDFUri + '/' : '') + 'Reportes_Asistencia/' + gradoLimpio;
-                        registrarArchivoGuardado(nombreArchivo, carpetaReportes, grado, '', 'pdf');
-                        AndroidPDF.guardarBase64(base64, nombreArchivo, carpetaReportes);
-                    };
-                    reader.readAsDataURL(pdfBlob);
-                } else {
-                    await html2pdf().set(opt).from(containerHTML).save();
-                    registrarArchivoGuardado(nombreArchivo, '', grado, '', 'pdf');
-                }
+                await ejecutarPDFEnModoClaro(async () => {
+                    if (typeof AndroidPDF !== 'undefined') {
+                        const pdfBlob = await html2pdf().set(opt).from(containerHTML).outputPdf('blob');
+                        const reader = new FileReader();
+                        reader.onloadend = function () {
+                            const base64 = reader.result.split(',')[1];
+                            // Clasificar: Reportes_Asistencia/[grado]/
+                            const gradoLimpio = grado.replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'Sin_Grado';
+                            const carpetaReportes = (carpetaPDFUri ? carpetaPDFUri + '/' : '') + 'Reportes_Asistencia/' + gradoLimpio;
+                            registrarArchivoGuardado(nombreArchivo, carpetaReportes, grado, '', 'pdf');
+                            AndroidPDF.guardarBase64(base64, nombreArchivo, carpetaReportes);
+                        };
+                        reader.readAsDataURL(pdfBlob);
+                    } else {
+                        await html2pdf().set(opt).from(containerHTML).save();
+                        registrarArchivoGuardado(nombreArchivo, '', grado, '', 'pdf');
+                    }
+                });
             } catch (error) {
                 alert("❌ Error al generar PDF: " + error.message);
             } finally {
@@ -21668,6 +21670,20 @@
             return tmp;
         }
 
+        async function ejecutarPDFEnModoClaro(callback) {
+            const estabaOscuro = document.body.classList.contains('dark');
+            const colorSchemePrevio = document.documentElement.style.colorScheme;
+            if (estabaOscuro) document.body.classList.remove('dark');
+            document.documentElement.style.colorScheme = 'light';
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+            try {
+                return await callback();
+            } finally {
+                document.documentElement.style.colorScheme = colorSchemePrevio;
+                if (estabaOscuro) document.body.classList.add('dark');
+            }
+        }
+
         function inicializarInformeVista() {
             const hoy = new Date().toISOString().slice(0, 10);
             const docActual     = (document.getElementById('docente-nombre')  || {}).value || '';
@@ -22320,14 +22336,16 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
             };
 
             try {
-                if (typeof AndroidPDF !== 'undefined') {
-                    const blob = await html2pdf().set(opt).from(tmpEl).outputPdf('blob');
-                    const reader = new FileReader();
-                    reader.onloadend = () => AndroidPDF.guardarBase64(reader.result.split(',')[1], nombreArchivo, carpetaPDFUri || '');
-                    reader.readAsDataURL(blob);
-                } else {
-                    await html2pdf().set(opt).from(tmpEl).save();
-                }
+                await ejecutarPDFEnModoClaro(async () => {
+                    if (typeof AndroidPDF !== 'undefined') {
+                        const blob = await html2pdf().set(opt).from(tmpEl).outputPdf('blob');
+                        const reader = new FileReader();
+                        reader.onloadend = () => AndroidPDF.guardarBase64(reader.result.split(',')[1], nombreArchivo, carpetaPDFUri || '');
+                        reader.readAsDataURL(blob);
+                    } else {
+                        await html2pdf().set(opt).from(tmpEl).save();
+                    }
+                });
                 if (typeof mostrarNotificacion === 'function') mostrarNotificacion('PDF generado con éxito ✓', 'success');
                 cerrarQRAutonomo();
             } catch (error) {
@@ -22451,14 +22469,16 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
 
             if (typeof mostrarNotificacion === 'function') mostrarNotificacion('Generando PDF para compartir...', 'info');
             try {
-                const blob = await html2pdf().set(opt).from(containerHTML).outputPdf('blob');
-                const compartido = await compartirPDF(blob, nombreArchivo);
-                if (!compartido) {
-                    await html2pdf().set(opt).from(containerHTML).save();
-                    if (typeof mostrarNotificacion === 'function') mostrarNotificacion('PDF descargado (compartir no disponible en este navegador)', 'warning');
-                } else {
-                    if (typeof mostrarNotificacion === 'function') mostrarNotificacion('PDF compartido exitosamente ✓', 'success');
-                }
+                await ejecutarPDFEnModoClaro(async () => {
+                    const blob = await html2pdf().set(opt).from(containerHTML).outputPdf('blob');
+                    const compartido = await compartirPDF(blob, nombreArchivo);
+                    if (!compartido) {
+                        await html2pdf().set(opt).from(containerHTML).save();
+                        if (typeof mostrarNotificacion === 'function') mostrarNotificacion('PDF descargado (compartir no disponible en este navegador)', 'warning');
+                    } else {
+                        if (typeof mostrarNotificacion === 'function') mostrarNotificacion('PDF compartido exitosamente ✓', 'success');
+                    }
+                });
             } catch (e) {
                 if (typeof mostrarNotificacion === 'function') mostrarNotificacion('Error al generar PDF: ' + e.message, 'error');
             }
