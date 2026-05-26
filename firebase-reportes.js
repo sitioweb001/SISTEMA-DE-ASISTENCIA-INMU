@@ -418,6 +418,9 @@
           permisos:       Number(r.permisos)  || 0,
           m:              Number(r.m)          || 0,
           f:              Number(r.f)          || 0,
+          asistentes:      Array.isArray(r.asistentes)      ? r.asistentes      : [],
+          ausentes_lista:  Array.isArray(r.ausentes_lista)  ? r.ausentes_lista  : [],
+          permisos_lista:  Array.isArray(r.permisos_lista)  ? r.permisos_lista  : [],
           observacion:    r.observacion || ''
         }, { merge: true });
         subidos++;
