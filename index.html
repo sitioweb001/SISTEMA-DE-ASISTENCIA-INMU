@@ -8443,16 +8443,25 @@
             } else {
                 // Global
                 localStorage.removeItem('modo_backend_local');
+                // IMPORTANTE: Guardar localmente como respaldo por si falla la nube (Quota Exceeded)
+                try {
+                    let cfg = JSON.parse(localStorage.getItem('fb_config_sistema') || '{}');
+                    cfg.modo_backend = modoSeleccionado;
+                    localStorage.setItem('fb_config_sistema', JSON.stringify(cfg));
+                } catch (e) { }
+
                 if (window.firebase && firebase.firestore) {
                     try {
                         const db = firebase.firestore();
-                        await db.collection('config_inmu').doc('sistema').set({ modo_backend: modoSeleccionado }, { merge: true });
-                        mostrarNotificacion('Modo actualizado GLOBALMENTE en la base de datos', 'success');
+                        // Actualizamos en background, sin await, para evitar que se quede pegado por límite de cuotas
+                        db.collection('config_inmu').doc('sistema').set({ modo_backend: modoSeleccionado }, { merge: true })
+                            .catch(e => console.warn('Error backend cuota al guardar modo', e));
+                        mostrarNotificacion('Modo actualizado GLOBALMENTE', 'success');
                     } catch (e) {
-                        alert('Error guardando en Firebase: ' + e.message);
+                        alert('Error interno: ' + e.message);
                     }
                 } else {
-                    alert('Firebase no está disponible para hacer el cambio global.');
+                    alert('Firebase no está disponible para hacer el cambio global, pero se aplicó localmente.');
                 }
             }
             cerrarModal('modal-modo-conexion');
@@ -23682,11 +23691,6 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
             var btn = document.getElementById('btn-pdf-portal-hoy');
             if (btn) { btn.disabled = true; btn.textContent = '⏳ Generando...'; }
 
-            var container = document.createElement('div');
-            container.innerHTML = html;
-            container.style.cssText = 'position:absolute; left:-9999px; top:0; width:800px; background:white; z-index:-1;';
-            document.body.appendChild(container);
-
             var ahora = new Date();
             var nombreArchivo = 'Portal_Alumnos_' + String(ahora.getDate()).padStart(2, '0') + '-' +
                 String(ahora.getMonth() + 1).padStart(2, '0') + '-' + ahora.getFullYear() +
@@ -23696,20 +23700,17 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
                 html2pdf().set({
                     margin: 10, filename: nombreArchivo,
                     image: { type: 'jpeg', quality: 0.9 },
-                    html2canvas: { scale: 1.4, useCORS: true },
+                    html2canvas: { scale: 1.4, useCORS: true, logging: false },
                     jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
-                }).from(container).save().then(function () {
+                }).from(html).save().then(function () {
                     mostrarNotificacion('✅ PDF generado correctamente.', 'success', 3000);
-                    document.body.removeChild(container);
                     if (btn) { btn.disabled = false; btn.textContent = '📥 Exportar PDF'; }
                 }).catch(function (e) {
                     alert('Error al generar PDF: ' + (e.message || e));
-                    document.body.removeChild(container);
                     if (btn) { btn.disabled = false; btn.textContent = '📥 Exportar PDF'; }
                 });
             } catch (e) {
                 alert('Error al generar PDF: ' + e.message);
-                document.body.removeChild(container);
                 if (btn) { btn.disabled = false; btn.textContent = '📥 Exportar PDF'; }
             }
         }
