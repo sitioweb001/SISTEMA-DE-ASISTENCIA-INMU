@@ -2173,6 +2173,8 @@
                             <button onclick="mostrarDocentesEnLinea()"
                                 style="padding: 10px 15px; border-radius: 8px; background: var(--amber-600); color: white; font-weight: bold; border: none; cursor: pointer;">👨‍🏫
                                 Docentes en Línea</button>
+                            <button onclick="abrirModal('modal-modo-conexion')"
+                                style="padding: 10px 15px; border-radius: 8px; background: #ea580c; color: white; font-weight: bold; border: none; cursor: pointer;">🆘 Modo de Conexión</button>
                         </div>
                     </div>
 
@@ -4509,39 +4511,44 @@
                 return;
             }
 
-            cont.innerHTML = '<div style="padding: 20px; text-align: center; color: #185FA5; font-weight:bold;">Sincronizando con la nube...</div>';
+            cont.innerHTML = '<div style="padding: 20px; text-align: center; color: #185FA5; font-weight:bold;">Sincronizando con Firebase...</div>';
             selDoc.innerHTML = '<option value="">Descargando lista...</option>';
 
             try {
-                const [responseAlu, responseDoc, responseCatalogo] = await Promise.all([
-                    fetch(SCRIPT_URL + "?tipo=alumnos"),
-                    fetch(SCRIPT_URL + "?tipo=docentes"),
-                    fetch(SCRIPT_URL + "?tipo=catalogo_materias")
+                if (!window.firebase || !firebase.firestore) throw new Error("Firebase no disponible");
+                const db = firebase.firestore();
+                const [snapAlu, snapDoc, snapCat] = await Promise.all([
+                    db.collection('alumnos_inmu').get(),
+                    db.collection('docentes_inmu').get(),
+                    db.collection('config_inmu').doc('catalogo_materias').get().catch(() => null)
                 ]);
-                if (!responseAlu.ok || !responseDoc.ok || !responseCatalogo.ok) throw new Error("Error");
 
-                baseDatosAlumnos = await responseAlu.json();
+                baseDatosAlumnos = [];
+                snapAlu.forEach(doc => baseDatosAlumnos.push(doc.data()));
                 baseDatosAlumnos.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
                 sincronizarReferenciasAlumnos();
                 cargarAlumnos();
 
-                baseDatosDocentes = await responseDoc.json();
-                catalogoMaterias = await responseCatalogo.json();
+                baseDatosDocentes = [];
+                snapDoc.forEach(doc => baseDatosDocentes.push(doc.data()));
+                
+                catalogoMaterias = snapCat && snapCat.exists ? (snapCat.data().items || []) : [];
                 if (!Array.isArray(catalogoMaterias) || catalogoMaterias.length === 0) {
                     catalogoMaterias = getCatalogoMateriasFallback();
                 }
+
                 let htmlDoc = `<option value="">-- Seleccionar --</option>`;
                 baseDatosDocentes.forEach(d => { htmlDoc += `<option value="${d.nombre}">${d.nombre}</option>`; });
                 selDoc.innerHTML = htmlDoc;
                 inicializarMateriasUI();
 
             } catch (error) {
-                console.warn('Error inicializando datos:', error);
+                console.warn('Error inicializando datos Firebase:', error);
                 if (!esAppAndroid()) {
                     marcarModoOffline();
                     return;
                 }
-                cont.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--red-600);">Error de conexión.</div>';
+                cont.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--red-600);">Error de conexión con Firebase.</div>';
                 selDoc.innerHTML = '<option value="Invitado">Error de red - Invitado</option>';
             }
         }
@@ -4562,40 +4569,25 @@
             if (filtroEl && !filtroEl.value) filtroEl.value = fechaLocal;
 
             try {
-                const response = await fetch(SCRIPT_URL + "?tipo=reportes");
-                const data = await response.json();
-                if (Array.isArray(data) && data.length > 0) {
-                    todosLosReportes = data;
-                    filtrarReportesSub();
-                    return;
-                }
-            } catch (e) {
-                console.warn('[cargarReportesSub] GAS falló, intentando Firestore directo:', e);
-            }
-
-            // Fallback: leer desde Firestore directamente
-            try {
-                if (window.firebase && firebase.apps && firebase.apps.length) {
-                    const snap = await firebase.firestore().collection('reportes_inmu')
-                        .orderBy('fecha_ts','desc').limit(200).get();
-                    const lista = [];
-                    snap.forEach(doc => {
-                        const d = doc.data();
-                        // Normalizar fecha: si es Timestamp de Firestore, convertir a ISO
-                        let fecha = d.fecha || '';
-                        if (!fecha && d.fecha_ts) {
-                            try {
-                                const ts = d.fecha_ts.toDate ? d.fecha_ts.toDate() : new Date(d.fecha_ts.seconds * 1000);
-                                fecha = ts.toISOString();
-                            } catch(_) {}
-                        }
-                        lista.push({ ...d, _id: doc.id, fecha });
-                    });
-                    todosLosReportes = lista;
-                    console.log('[cargarReportesSub] Firestore directo:', lista.length, 'reportes');
-                }
-            } catch(e2) {
-                console.warn('[cargarReportesSub] Firestore también falló:', e2);
+                if (!window.firebase || !firebase.firestore) throw new Error("Firebase no disponible");
+                const snap = await firebase.firestore().collection('reportes_inmu')
+                    .orderBy('fecha_ts','desc').limit(500).get();
+                const lista = [];
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    let fecha = d.fecha || '';
+                    if (!fecha && d.fecha_ts) {
+                        try {
+                            const ts = d.fecha_ts.toDate ? d.fecha_ts.toDate() : new Date(d.fecha_ts.seconds * 1000);
+                            fecha = ts.toISOString();
+                        } catch(_) {}
+                    }
+                    lista.push({ ...d, _id: doc.id, fecha });
+                });
+                todosLosReportes = lista;
+                console.log('[cargarReportesSub] Firestore directo:', lista.length, 'reportes');
+            } catch(e) {
+                console.warn('[cargarReportesSub] Firebase falló:', e);
                 container.innerHTML = "Sin datos de reportes. Verifica conexión.";
                 return;
             }
@@ -5133,14 +5125,17 @@
                 if (info) {
                     const hora = info.hora || '';
                     const esPermiso = info.estado === 'permiso';
-                    // Actualizar columna Portal con estilo consistente
                     if (portalDiv) {
                         if (esPermiso) {
-                            portalDiv.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#92400e;background:#fef3c7;';
+                            portalDiv.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#92400e;background:#fef3c7;cursor:pointer;';
                             portalDiv.innerHTML = `⚠️ Permiso${hora ? '<br><small style="font-weight:400">' + hora + '</small>' : ''}`;
+                            portalDiv.title = 'Click para desmarcar del portal';
+                            portalDiv.onclick = function() { window.quitarMarcaPortal(nieStr, _getFechaKeyPortal()); };
                         } else {
-                            portalDiv.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#166534;background:#dcfce7;';
+                            portalDiv.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#166534;background:#dcfce7;cursor:pointer;';
                             portalDiv.innerHTML = `✅ Marcó${hora ? '<br><small style="font-weight:400">' + hora + '</small>' : ''}`;
+                            portalDiv.title = 'Click para desmarcar del portal';
+                            portalDiv.onclick = function() { window.quitarMarcaPortal(nieStr, _getFechaKeyPortal()); };
                         }
                     }
                     // Buscar checkbox por índice real (indexReal = index cuando no hay paginación)
@@ -6607,9 +6602,42 @@
             const nombreBase = `${esDiRefuerzo ? 'DI Refuerzo' : 'Asistencia'} ${grado} ${secLimpia} - ${fechaArchivo} - ${docenteLimpio}`;
             const { nombreArchivo } = construirNombreArchivo(nombreBase);
 
-            fetch(SCRIPT_URL, {
-                method: 'POST', mode: 'no-cors',
-                body: JSON.stringify({
+            const modo = window.getModoBackend ? window.getModoBackend() : 'firebase-apps_script';
+
+            if (modo === 'firebase-firebase' || modo === 'firebase-apps_script') {
+                if (window.FB_GuardarAsistencia) {
+                    window.FB_GuardarAsistencia({
+                        tipo_post: "asistencia",
+                        fecha: ahora.toISOString(),
+                        grado, seccion, docente,
+                        presentes: presentes.length,
+                        ausentes: ausentes.length,
+                        permisos: permisos.length,
+                        m: masc, f: fem,
+                        asistentes: presentes.map(a => a.nombre),
+                        ausentes_lista: ausentes.map(a => a.nombre),
+                        permisos_lista: permisos.map(a => ({
+                            nombre: a.nombre,
+                            sexo: a.sexo,
+                            nie: a.nie,
+                            justificante: a.justificante || ''
+                        })),
+                        observacion_general: obsGeneral
+                    });
+                }
+
+                if (obsGeneral.trim() && window.FB_GuardarObservacionGeneral) {
+                    window.FB_GuardarObservacionGeneral({
+                        tipo_post: "observacion_general",
+                        fecha: ahora.toISOString(),
+                        grado, seccion, docente,
+                        observacion: obsGeneral
+                    });
+                }
+            }
+
+            if (modo === 'apps_script' || modo === 'firebase-apps_script') {
+                const payloadAsistencia = {
                     tipo_post: "asistencia",
                     fecha: ahora.toISOString(),
                     grado, seccion, docente,
@@ -6626,19 +6654,17 @@
                         justificante: a.justificante || ''
                     })),
                     observacion_general: obsGeneral
-                })
-            }).catch(e => console.log('Error enviando reporte:', e));
+                };
+                fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payloadAsistencia) }).catch(e => console.log('Error enviando a GAS:', e));
 
-            if (obsGeneral.trim()) {
-                fetch(SCRIPT_URL, {
-                    method: 'POST', mode: 'no-cors',
-                    body: JSON.stringify({
+                if (obsGeneral.trim()) {
+                    fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({
                         tipo_post: "observacion_general",
                         fecha: ahora.toISOString(),
                         grado, seccion, docente,
                         observacion: obsGeneral
-                    })
-                }).catch(e => console.log('Error enviando observación:', e));
+                    }) }).catch(e => console.log('Error enviando observación a GAS:', e));
+                }
             }
 
             // Obtener estudiantes en peligro (no bloquea la generación del PDF)
@@ -7678,6 +7704,61 @@
             const modal = document.getElementById(id);
             if (modal) modal.classList.remove('open');
         }
+
+        // ==========================================
+        // MODO DE CONEXIÓN (ARQUITECTURA)
+        // ==========================================
+        window.getModoBackend = function() {
+            const localMode = localStorage.getItem('modo_backend_local');
+            if (localMode) return localMode; // Local override has priority
+            
+            const cfg = JSON.parse(localStorage.getItem('fb_config_sistema') || '{}');
+            return cfg.modo_backend || 'firebase-apps_script'; // Default: Hybrid
+        };
+
+        function _cargarUiModoConexion() {
+            const modo = window.getModoBackend();
+            const scope = localStorage.getItem('modo_backend_local') ? 'local' : 'global';
+            
+            const radios = document.querySelectorAll('input[name="modo_backend"]');
+            radios.forEach(r => {
+                r.checked = (r.value === modo);
+            });
+            document.getElementById('modo_backend_scope').value = scope;
+        }
+
+        const _originalAbrirModal = window.abrirModal;
+        window.abrirModal = function(id) {
+            if (id === 'modal-modo-conexion') _cargarUiModoConexion();
+            
+            const modal = document.getElementById(id);
+            if (modal) modal.classList.add('open');
+        };
+
+        window.guardarModoConexion = async function() {
+            const modoSeleccionado = document.querySelector('input[name="modo_backend"]:checked').value;
+            const scope = document.getElementById('modo_backend_scope').value;
+
+            if (scope === 'local') {
+                localStorage.setItem('modo_backend_local', modoSeleccionado);
+                mostrarNotificacion('Modo actualizado SOLO para este dispositivo', 'info');
+            } else {
+                // Global
+                localStorage.removeItem('modo_backend_local');
+                if (window.firebase && firebase.firestore) {
+                    try {
+                        const db = firebase.firestore();
+                        await db.collection('config/sistema').set({ modo_backend: modoSeleccionado }, { merge: true });
+                        mostrarNotificacion('Modo actualizado GLOBALMENTE en la base de datos', 'success');
+                    } catch(e) {
+                        alert('Error guardando en Firebase: ' + e.message);
+                    }
+                } else {
+                    alert('Firebase no está disponible para hacer el cambio global.');
+                }
+            }
+            cerrarModal('modal-modo-conexion');
+        };
 
         function _textoAlumnoSeguro(valor) {
             return String(valor == null ? '' : valor).trim();
@@ -22903,6 +22984,7 @@ async function exportarPDFPortalHoy() {
 
   var container = document.createElement('div');
   container.innerHTML = html;
+  container.style.cssText = 'position:absolute; left:-9999px; top:0; width:800px; background:white; z-index:-1;';
   document.body.appendChild(container);
 
   var ahora = new Date();
@@ -24032,6 +24114,35 @@ function _getFechaKeyPortal() {
   return String(n.getDate()).padStart(2,'0') + '_' + String(n.getMonth()+1).padStart(2,'0') + '_' + n.getFullYear();
 }
 
+window.quitarMarcaPortal = async function(nieStr, fechaKey) {
+  if (!confirm('¿Deseas desmarcar a este alumno del portal? Se eliminará su registro de asistencia del portal.')) return;
+  try {
+    if (!window.firebase || !firebase.firestore) return;
+    const db = firebase.firestore();
+    const snap = await db.collection('asistencia_alumnos_inmu')
+       .where('nie', '==', String(nieStr).trim()).where('fecha_key', '==', fechaKey).get();
+    
+    if (snap.empty) { 
+      mostrarNotificacion('El alumno ya no estaba marcado en el portal.', 'info'); 
+    } else {
+      const batch = db.batch();
+      snap.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+      mostrarNotificacion('Marca de portal eliminada correctamente.', 'success');
+    }
+    
+    const el = document.getElementById('asist-portal-' + nieStr);
+    if (el) {
+      el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#991b1b;background:#fee2e2;';
+      el.textContent = '🔴 No marcó';
+      el.onclick = null;
+      el.title = "";
+    }
+  } catch(e) {
+    alert('Error al desmarcar: ' + e.message);
+  }
+};
+
 function _pintarPortalAutoUI(mapa) {
   (window.alumnosFiltrados || []).forEach((alumno, index) => {
     const nieStr = String(alumno.nie || '').trim();
@@ -24041,11 +24152,13 @@ function _pintarPortalAutoUI(mapa) {
     if (reg) {
       const hora = reg.hora || '';
       const esP  = reg.estado === 'permiso';
-      el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;' +
+      el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;cursor:pointer;' +
         (esP ? 'color:#92400e;background:#fef3c7;' : 'color:#166534;background:#dcfce7;');
       el.innerHTML = esP
         ? `⚠️ Permiso${hora ? '<br><small style="font-weight:400">' + hora + '</small>' : ''}`
         : `✅ Marcó${hora ? '<br><small style="font-weight:400">' + hora + '</small>' : ''}`;
+      el.title = 'Click para desmarcar del portal';
+      el.onclick = function() { window.quitarMarcaPortal(nieStr, _getFechaKeyPortal()); };
 
       // ── Auto-marcar checkbox si el alumno marcó desde el portal ──────────
       const chk = document.getElementById('chk-' + index);
@@ -24930,7 +25043,52 @@ async function ejecutarDiagnostico() {
   }
 }
 </script>
+    <!-- MODAL MODO DE CONEXION -->
+    <div id="modal-modo-conexion" class="modal-overlay">
+        <div class="modal-content" style="max-width: 450px;">
+            <h2 style="color:var(--gray-900); font-size:18px; margin-bottom:15px;">🆘 Modo de Arquitectura</h2>
+            <p style="font-size:13px; color:var(--gray-600); margin-bottom:20px;">
+                Selecciona cómo debe operar el sistema backend. Útil para contingencias.
+            </p>
+            
+            <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
+                <label style="display:flex; align-items:flex-start; gap:10px; padding:10px; border:1px solid #e5e7eb; border-radius:8px; cursor:pointer;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
+                    <input type="radio" name="modo_backend" value="firebase-apps_script" style="margin-top:4px;">
+                    <div>
+                        <strong style="color:#0369a1;">Firebase - Apps Script (Híbrido)</strong>
+                        <div style="font-size:11px; color:#6b7280; margin-top:2px;">El sistema mantiene conectado 50% 50%. Funciona a la par (Lecturas rápidas en Firebase, escrituras guardadas en tu Excel/GAS y en Firebase).</div>
+                    </div>
+                </label>
+                <label style="display:flex; align-items:flex-start; gap:10px; padding:10px; border:1px solid #e5e7eb; border-radius:8px; cursor:pointer;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
+                    <input type="radio" name="modo_backend" value="firebase-firebase" style="margin-top:4px;">
+                    <div>
+                        <strong style="color:#15803d;">Firebase - Firebase (100% Firebase)</strong>
+                        <div style="font-size:11px; color:#6b7280; margin-top:2px;">Este es el que hace todo 100% en Firebase. Más rápido y estable, pero no actualiza tu Excel en tiempo real.</div>
+                    </div>
+                </label>
+                <label style="display:flex; align-items:flex-start; gap:10px; padding:10px; border:1px solid #e5e7eb; border-radius:8px; cursor:pointer;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
+                    <input type="radio" name="modo_backend" value="apps_script" style="margin-top:4px;">
+                    <div>
+                        <strong style="color:#b91c1c;">Apps Script - Apps Script (100% GAS)</strong>
+                        <div style="font-size:11px; color:#6b7280; margin-top:2px;">Por si se cae Firebase, funciona 100% en Apps Script (el sistema original).</div>
+                    </div>
+                </label>
+            </div>
+
+            <div style="margin-bottom:20px; padding:12px; background:#fefce8; border-radius:8px; border:1px solid #fef08a;">
+                <label style="font-size:13px; font-weight:bold; color:#854d0e; display:block; margin-bottom:8px;">¿Dónde aplicar este cambio?</label>
+                <select id="modo_backend_scope" style="width:100%; padding:8px; border-radius:6px; border:1px solid #ca8a04; outline:none; color:#713f12; font-weight:bold;">
+                    <option value="local">Solo para este docente (Localmente)</option>
+                    <option value="global">Aplicar GLOBALMENTE a todos los docentes</option>
+                </select>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button onclick="cerrarModal('modal-modo-conexion')" class="btn-secondary">Cancelar</button>
+                <button onclick="guardarModoConexion()" class="btn-primary">Guardar Configuración</button>
+            </div>
+        </div>
+    </div>
 
 </body>
-
 </html>
