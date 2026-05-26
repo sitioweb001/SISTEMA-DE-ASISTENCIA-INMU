@@ -1546,7 +1546,7 @@
     <!-- ═══════════════════════════════════════════════════ -->
     <!-- MODAL MENÚ ALTERNATIVO -->
     <!-- ═══════════════════════════════════════════════════ -->
-    <div class="modal-overlay" id="modal-inicio-dropdown" style="background: var(--bg-app) !important;">
+    <div class="modal-overlay" id="modal-inicio-dropdown">
         <div class="modal">
             <h2 style="color: var(--blue-800); text-align: center; margin-bottom: 5px;">Seleccione Docente</h2>
 
@@ -1729,7 +1729,6 @@
                             </button>
                         </div>
                     </div>
-                </div>
                 <div style="margin-bottom:12px; display:flex; gap:10px; align-items:center;">
                     <input type="text" id="student-list-search" placeholder="Buscar por nombre o NIE..."
                         oninput="filtrarStudentList()"
@@ -2100,15 +2099,20 @@
             <div id="view-subdireccion" class="view-section">
                 <div class="panel">
                     <h2
-                        style="color: var(--blue-800); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                        style="color: var(--blue-800); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap:10px; flex-wrap:wrap;">
                         <button
                             onclick="window.open('https://docs.google.com/spreadsheets/d/1kjzjLTs4YViqJMPVPvYZjwj9pf-q0h_PNNfCTlA7aWE/edit?usp=sharing', '_blank')"
                             class="btn-resumen">
                             Resumen (Sub-Dirección)
                         </button>
-                        <button onclick="abrirModalAsistenciaPortalHoy()" class="btn-docentes-linea" style="background:#7c3aed;">
-                            👁️ Ver Portal Alumnos Hoy
-                        </button>
+                        <span style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                            <button onclick="abrirModalAsistenciaPortalHoy()" class="btn-docentes-linea" style="background:#7c3aed;">
+                                👁️ Ver Portal Alumnos Hoy
+                            </button>
+                            <button onclick="cambiarVista('docente')" class="btn-docentes-linea" style="background:#185FA5;">
+                                ← Volver
+                            </button>
+                        </span>
                     </h2>
 
                     <style>
@@ -8209,13 +8213,61 @@
                 } catch(e) { console.warn('[DetalleEst] Firestore:', e); }
             }
 
-            // ── Fallback al GAS solo si todo lo demás falló ──────────────────────
-            if (!registro) {
+            const normalizarListaDetalle = valor => {
+                if (Array.isArray(valor)) return valor;
+                if (typeof valor === 'string' && valor.trim()) {
+                    try {
+                        const parsed = JSON.parse(valor);
+                        return Array.isArray(parsed) ? parsed : [];
+                    } catch (_) {
+                        return valor.split(',').map(v => v.trim()).filter(Boolean);
+                    }
+                }
+                return [];
+            };
+            const tieneListasDetalle = reg => {
+                if (!reg) return false;
+                return normalizarListaDetalle(reg.asistentes).length > 0 ||
+                    normalizarListaDetalle(reg.ausentes_lista).length > 0 ||
+                    normalizarListaDetalle(reg.permisos_lista).length > 0;
+            };
+            const necesitaDetalle = reg => {
+                if (!reg) return true;
+                const totalConDetalle = (Number(reg.presentes) || 0) + (Number(reg.ausentes) || 0) + (Number(reg.permisos) || 0);
+                return totalConDetalle > 0 && !tieneListasDetalle(reg);
+            };
+
+            // ── Fallback al GAS si falta el registro o si el resumen no trae listas ──
+            if (!registro || necesitaDetalle(registro)) {
                 try {
                     const response = await fetch(SCRIPT_URL + '?tipo=detalles_asistencia&grado=' + encodeURIComponent(grado) + '&seccion=' + encodeURIComponent(seccion) + '&docente=' + encodeURIComponent(docente) + '&fecha=' + encodeURIComponent(fecha));
                     const detalles = await response.json();
-                    if (detalles && detalles.length > 0) registro = detalles[0];
+                    if (detalles && detalles.length > 0 && tieneListasDetalle(detalles[0])) {
+                        registro = { ...(registro || {}), ...detalles[0] };
+                    }
                 } catch(e) { console.warn('[DetalleEst] GAS:', e); }
+            }
+
+            if (necesitaDetalle(registro)) {
+                try {
+                    const response = await fetch(SCRIPT_URL + '?tipo=reportes');
+                    const reportesGas = await response.json();
+                    if (Array.isArray(reportesGas)) {
+                        const normG = (s) => normalizarTexto(s);
+                        const fechaDate = fecha ? new Date(fecha) : null;
+                        const encontradoGas = reportesGas.filter(r => {
+                            const rFecha = r.fecha ? new Date(r.fecha) : null;
+                            const mismaFecha = !fechaDate || !rFecha ? true :
+                                rFecha.toDateString() === fechaDate.toDateString();
+                            return normG(r.grado) === normG(grado) &&
+                                normG(r.seccion) === normG(seccion) &&
+                                normG(r.docente) === normG(docente) &&
+                                mismaFecha &&
+                                tieneListasDetalle(r);
+                        }).pop();
+                        if (encontradoGas) registro = { ...(registro || {}), ...encontradoGas };
+                    }
+                } catch(e) { console.warn('[DetalleEst] GAS reportes:', e); }
             }
 
             try {
@@ -8226,24 +8278,77 @@
                 let lista = [];
                 let titulo = '';
 
-                const asistentesRaw = Array.isArray(registro.asistentes) ? registro.asistentes : [];
-                const ausentesRaw = Array.isArray(registro.ausentes_lista) ? registro.ausentes_lista : [];
-                const permisosRaw = Array.isArray(registro.permisos_lista) ? registro.permisos_lista : [];
+                let asistentesRaw = normalizarListaDetalle(registro.asistentes);
+                let ausentesRaw = normalizarListaDetalle(registro.ausentes_lista);
+                let permisosRaw = normalizarListaDetalle(registro.permisos_lista);
 
-                const resolverEstudiante = nombre => {
+                if ((!baseDatosAlumnos || baseDatosAlumnos.length === 0) && typeof SCRIPT_URL !== 'undefined') {
+                    try {
+                        const resAlumnos = await fetch(SCRIPT_URL + '?tipo=alumnos');
+                        const listaAlumnos = await resAlumnos.json();
+                        if (Array.isArray(listaAlumnos) && listaAlumnos.length > 0) {
+                            baseDatosAlumnos = listaAlumnos;
+                            window.baseDatosAlumnos = baseDatosAlumnos;
+                        }
+                    } catch (e) {
+                        console.warn('[DetalleEst] No se pudo cargar nómina para reconstruir detalle:', e);
+                    }
+                }
+
+                const rosterGrupo = (baseDatosAlumnos || []).filter(a =>
+                    normalizarTexto(a.grado) === normalizarTexto(grado) &&
+                    normalizarTexto(a.seccion) === normalizarTexto(seccion)
+                );
+                const nombreDe = item => typeof item === 'string' ? item : (item && item.nombre) || '';
+                const nombresSet = listaRaw => new Set(listaRaw.map(nombreDe).map(n => normalizarTexto(n)).filter(Boolean));
+                const filtrarRosterExcepto = (...listasRaw) => {
+                    const excluir = new Set();
+                    listasRaw.forEach(raw => nombresSet(raw).forEach(n => excluir.add(n)));
+                    return rosterGrupo.filter(a => !excluir.has(normalizarTexto(a.nombre)));
+                };
+
+                if (!tieneListasDetalle(registro) && rosterGrupo.length > 0) {
+                    const totalRoster = rosterGrupo.length;
+                    const totalPresentes = Number(registro.presentes) || 0;
+                    const totalAusentes = Number(registro.ausentes) || 0;
+                    const totalPermisos = Number(registro.permisos) || 0;
+
+                    if (totalAusentes === totalRoster && totalPresentes === 0 && totalPermisos === 0) {
+                        ausentesRaw = rosterGrupo.map(a => a.nombre);
+                    } else if (totalPresentes === totalRoster && totalAusentes === 0 && totalPermisos === 0) {
+                        asistentesRaw = rosterGrupo.map(a => a.nombre);
+                    }
+                } else if (rosterGrupo.length > 0) {
+                    if (ausentesRaw.length === 0 && (Number(registro.ausentes) || 0) > 0 && (asistentesRaw.length || permisosRaw.length)) {
+                        const inferidos = filtrarRosterExcepto(asistentesRaw, permisosRaw);
+                        if (inferidos.length === (Number(registro.ausentes) || 0)) ausentesRaw = inferidos.map(a => a.nombre);
+                    }
+                    if (asistentesRaw.length === 0 && (Number(registro.presentes) || 0) > 0 && (ausentesRaw.length || permisosRaw.length)) {
+                        const inferidos = filtrarRosterExcepto(ausentesRaw, permisosRaw);
+                        if (inferidos.length === (Number(registro.presentes) || 0)) asistentesRaw = inferidos.map(a => a.nombre);
+                    }
+                }
+
+                const resolverEstudiante = item => {
+                    if (item && typeof item === 'object') {
+                        const nombreObj = item.nombre || '';
+                        const encontradoObj = baseDatosAlumnos.find(a => normalizarTexto(a.nombre) === normalizarTexto(nombreObj) && normalizarTexto(a.grado) === normalizarTexto(grado) && normalizarTexto(a.seccion) === normalizarTexto(seccion));
+                        return encontradoObj ? { ...encontradoObj, ...item, nombre: nombreObj } : { nombre: nombreObj, sexo: item.sexo || '', nie: item.nie || '' };
+                    }
+                    const nombre = item || '';
                     const nombreNormalizado = normalizarTexto(nombre);
                     const encontrado = baseDatosAlumnos.find(a => normalizarTexto(a.nombre) === nombreNormalizado && normalizarTexto(a.grado) === normalizarTexto(grado) && normalizarTexto(a.seccion) === normalizarTexto(seccion));
                     return encontrado ? { ...encontrado, nombre } : { nombre, sexo: '', nie: '' };
                 };
 
                 if (tipo === 'M' || tipo === 'F' || tipo === 'PRESENTES') {
-                    lista = asistentesRaw.map(nombre => resolverEstudiante(nombre));
+                    lista = asistentesRaw.map(item => resolverEstudiante(item));
                     if (tipo === 'M' || tipo === 'F') {
                         lista = lista.filter(a => a.sexo === tipo);
                     }
                     titulo = tipo === 'PRESENTES' ? `Presentes: ${lista.length}` : `${tipo === 'M' ? 'Masculinos' : 'Femeninos'}: ${lista.length}`;
                 } else if (tipo === 'AUSENTES') {
-                    lista = ausentesRaw.map(nombre => resolverEstudiante(nombre));
+                    lista = ausentesRaw.map(item => resolverEstudiante(item));
                     titulo = `Ausentes: ${lista.length}`;
                 } else if (tipo === 'PERMISOS') {
                     lista = permisosRaw.map(item => {
