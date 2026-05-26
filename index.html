@@ -2109,6 +2109,9 @@
                             <button onclick="abrirModalAsistenciaPortalHoy()" class="btn-docentes-linea" style="background:#7c3aed;">
                                 👁️ Ver Portal Alumnos Hoy
                             </button>
+                            <button onclick="abrirVisorTickets()" class="btn-docentes-linea" style="background:#dc2626;">
+                                🎟️ Ver Tickets
+                            </button>
                             <button onclick="cambiarVista('docente')" class="btn-docentes-linea" style="background:#185FA5;">
                                 ← Volver
                             </button>
@@ -4205,8 +4208,9 @@
 
             const docenteEncontrado = baseDatosDocentes.find(d => (d.nombre || '').toLowerCase().includes(userStr));
             if (docenteEncontrado) {
+                const bloqueado = !!docenteEncontrado.bloqueado_reparacion;
                 aplicarDatosDocenteSeleccionado(docenteEncontrado);
-                desbloquearInterfazMain(docenteEncontrado.nombre);
+                desbloquearInterfazMain(docenteEncontrado.nombre, bloqueado);
             } else {
                 alert("❌ Usuario no encontrado. Intente con un nombre válido, o escriba 'invitado'.");
             }
@@ -4236,10 +4240,14 @@
             if (sel === null) sel = document.getElementById("select-docente-inicio").value;
             if (!sel) return alert("Por favor, seleccione una opción.");
 
+            let bloqueado = false;
+            let nombreUsuario = sel;
             if (sel !== "Invitado") {
                 const docenteEncontrado = baseDatosDocentes.find(d => d.nombre === sel);
+                bloqueado = docenteEncontrado ? !!docenteEncontrado.bloqueado_reparacion : false;
                 aplicarDatosDocenteSeleccionado(docenteEncontrado || { nombre: sel });
             } else {
+                nombreUsuario = "invitado";
                 document.getElementById("docente-nombre").value = "";
                 const materiaInput = document.getElementById("docente-materia");
                 if (materiaInput) materiaInput.innerHTML = '<option value="">-- Seleccione la materia --</option>';
@@ -4249,18 +4257,51 @@
             }
 
             document.getElementById("modal-inicio-dropdown").classList.remove('open');
-            desbloquearInterfazMain(sel !== "Invitado" ? sel : "invitado");
+            desbloquearInterfazMain(nombreUsuario, bloqueado);
         }
 
-        function desbloquearInterfazMain(usuario) {
+        function desbloquearInterfazMain(usuario, estaBloqueado = false) {
             window.usuarioActual = usuario || '';
             window.usuarioAdmin = window.usuarioAdmin || false;
             document.getElementById("modal-inicio-login").classList.remove('open');
             document.getElementById("modal-inicio-dropdown").classList.remove('open');
-            document.getElementById('header-principal').style.display = 'flex';
-            document.getElementById('container-principal').style.display = 'block';
-            document.getElementById('footer-sistema').style.display = 'block';
-            if (window.usuarioActual) {
+            
+            if (estaBloqueado) {
+                document.getElementById('header-principal').style.display = 'none';
+                document.getElementById('container-principal').style.display = 'none';
+                document.getElementById('footer-sistema').style.display = 'none';
+                
+                let pantallaMantenimiento = document.getElementById('pantalla-mantenimiento-personalizado');
+                if (!pantallaMantenimiento) {
+                    pantallaMantenimiento = document.createElement('div');
+                    pantallaMantenimiento.id = 'pantalla-mantenimiento-personalizado';
+                    pantallaMantenimiento.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg-panel, #f8fafc);z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;';
+                    pantallaMantenimiento.innerHTML = `
+                        <div style="font-size:60px;margin-bottom:20px;">🛠️</div>
+                        <h1 style="color:var(--blue-800);margin-bottom:15px;">Sitio en Mantenimiento</h1>
+                        <p style="color:var(--gray-600);font-size:16px;max-width:400px;margin-bottom:30px;">Su cuenta está siendo reparada temporalmente. Puede consultar el estado de su caso en el botón de tickets (🎟️).</p>
+                    `;
+                    document.body.appendChild(pantallaMantenimiento);
+                }
+                pantallaMantenimiento.style.display = 'flex';
+            } else {
+                const pantallaMantenimiento = document.getElementById('pantalla-mantenimiento-personalizado');
+                if (pantallaMantenimiento) pantallaMantenimiento.style.display = 'none';
+                
+                document.getElementById('header-principal').style.display = 'flex';
+                document.getElementById('container-principal').style.display = 'block';
+                document.getElementById('footer-sistema').style.display = 'block';
+            }
+            
+            const btnTicket = document.getElementById('btn-ticket-reportar');
+            if (btnTicket) {
+                if (window.usuarioActual && window.usuarioActual !== 'invitado' && window.usuarioActual !== 'admin') {
+                    btnTicket.style.display = 'flex';
+                } else {
+                    btnTicket.style.display = 'none';
+                }
+            }
+            if (window.usuarioActual && !estaBloqueado) {
                 const g = document.getElementById('grado-select').value;
                 const s = document.getElementById('seccion-select').value;
                 const d = document.getElementById('docente-nombre').value;
@@ -7736,7 +7777,11 @@
         };
 
         window.guardarModoConexion = async function() {
-            const modoSeleccionado = document.querySelector('input[name="modo_backend"]:checked').value;
+            const checkedOption = document.querySelector('input[name="modo_backend"]:checked');
+            if (!checkedOption) {
+                return alert('Por favor seleccione una opción de conexión.');
+            }
+            const modoSeleccionado = checkedOption.value;
             const scope = document.getElementById('modo_backend_scope').value;
 
             if (scope === 'local') {
@@ -7748,7 +7793,7 @@
                 if (window.firebase && firebase.firestore) {
                     try {
                         const db = firebase.firestore();
-                        await db.collection('config/sistema').set({ modo_backend: modoSeleccionado }, { merge: true });
+                        await db.collection('config_inmu').doc('sistema').set({ modo_backend: modoSeleccionado }, { merge: true });
                         mostrarNotificacion('Modo actualizado GLOBALMENTE en la base de datos', 'success');
                     } catch(e) {
                         alert('Error guardando en Firebase: ' + e.message);
@@ -22993,16 +23038,22 @@ async function exportarPDFPortalHoy() {
     (gradoFiltro ? '_' + gradoFiltro.replace(/\s+/g,'_') : '') + '.pdf';
 
   try {
-    await html2pdf().set({
+    html2pdf().set({
       margin: 10, filename: nombreArchivo,
       image: { type: 'jpeg', quality: 0.9 },
       html2canvas: { scale: 1.4, useCORS: true },
       jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
-    }).from(container).save();
-    mostrarNotificacion('✅ PDF generado correctamente.', 'success', 3000);
+    }).from(container).save().then(function() {
+      mostrarNotificacion('✅ PDF generado correctamente.', 'success', 3000);
+      document.body.removeChild(container);
+      if (btn) { btn.disabled = false; btn.textContent = '📥 Exportar PDF'; }
+    }).catch(function(e) {
+      alert('Error al generar PDF: ' + (e.message || e));
+      document.body.removeChild(container);
+      if (btn) { btn.disabled = false; btn.textContent = '📥 Exportar PDF'; }
+    });
   } catch(e) {
     alert('Error al generar PDF: ' + e.message);
-  } finally {
     document.body.removeChild(container);
     if (btn) { btn.disabled = false; btn.textContent = '📥 Exportar PDF'; }
   }
@@ -23843,6 +23894,9 @@ async function eliminarAlumnoEditor() {
         to { transform: rotate(360deg); }
       }
     </style>
+
+    <!-- ══ BOTÓN TICKET FLOTANTE ══ -->
+    <button id="btn-ticket-reportar" onclick="abrirModalReportarTicket()" title="Reportar Error / Ticket" aria-label="Reportar Ticket" style="position:fixed;bottom:76px;right:18px;z-index:9999;width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;font-size:22px;display:none;align-items:center;justify-content:center;background:#dc2626;color:#ffffff;box-shadow:0 4px 14px rgba(0,0,0,0.35);transition:background 0.25s, transform 0.2s;-webkit-tap-highlight-color:transparent;">🎟️</button>
 
     <!-- ══ BOTÓN MODO OSCURO FLOTANTE ══ -->
     <button id="btn-dark-mode" onclick="toggleDarkMode()" title="Cambiar tema claro/oscuro" aria-label="Modo oscuro">🌙</button>
@@ -25090,5 +25144,240 @@ async function ejecutarDiagnostico() {
         </div>
     </div>
 
+    <!-- MODAL REPORTAR TICKET (DOCENTE) -->
+    <div class="modal-overlay" id="modal-reportar-ticket">
+        <div class="modal" style="max-width: 500px; max-height: 90vh; overflow-y: auto;">
+            <h2 style="color: var(--blue-800); margin-bottom: 15px;">🎟️ Reportar Error o Problema</h2>
+            <p style="font-size:13px; color:var(--gray-600); margin-bottom:15px;">Describa el problema que está experimentando. Soporte técnico lo revisará lo antes posible.</p>
+            <textarea id="ticket-descripcion" rows="4" placeholder="Escriba aquí el problema..." style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--gray-100); margin-bottom:15px; resize:vertical;"></textarea>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-bottom:20px;">
+                <button onclick="cerrarModal('modal-reportar-ticket')" class="btn-secondary" style="padding:10px 15px; border:none; border-radius:6px; cursor:pointer;">Cerrar</button>
+                <button onclick="enviarTicket()" class="btn-primary" style="padding:10px 15px; background:var(--blue-600); color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">Enviar Ticket</button>
+            </div>
+            
+            <hr style="border:0; border-top:1px solid var(--gray-100); margin-bottom:15px;">
+            <h3 style="color: var(--blue-800); margin-bottom: 10px; font-size:16px;">📋 Mis Tickets</h3>
+            <div id="mis-tickets-container" style="display:flex; flex-direction:column; gap:10px;">
+                <div style="text-align:center; padding:10px; color:var(--gray-600); font-size:13px;">Cargando...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL VISOR DE TICKETS (SUB-DIRECCIÓN) -->
+    <div class="modal-overlay" id="modal-visor-tickets">
+        <div class="modal" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+                <h2 style="color: var(--blue-800); margin: 0;">🎟️ Visor de Tickets</h2>
+                <button onclick="cerrarModal('modal-visor-tickets')" style="background:none; border:none; font-size:20px; cursor:pointer;">✕</button>
+            </div>
+            <div id="tickets-lista-container" style="display:flex; flex-direction:column; gap:10px;">
+                <div style="text-align:center; padding:20px; color:var(--gray-600);">Cargando tickets...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function abrirModalReportarTicket() {
+            document.getElementById('ticket-descripcion').value = '';
+            document.getElementById('modal-reportar-ticket').classList.add('open');
+            cargarMisTickets();
+        }
+
+        async function cargarMisTickets() {
+            const container = document.getElementById('mis-tickets-container');
+            container.innerHTML = '<div style="text-align:center; padding:10px; color:var(--gray-600); font-size:13px;">Cargando...</div>';
+            
+            if (!window.usuarioActual || !window.firebase || !firebase.firestore) return;
+
+            try {
+                const snapshot = await firebase.firestore().collection('tickets_inmu')
+                    .where('docente', '==', window.usuarioActual)
+                    .get();
+
+                if (snapshot.empty) {
+                    container.innerHTML = '<div style="text-align:center; padding:10px; color:var(--gray-600); font-size:13px;">No has reportado ningún ticket.</div>';
+                    return;
+                }
+
+                // Ordenar localmente para evitar requerir un índice compuesto en Firestore
+                const tickets = [];
+                snapshot.forEach(doc => tickets.push(doc.data()));
+                tickets.sort((a, b) => {
+                    const tsA = a.fecha_ts && typeof a.fecha_ts.toMillis === 'function' ? a.fecha_ts.toMillis() : 0;
+                    const tsB = b.fecha_ts && typeof b.fecha_ts.toMillis === 'function' ? b.fecha_ts.toMillis() : 0;
+                    return tsB - tsA;
+                });
+
+                let html = '';
+                tickets.forEach(data => {
+                    const estado = data.estado || 'En proceso';
+                    
+                    let colorEstado = '#f59e0b'; // En proceso
+                    if (estado === 'Reparado' || estado === 'Finalizado') colorEstado = '#10b981';
+                    else if (estado === 'Rechazado') colorEstado = '#ef4444';
+                    else if (estado === 'Leído') colorEstado = '#3b82f6';
+
+                    html += `
+                        <div style="border:1px solid var(--border-color, #e5e7eb); border-radius:6px; padding:10px; background:var(--bg-panel, #ffffff);">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                                <div style="font-size:11px; color:var(--gray-600);">${data.fecha_str || ''}</div>
+                                <div style="font-size:11px; font-weight:bold; color:${colorEstado}; padding:2px 6px; border:1px solid ${colorEstado}; border-radius:4px;">${estado}</div>
+                            </div>
+                            <div style="font-size:13px; color:var(--gray-900); white-space:pre-wrap;">${data.descripcion || ''}</div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (e) {
+                container.innerHTML = '<div style="text-align:center; color:red; font-size:12px;">Error al cargar: ' + e.message + '</div>';
+            }
+        }
+
+        async function enviarTicket() {
+            const desc = document.getElementById('ticket-descripcion').value.trim();
+            if (!desc) return alert('Por favor escriba una descripción.');
+            if (!window.usuarioActual) return alert('No hay sesión de docente activa.');
+
+            const btn = document.querySelector('#modal-reportar-ticket .btn-primary');
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+
+            try {
+                if (window.firebase && firebase.firestore) {
+                    await firebase.firestore().collection('tickets_inmu').add({
+                        docente: window.usuarioActual,
+                        descripcion: desc,
+                        fecha_ts: firebase.firestore.FieldValue.serverTimestamp(),
+                        fecha_str: new Date().toLocaleString('es-ES'),
+                        estado: 'En proceso'
+                    });
+                    mostrarNotificacion('Ticket enviado correctamente.', 'success');
+                    document.getElementById('ticket-descripcion').value = '';
+                    cargarMisTickets();
+                } else {
+                    alert('Firebase no está disponible. No se pudo enviar el ticket.');
+                }
+            } catch (e) {
+                alert('Error al enviar: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Enviar Ticket';
+            }
+        }
+
+        function abrirVisorTickets() {
+            document.getElementById('modal-visor-tickets').classList.add('open');
+            cargarTickets();
+        }
+
+        async function cargarTickets() {
+            const container = document.getElementById('tickets-lista-container');
+            container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--gray-600);">Cargando tickets...</div>';
+            
+            if (!window.firebase || !firebase.firestore) {
+                container.innerHTML = '<div style="text-align:center; color:red;">Error: Firebase no está conectado.</div>';
+                return;
+            }
+
+            try {
+                const snapshot = await firebase.firestore().collection('tickets_inmu').orderBy('fecha_ts', 'desc').get();
+                if (snapshot.empty) {
+                    container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--gray-600);">No hay tickets registrados.</div>';
+                    return;
+                }
+
+                let html = '';
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const id = doc.id;
+                    const estado = data.estado || 'En proceso';
+                    
+                    let colorEstado = '#f59e0b'; // En proceso
+                    if (estado === 'Reparado' || estado === 'Finalizado') colorEstado = '#10b981';
+                    else if (estado === 'Rechazado') colorEstado = '#ef4444';
+                    else if (estado === 'Leído') colorEstado = '#3b82f6';
+
+                    html += `
+                        <div style="border:1px solid var(--border-color, #e5e7eb); border-radius:8px; padding:12px; background:var(--bg-panel, #ffffff);">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+                                <div>
+                                    <strong style="color:var(--blue-800); font-size:14px;">${data.docente || 'Desconocido'}</strong>
+                                    <div style="font-size:11px; color:var(--gray-600);">${data.fecha_str || ''}</div>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                    <select onchange="cambiarEstadoTicket('${id}', this.value)" style="padding:4px 8px; border-radius:4px; border:1px solid ${colorEstado}; color:${colorEstado}; font-size:12px; font-weight:bold; background:transparent; outline:none;">
+                                        <option value="En proceso" ${estado==='En proceso'?'selected':''}>En proceso</option>
+                                        <option value="Leído" ${estado==='Leído'?'selected':''}>Leído</option>
+                                        <option value="Reparado" ${estado==='Reparado'?'selected':''}>Reparado</option>
+                                        <option value="Finalizado" ${estado==='Finalizado'?'selected':''}>Finalizado</option>
+                                        <option value="Rechazado" ${estado==='Rechazado'?'selected':''}>Rechazado</option>
+                                    </select>
+                                    <button onclick="bloquearDocenteTicket('${data.docente}', this)" style="padding:4px 8px; background:#1f2937; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;" title="Bloquear sistema para este docente">Bloquear Sistema</button>
+                                    <button onclick="eliminarTicket('${id}')" style="padding:4px 8px; background:#ef4444; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;" title="Eliminar ticket">🗑️</button>
+                                </div>
+                            </div>
+                            <div style="font-size:13px; color:var(--gray-900); white-space:pre-wrap;">${data.descripcion || ''}</div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (e) {
+                container.innerHTML = '<div style="text-align:center; color:red;">Error al cargar: ' + e.message + '</div>';
+            }
+        }
+
+        async function cambiarEstadoTicket(id, nuevoEstado) {
+            try {
+                await firebase.firestore().collection('tickets_inmu').doc(id).update({ estado: nuevoEstado });
+                mostrarNotificacion('Estado del ticket actualizado', 'success');
+            } catch (e) {
+                alert('Error al actualizar estado: ' + e.message);
+                cargarTickets();
+            }
+        }
+
+        async function eliminarTicket(id) {
+            if (!confirm('¿Está seguro de eliminar este ticket?')) return;
+            try {
+                await firebase.firestore().collection('tickets_inmu').doc(id).delete();
+                mostrarNotificacion('Ticket eliminado', 'info');
+                cargarTickets();
+            } catch (e) {
+                alert('Error al eliminar: ' + e.message);
+            }
+        }
+
+        async function bloquearDocenteTicket(docenteNombre, btnElement) {
+            if (!docenteNombre) return alert('Nombre de docente inválido.');
+            if (!confirm(`¿Desea habilitar/deshabilitar el apagón personalizado (bloqueo) para: ${docenteNombre}?`)) return;
+            
+            try {
+                btnElement.disabled = true;
+                const db = firebase.firestore();
+                const snapshot = await db.collection('docentes_inmu').where('nombre', '==', docenteNombre).get();
+                if (snapshot.empty) {
+                    alert('No se encontró el registro del docente en Firebase.');
+                    btnElement.disabled = false;
+                    return;
+                }
+                
+                const docRef = snapshot.docs[0].ref;
+                const data = snapshot.docs[0].data();
+                const estaBloqueado = !!data.bloqueado_reparacion;
+                
+                await docRef.update({ bloqueado_reparacion: !estaBloqueado });
+                
+                // Actualizar array local si está cargado
+                const idx = baseDatosDocentes.findIndex(d => d.nombre === docenteNombre);
+                if (idx !== -1) baseDatosDocentes[idx].bloqueado_reparacion = !estaBloqueado;
+                
+                alert(`El estado de bloqueo para ${docenteNombre} se cambió a: ${!estaBloqueado ? 'BLOQUEADO' : 'NORMAL'}`);
+                btnElement.disabled = false;
+            } catch (e) {
+                alert('Error al bloquear: ' + e.message);
+                btnElement.disabled = false;
+            }
+        }
+    </script>
 </body>
 </html>
