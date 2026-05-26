@@ -4614,8 +4614,14 @@
             if (fechaFiltro) {
                 const [fYear, fMonth, fDay] = fechaFiltro.split('-');
                 reportesAMostrar = todosLosReportes.filter(r => {
-                    const rDate = new Date(r.fecha);
-                    return rDate.getFullYear() == fYear && String(rDate.getMonth() + 1).padStart(2, '0') == fMonth && String(rDate.getDate()).padStart(2, '0') == fDay;
+                    if (r.fecha) {
+                        if (r.fecha.startsWith(fechaFiltro)) return true;
+                        try {
+                            const rDate = new Date(r.fecha);
+                            return rDate.getFullYear() == fYear && String(rDate.getMonth() + 1).padStart(2, '0') == fMonth && String(rDate.getDate()).padStart(2, '0') == fDay;
+                        } catch(e) {}
+                    }
+                    return false;
                 });
             }
             renderizarReportesSub(reportesAMostrar);
@@ -8470,8 +8476,14 @@
             if (fechaFiltro) {
                 const [fYear, fMonth, fDay] = fechaFiltro.split('-');
                 reportes = todosLosReportes.filter(r => {
-                    const rDate = new Date(r.fecha);
-                    return rDate.getFullYear() == fYear && String(rDate.getMonth() + 1).padStart(2, '0') == fMonth && String(rDate.getDate()).padStart(2, '0') == fDay;
+                    if (r.fecha) {
+                        if (r.fecha.startsWith(fechaFiltro)) return true;
+                        try {
+                            const rDate = new Date(r.fecha);
+                            return rDate.getFullYear() == fYear && String(rDate.getMonth() + 1).padStart(2, '0') == fMonth && String(rDate.getDate()).padStart(2, '0') == fDay;
+                        } catch(e) {}
+                    }
+                    return false;
                 });
             }
 
@@ -8521,8 +8533,14 @@
             if (fechaFiltro) {
                 const [fYear, fMonth, fDay] = fechaFiltro.split('-');
                 reportes = todosLosReportes.filter(r => {
-                    const rDate = new Date(r.fecha);
-                    return rDate.getFullYear() == fYear && String(rDate.getMonth() + 1).padStart(2, '0') == fMonth && String(rDate.getDate()).padStart(2, '0') == fDay;
+                    if (r.fecha) {
+                        if (r.fecha.startsWith(fechaFiltro)) return true;
+                        try {
+                            const rDate = new Date(r.fecha);
+                            return rDate.getFullYear() == fYear && String(rDate.getMonth() + 1).padStart(2, '0') == fMonth && String(rDate.getDate()).padStart(2, '0') == fDay;
+                        } catch(e) {}
+                    }
+                    return false;
                 });
             }
 
@@ -8567,6 +8585,66 @@
         }
 
         function mostrarListadoPermisos() {
+            const viewSub = document.getElementById('view-subdireccion');
+            if (viewSub && viewSub.classList.contains('view-active')) {
+                const fechaFiltro = document.getElementById('filtro-fecha-sub').value;
+                let reportes = todosLosReportes;
+                if (fechaFiltro) {
+                    const [fYear, fMonth, fDay] = fechaFiltro.split('-');
+                    reportes = todosLosReportes.filter(r => {
+                        if (r.fecha) {
+                            if (r.fecha.startsWith(fechaFiltro)) return true;
+                            try {
+                                const rDate = new Date(r.fecha);
+                                return rDate.getFullYear() == fYear && String(rDate.getMonth() + 1).padStart(2, '0') == fMonth && String(rDate.getDate()).padStart(2, '0') == fDay;
+                            } catch(e) {}
+                        }
+                        return false;
+                    });
+                }
+                
+                let permisos = [];
+                reportes.forEach(r => {
+                    if (r.permisos_lista && Array.isArray(r.permisos_lista)) {
+                        r.permisos_lista.forEach(item => {
+                            const nombre = typeof item === 'string' ? item : item.nombre;
+                            permisos.push({ nombre, grado: r.grado, seccion: r.seccion });
+                        });
+                    }
+                });
+                
+                let html = '<h3 style="color: #F39C12; text-align: center; margin-bottom: 20px;">⚠ Estudiantes con Permiso</h3>';
+                html += '<div style="max-height: 400px; overflow-y: auto;">';
+                if (permisos.length === 0) {
+                    html += '<div style="text-align: center; color: var(--gray-600);">No hay datos de permisos detallados para esta fecha.</div>';
+                    if (reportes.length > 0) {
+                        html += '<h4 style="color: #F39C12; margin-top: 20px;">Resumen por Grado/Sección:</h4>';
+                        reportes.forEach(r => {
+                            html += `<div style="padding: 8px; border-bottom: 1px solid var(--gray-100); background: #FFF9E6;">
+                                  <strong>${r.grado} ${r.seccion}</strong> - ${r.docente}<br>
+                                  Permisos: ${r.permisos || 0}
+                              </div>`;
+                        });
+                    }
+                } else {
+                    const grupos = {};
+                    permisos.forEach(a => {
+                        const key = `${a.grado} ${a.seccion}`;
+                        if (!grupos[key]) grupos[key] = [];
+                        grupos[key].push(a.nombre);
+                    });
+                    Object.keys(grupos).sort().forEach(key => {
+                        html += `<div style="padding: 10px; border-bottom: 1px solid var(--gray-200); background: #FFF9E6; margin-bottom: 8px;"><strong>${key}</strong> - ${grupos[key].length} con permiso</div>`;
+                        grupos[key].forEach((nombre, index) => {
+                            html += `<div style="padding: 6px 10px; border-bottom: 1px solid #EAEAEA; font-size: 13px;">${index + 1}. ${nombre}</div>`;
+                        });
+                    });
+                }
+                html += '</div>';
+                mostrarModalListado(html);
+                return;
+            }
+
             if (alumnosFiltrados.length === 0) return alert("No hay alumnos cargados.");
             let html = '<h3 style="color: #F39C12; text-align: center; margin-bottom: 20px;">⚠ Estudiantes con Permiso</h3>';
             let permisos = [];
@@ -8681,6 +8759,9 @@
         }
 
         function actualizarContadoresAsistencia() {
+            const viewSub = document.getElementById('view-subdireccion');
+            if (viewSub && viewSub.classList.contains('view-active')) return;
+
             if (alumnosFiltrados.length === 0) return;
 
             let presentes = 0, ausentes = 0, permisos = 0, masc = 0, fem = 0;
@@ -22633,7 +22714,8 @@ async function cargarPortalAlumnosHoy() {
   listaEl.innerHTML = '<p style="text-align:center;color:var(--blue-600);padding:20px;">⏳ Cargando...</p>';
   resumenEl.style.display = 'none';
 
-  var ahora = new Date();
+  var fechaFiltroInputs = document.getElementById('filtro-fecha-sub') ? document.getElementById('filtro-fecha-sub').value : '';
+  var ahora = fechaFiltroInputs ? new Date(fechaFiltroInputs + 'T12:00:00') : new Date();
   var hoyKey = String(ahora.getDate()).padStart(2,'0') + '_' +
                String(ahora.getMonth()+1).padStart(2,'0') + '_' + ahora.getFullYear();
   var hoyTexto = ahora.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
@@ -23179,7 +23261,7 @@ async function eliminarAlumnoEditor() {
 <div class="modal-overlay" id="modal-portal-alumnos-hoy">
   <div class="modal" style="max-width:650px;width:min(96vw,650px);max-height:90vh;overflow-y:auto;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-      <h3 style="color:#7c3aed;margin:0;">👁️ Alumnos que marcaron hoy en el Portal</h3>
+      <h3 style="color:#7c3aed;margin:0;">👁️ Alumnos que marcaron en el Portal</h3>
       <button onclick="cerrarModal('modal-portal-alumnos-hoy')" style="background:none;border:none;font-size:20px;cursor:pointer;">✕</button>
     </div>
     <!-- Filtros fila 1: Grado + Sección + Actualizar -->
