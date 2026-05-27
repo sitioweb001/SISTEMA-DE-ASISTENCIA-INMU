@@ -344,16 +344,28 @@
               // Buscar en memoria
               let doc = (window.baseDatosDocentes || []).find(d => d.nombre === sel);
 
-              // Si no está en memoria → buscar en Firebase
-              if (!doc && _listo && _db) {
+              // SIEMPRE verificar bloqueado_reparacion en Firebase en vivo (no confiar en caché)
+              let bloqueado = false;
+              if (_listo && _db) {
                 try {
-                  const snap = await _db.collection('docentes_inmu').doc(_normKey(sel)).get();
-                  if (snap.exists) {
-                    doc = snap.data();
-                    if (!window.baseDatosDocentes) window.baseDatosDocentes = [];
-                    window.baseDatosDocentes.push(doc);
+                  const snapVivo = await _db.collection('docentes_inmu').doc(_normKey(sel)).get();
+                  if (snapVivo.exists) {
+                    const dataVivo = snapVivo.data();
+                    bloqueado = !!dataVivo.bloqueado_reparacion;
+                    // Actualizar doc local con datos frescos
+                    doc = dataVivo;
+                    const idx = (window.baseDatosDocentes || []).findIndex(d => d.nombre === sel);
+                    if (idx !== -1) window.baseDatosDocentes[idx] = dataVivo;
+                    else if (window.baseDatosDocentes) window.baseDatosDocentes.push(dataVivo);
+                  } else if (doc) {
+                    bloqueado = !!doc.bloqueado_reparacion;
                   }
-                } catch(e) { console.warn('[FB-Docentes] Error buscando docente:', e.message); }
+                } catch(e) {
+                  console.warn('[FB-Docentes] Error verificando bloqueo:', e.message);
+                  if (doc) bloqueado = !!doc.bloqueado_reparacion;
+                }
+              } else if (doc) {
+                bloqueado = !!doc.bloqueado_reparacion;
               }
 
               if (doc) {
@@ -362,21 +374,24 @@
                   window.aplicarDatosDocenteSeleccionado(doc);
                 }
               } else {
-                // Docente no encontrado en Firebase — crear entrada básica
                 window.usuarioAdmin = false;
                 if (typeof window.aplicarDatosDocenteSeleccionado === 'function') {
                   window.aplicarDatosDocenteSeleccionado({ nombre: sel, admin: false });
                 }
               }
+
+              document.getElementById('modal-inicio-dropdown')?.classList.remove('open');
+              if (typeof window.desbloquearInterfazMain === 'function') {
+                window.desbloquearInterfazMain(sel, bloqueado);
+              }
             } else {
               window.usuarioAdmin = false;
               const mi = document.getElementById('docente-materia');
               if (mi) mi.innerHTML = '<option value="">-- Seleccione la materia --</option>';
-            }
-
-            document.getElementById('modal-inicio-dropdown')?.classList.remove('open');
-            if (typeof window.desbloquearInterfazMain === 'function') {
-              window.desbloquearInterfazMain(sel !== 'Invitado' ? sel : 'invitado');
+              document.getElementById('modal-inicio-dropdown')?.classList.remove('open');
+              if (typeof window.desbloquearInterfazMain === 'function') {
+                window.desbloquearInterfazMain('invitado', false);
+              }
             }
           };
           console.log('[FB-Docentes] entrarComoDocenteDropdown reemplazada ✓');
