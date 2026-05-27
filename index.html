@@ -26204,19 +26204,18 @@ ${tablas}
                         : Promise.resolve({ empty: true, forEach: () => {} }),
                     firebase.firestore().collection('tickets_inmu').where('device_id', '==', deviceId).get()
                 ]);
-                // Combinar sin duplicados (por doc.id)
+                // Combinar sin duplicados (por doc.id) → guardar datos planos directamente
                 const mapaTickets = {};
                 [snapDocente, snapDevice].forEach(snap => snap.forEach(doc => { mapaTickets[doc.id] = doc.data(); }));
-                const snapshot = { empty: Object.keys(mapaTickets).length === 0, forEach: (fn) => Object.values(mapaTickets).forEach(fn) };
+                const ticketsDatos = Object.values(mapaTickets); // array de objetos planos
 
-                if (snapshot.empty) {
+                if (!ticketsDatos.length) {
                     container.innerHTML = '<div style="text-align:center; padding:10px; color:var(--gray-600); font-size:13px;">No has reportado ningún ticket.</div>';
                     return;
                 }
 
                 // Ordenar localmente para evitar requerir un índice compuesto en Firestore
-                const tickets = [];
-                snapshot.forEach(doc => tickets.push(doc.data()));
+                const tickets = ticketsDatos;
                 tickets.sort((a, b) => {
                     const tsA = a.fecha_ts && typeof a.fecha_ts.toMillis === 'function' ? a.fecha_ts.toMillis() : 0;
                     const tsB = b.fecha_ts && typeof b.fecha_ts.toMillis === 'function' ? b.fecha_ts.toMillis() : 0;
@@ -26374,34 +26373,77 @@ ${tablas}
         }
 
         async function bloquearDocenteTicket(docenteNombre, btnElement) {
-            if (!docenteNombre) return alert('Nombre de docente inválido.');
-            if (!confirm(`¿Desea habilitar/deshabilitar el apagón personalizado (bloqueo) para: ${docenteNombre}?`)) return;
+            if (!docenteNombre || docenteNombre === '(sin sesión)') return alert('Este ticket no tiene docente identificado.');
+            if (!confirm(`¿Desea ACTIVAR o DESACTIVAR el bloqueo personalizado para:\n"${docenteNombre}"?\n\nSi está bloqueado → se desbloqueará.\nSi está libre → se bloqueará (le mostrará pantalla de mantenimiento al entrar).`)) return;
 
             try {
                 btnElement.disabled = true;
+                btnElement.textContent = '⏳...';
                 const db = firebase.firestore();
-                const snapshot = await db.collection('docentes_inmu').where('nombre', '==', docenteNombre).get();
+
+                // Buscar por nombre exacto primero, luego por nombre parcial (robusto)
+                let docRef = null;
+                let estaBloqueado = false;
+
+                // Intento 1: nombre exacto
+                let snapshot = await db.collection('docentes_inmu').where('nombre', '==', docenteNombre).get();
+
+                // Intento 2: buscar en array local si falla la búsqueda exacta
                 if (snapshot.empty) {
-                    alert('No se encontró el registro del docente en Firebase.');
-                    btnElement.disabled = false;
-                    return;
+                    const nombreNorm = docenteNombre.trim().toLowerCase();
+                    const localDoc = (window.baseDatosDocentes || []).find(d =>
+                        (d.nombre || '').trim().toLowerCase() === nombreNorm
+                    );
+                    if (localDoc) {
+                        snapshot = await db.collection('docentes_inmu').where('nombre', '==', localDoc.nombre).get();
+                    }
                 }
 
-                const docRef = snapshot.docs[0].ref;
-                const data = snapshot.docs[0].data();
-                const estaBloqueado = !!data.bloqueado_reparacion;
+                if (snapshot.empty) {
+                    // Intento 3: leer todos y buscar manualmente (fallback)
+                    const todos = await db.collection('docentes_inmu').get();
+                    const nombreNorm = docenteNombre.trim().toLowerCase();
+                    todos.forEach(doc => {
+                        if (!docRef && (doc.data().nombre || '').trim().toLowerCase() === nombreNorm) {
+                            docRef = doc.ref;
+                            estaBloqueado = !!doc.data().bloqueado_reparacion;
+                        }
+                    });
+                    if (!docRef) {
+                        alert(`❌ No se encontró el docente "${docenteNombre}" en Firebase.\nVerifica que esté registrado en el sistema.`);
+                        btnElement.disabled = false;
+                        btnElement.textContent = 'Bloquear Sistema';
+                        return;
+                    }
+                } else {
+                    docRef = snapshot.docs[0].ref;
+                    estaBloqueado = !!snapshot.docs[0].data().bloqueado_reparacion;
+                }
 
-                await docRef.update({ bloqueado_reparacion: !estaBloqueado });
+                const nuevoEstado = !estaBloqueado;
+                await docRef.update({ bloqueado_reparacion: nuevoEstado });
 
-                // Actualizar array local si está cargado
-                const idx = baseDatosDocentes.findIndex(d => d.nombre === docenteNombre);
-                if (idx !== -1) baseDatosDocentes[idx].bloqueado_reparacion = !estaBloqueado;
+                // Actualizar array local
+                const idx = (window.baseDatosDocentes || []).findIndex(d =>
+                    (d.nombre || '').trim().toLowerCase() === docenteNombre.trim().toLowerCase()
+                );
+                if (idx !== -1) window.baseDatosDocentes[idx].bloqueado_reparacion = nuevoEstado;
 
-                alert(`El estado de bloqueo para ${docenteNombre} se cambió a: ${!estaBloqueado ? 'BLOQUEADO' : 'NORMAL'}`);
                 btnElement.disabled = false;
+                btnElement.textContent = nuevoEstado ? '🔒 Bloqueado' : 'Bloquear Sistema';
+                btnElement.style.background = nuevoEstado ? '#dc2626' : '#1f2937';
+
+                mostrarNotificacion(
+                    nuevoEstado
+                        ? `🔒 "${docenteNombre}" BLOQUEADO — al entrar verá pantalla de mantenimiento.`
+                        : `🔓 "${docenteNombre}" DESBLOQUEADO — puede entrar normalmente.`,
+                    nuevoEstado ? 'warning' : 'success',
+                    5000
+                );
             } catch (e) {
-                alert('Error al bloquear: ' + e.message);
+                alert('Error al cambiar bloqueo: ' + e.message);
                 btnElement.disabled = false;
+                btnElement.textContent = 'Bloquear Sistema';
             }
         }
     </script>
