@@ -3850,7 +3850,6 @@
 
         function restaurarSesionGuardada() {
             try {
-                // Restaurar tema (también en contexto de sesión guardada)
                 restaurarTema();
 
                 if (typeof AndroidStorage === 'undefined') return;
@@ -3872,7 +3871,21 @@
                 if (docente) document.getElementById('docente-nombre').value = docente;
                 if (grado && seccion) cargarAlumnos();
 
-                desbloquearInterfazMain(usuario);
+                // Verificar si el docente está bloqueado en Firebase ANTES de entrar
+                if (usuario && usuario !== 'invitado' && window.firebase && firebase.firestore) {
+                    firebase.firestore().collection('docentes_inmu')
+                        .where('nombre', '==', usuario).get()
+                        .then(snap => {
+                            const bloqueado = !snap.empty && !!snap.docs[0].data().bloqueado_reparacion;
+                            // Actualizar en array local también
+                            const idx = (window.baseDatosDocentes || []).findIndex(d => d.nombre === usuario);
+                            if (idx !== -1) window.baseDatosDocentes[idx].bloqueado_reparacion = bloqueado;
+                            desbloquearInterfazMain(usuario, bloqueado);
+                        })
+                        .catch(() => desbloquearInterfazMain(usuario));
+                } else {
+                    desbloquearInterfazMain(usuario);
+                }
             } catch (e) { }
         }
 
@@ -7802,7 +7815,7 @@
         </div>`;
             document.body.appendChild(modal);
             modal.tabIndex = -1;
-            modal.focus();
+            modal.focus({ preventScroll: true });
             setAsistioPersonal(index, asistioActual);
             setJustificantePersonal(index, tieneJustificante);
         }
@@ -23713,32 +23726,40 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
                 String(ahora.getMonth() + 1).padStart(2, '0') + '-' + ahora.getFullYear() +
                 (gradoFiltro ? '_' + gradoFiltro.replace(/\s+/g, '_') : '') + '.pdf';
 
-            // Crear elemento DOM temporal (evita hoja en blanco al pasar string directo)
+            // Crear elemento DOM temporal visible pero transparente (html2canvas necesita que sea visible en viewport)
+            var wrapper = document.createElement('div');
+            wrapper.style.cssText = 'position:fixed;top:0;left:0;width:800px;opacity:0;pointer-events:none;z-index:-1;background:white;overflow:hidden;';
             var contenedor = document.createElement('div');
-            contenedor.style.cssText = 'position:fixed;left:-9999px;top:0;width:750px;background:white;';
+            contenedor.style.cssText = 'width:780px;padding:10px;background:white;color:#111;font-family:Arial,sans-serif;';
             contenedor.innerHTML = html;
-            document.body.appendChild(contenedor);
+            wrapper.appendChild(contenedor);
+            document.body.appendChild(wrapper);
 
-            try {
-                html2pdf().set({
-                    margin: 10, filename: nombreArchivo,
-                    image: { type: 'jpeg', quality: 0.92 },
-                    html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
-                    jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
-                }).from(contenedor).save().then(function () {
-                    mostrarNotificacion('✅ PDF generado correctamente.', 'success', 3000);
+            // Dar un tick para que el DOM renderice antes de capturar
+            setTimeout(function() {
+                try {
+                    html2pdf().set({
+                        margin: [8, 10, 8, 10],
+                        filename: nombreArchivo,
+                        image: { type: 'jpeg', quality: 0.95 },
+                        html2canvas: { scale: 2, useCORS: true, allowTaint: true, logging: false,
+                                       backgroundColor: '#ffffff', scrollX: 0, scrollY: 0 },
+                        jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+                    }).from(contenedor).save().then(function () {
+                        mostrarNotificacion('✅ PDF generado correctamente.', 'success', 3000);
+                        if (btn) { btn.disabled = false; btn.textContent = '📥 Exportar PDF'; }
+                        if (wrapper.parentNode) document.body.removeChild(wrapper);
+                    }).catch(function (e) {
+                        alert('Error al generar PDF: ' + (e.message || e));
+                        if (btn) { btn.disabled = false; btn.textContent = '📥 Exportar PDF'; }
+                        if (wrapper.parentNode) document.body.removeChild(wrapper);
+                    });
+                } catch (e) {
+                    alert('Error al generar PDF: ' + e.message);
                     if (btn) { btn.disabled = false; btn.textContent = '📥 Exportar PDF'; }
-                    document.body.removeChild(contenedor);
-                }).catch(function (e) {
-                    alert('Error al generar PDF: ' + (e.message || e));
-                    if (btn) { btn.disabled = false; btn.textContent = '📥 Exportar PDF'; }
-                    if (contenedor.parentNode) document.body.removeChild(contenedor);
-                });
-            } catch (e) {
-                alert('Error al generar PDF: ' + e.message);
-                if (btn) { btn.disabled = false; btn.textContent = '📥 Exportar PDF'; }
-                if (contenedor.parentNode) document.body.removeChild(contenedor);
-            }
+                    if (wrapper.parentNode) document.body.removeChild(wrapper);
+                }
+            }, 150);
         }
 
         /* =====================================================================
@@ -25124,23 +25145,26 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
             return String(n.getDate()).padStart(2, '0') + '_' + String(n.getMonth() + 1).padStart(2, '0') + '_' + n.getFullYear();
         }
 
+        // NIEs ocultados manualmente — el polling no los restaura
+        window._portalOcultadosLocal = window._portalOcultadosLocal || new Set();
+
         window.quitarMarcaPortal = async function (nieStr, fechaKey) {
-            // ── DOBLE CLIC elimina de Firestore; SIMPLE CLIC solo quita visualmente ──
             const ahora = Date.now();
             const ultimoClick = window._quitarPortalUltimoClick || 0;
             const esDobleClick = (ahora - ultimoClick) < 500;
             window._quitarPortalUltimoClick = ahora;
 
             if (!esDobleClick) {
-                // ── SIMPLE CLIC: solo limpiar la UI en este dispositivo ──
+                // ── SIMPLE CLIC: ocultar permanentemente en este dispositivo ──
+                window._portalOcultadosLocal.add(String(nieStr));
                 const el = document.getElementById('asist-portal-' + nieStr);
                 if (el) {
-                    el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#991b1b;background:#fee2e2;';
+                    el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#991b1b;background:#fee2e2;cursor:default;';
                     el.textContent = '🔴 No marcó';
                     el.onclick = null;
-                    el.title = '';
+                    el.title = 'Doble clic rápido para eliminar de la base de datos';
                 }
-                mostrarNotificacion('Marca ocultada en este dispositivo. Doble clic para eliminar de la base de datos.', 'info', 3500);
+                mostrarNotificacion('Marca ocultada localmente. Doble clic rápido sobre esa celda para eliminar de la base de datos.', 'info', 3500);
                 return;
             }
 
@@ -25160,10 +25184,10 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
                     await batch.commit();
                     mostrarNotificacion('✅ Registro eliminado permanentemente de la base de datos.', 'success');
                 }
-
+                window._portalOcultadosLocal.add(String(nieStr));
                 const el = document.getElementById('asist-portal-' + nieStr);
                 if (el) {
-                    el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#991b1b;background:#fee2e2;';
+                    el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#991b1b;background:#fee2e2;cursor:default;';
                     el.textContent = '🔴 No marcó';
                     el.onclick = null;
                     el.title = '';
@@ -25178,6 +25202,8 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
                 const nieStr = String(alumno.nie || '').trim();
                 const el = document.getElementById('asist-portal-' + nieStr);
                 if (!el) return;
+                // Respetar ocultados manualmente con 1 clic
+                if (window._portalOcultadosLocal && window._portalOcultadosLocal.has(nieStr)) return;
                 const reg = mapa[nieStr];
                 if (reg) {
                     const hora = reg.hora || '';
@@ -26374,11 +26400,12 @@ ${tablas}
 
         async function bloquearDocenteTicket(docenteNombre, btnElement) {
             if (!docenteNombre || docenteNombre === '(sin sesión)') return alert('Este ticket no tiene docente identificado.');
-            if (!confirm(`¿Desea ACTIVAR o DESACTIVAR el bloqueo personalizado para:\n"${docenteNombre}"?\n\nSi está bloqueado → se desbloqueará.\nSi está libre → se bloqueará (le mostrará pantalla de mantenimiento al entrar).`)) return;
 
             try {
+                // Resetear botón a estado neutro antes de consultar Firebase (evita estado residual del ticket anterior)
                 btnElement.disabled = true;
                 btnElement.textContent = '⏳...';
+                btnElement.style.background = '#1f2937';
                 const db = firebase.firestore();
 
                 // Buscar por nombre exacto primero, luego por nombre parcial (robusto)
@@ -26420,6 +26447,17 @@ ${tablas}
                     estaBloqueado = !!snapshot.docs[0].data().bloqueado_reparacion;
                 }
 
+                // Confirmar mostrando el estado REAL leído desde Firebase (no estado visual anterior)
+                const accion = estaBloqueado ? '🔓 DESBLOQUEAR' : '🔒 BLOQUEAR';
+                const detalle = estaBloqueado
+                    ? 'Actualmente está BLOQUEADO → al confirmar podrá entrar normalmente.'
+                    : 'Actualmente está LIBRE → al confirmar verá pantalla de mantenimiento al entrar.';
+                if (!confirm(`${accion} a: "${docenteNombre}"\n\n${detalle}`)) {
+                    btnElement.disabled = false;
+                    btnElement.textContent = estaBloqueado ? '🔒 Bloqueado' : 'Bloquear Sistema';
+                    btnElement.style.background = estaBloqueado ? '#dc2626' : '#1f2937';
+                    return;
+                }
                 const nuevoEstado = !estaBloqueado;
                 await docRef.update({ bloqueado_reparacion: nuevoEstado });
 
