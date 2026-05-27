@@ -3956,7 +3956,7 @@
             if (!m) {
                 m = document.createElement('div');
                 m.id = '_modal-salida';
-                m.style.cssText = 'position:fixed;inset:0;z-index:999999;display:flex;align-items:center;' +
+                m.style.cssText = 'position:fixed;inset:0;z-index:99999999;display:flex;align-items:center;' +
                     'justify-content:center;background:rgba(0,0,0,.7);font-family:Arial,sans-serif;padding:20px;';
                 m.innerHTML =
                     '<div style="background:#1E293B;border-radius:18px;padding:32px 26px;max-width:320px;' +
@@ -4192,7 +4192,7 @@
             const body = document.body || document.documentElement;
             if (body) {
                 const warning = document.createElement('div');
-                warning.style.cssText = 'position:fixed;top:0;left:0;right:0;padding:12px 16px;background:#FDECEA;color:#721C24;z-index:99999;font-family:Arial,sans-serif;font-size:13px;';
+                warning.style.cssText = 'position:fixed;top:0;left:0;right:0;padding:12px 16px;background:#FDECEA;color:#721C24;z-index:9999999;font-family:Arial,sans-serif;font-size:13px;';
                 warning.textContent = 'Error no manejado: ' + (event.reason ? event.reason.toString() : 'desconocido');
                 body.appendChild(warning);
                 setTimeout(() => warning.remove(), 8000);
@@ -4944,7 +4944,7 @@
 
             const btnTicket = document.getElementById('btn-ticket-reportar');
             if (btnTicket) {
-                if (window.usuarioActual && window.usuarioActual !== 'invitado' && window.usuarioActual !== 'admin') {
+                if (true) {
                     btnTicket.style.display = 'flex';
                 } else {
                     btnTicket.style.display = 'none';
@@ -7741,7 +7741,7 @@
 
             setTimeout(() => {
                 const aviso = document.createElement('div');
-                aviso.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:99999;background:#185FA5;color:white;padding:16px 24px;border-radius:10px;font-size:14px;font-weight:bold;max-width:350px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+                aviso.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999999;background:#185FA5;color:white;padding:16px 24px;border-radius:10px;font-size:14px;font-weight:bold;max-width:350px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
                 aviso.innerHTML = '📋 Cambios guardados.<br><small style="font-weight:normal;">Debe generar nuevamente el PDF para reflejar los cambios.</small>';
                 document.body.appendChild(aviso);
                 setTimeout(() => aviso.remove(), 5000);
@@ -7977,7 +7977,7 @@
             const colores = { success: '#1D9E75', warning: '#F39C12', error: 'var(--red-600)', info: '#185FA5' };
             const color = colores[tipo] || colores.info;
             const toast = document.createElement('div');
-            toast.style.cssText = `position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;background:${color};color:white;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:bold;max-width:320px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.25);animation:alumno-toast-in .18s ease-out;`;
+            toast.style.cssText = `position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999999;background:${color};color:white;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:bold;max-width:320px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.25);animation:alumno-toast-in .18s ease-out;`;
             toast.textContent = mensaje;
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), duracion || 3500);
@@ -8437,34 +8437,51 @@
             const modoSeleccionado = checkedOption.value;
             const scope = document.getElementById('modo_backend_scope').value;
 
+            const etiquetas = {
+                'firebase-apps_script': 'Firebase + Apps Script (Híbrido)',
+                'firebase-firebase':    '100% Firebase',
+                'apps_script':          '100% Apps Script (GAS)'
+            };
+            const nombreModo = etiquetas[modoSeleccionado] || modoSeleccionado;
+
             if (scope === 'local') {
                 localStorage.setItem('modo_backend_local', modoSeleccionado);
-                mostrarNotificacion('Modo actualizado SOLO para este dispositivo', 'info');
-            } else {
-                // Global
-                localStorage.removeItem('modo_backend_local');
-                // IMPORTANTE: Guardar localmente como respaldo por si falla la nube (Quota Exceeded)
+                // Actualizar caché global también para que getModoBackend() lo vea inmediatamente
                 try {
                     let cfg = JSON.parse(localStorage.getItem('fb_config_sistema') || '{}');
                     cfg.modo_backend = modoSeleccionado;
                     localStorage.setItem('fb_config_sistema', JSON.stringify(cfg));
-                } catch (e) { }
+                } catch (e) {}
+                cerrarModal('modal-modo-conexion');
+                mostrarNotificacion('✅ Modo "' + nombreModo + '" aplicado en ESTE dispositivo.', 'success', 4000);
+            } else {
+                // Global
+                localStorage.removeItem('modo_backend_local');
+                // Guardar localmente como respaldo inmediato
+                try {
+                    let cfg = JSON.parse(localStorage.getItem('fb_config_sistema') || '{}');
+                    cfg.modo_backend = modoSeleccionado;
+                    localStorage.setItem('fb_config_sistema', JSON.stringify(cfg));
+                } catch (e) {}
+
+                cerrarModal('modal-modo-conexion');
 
                 if (window.firebase && firebase.firestore) {
                     try {
                         const db = firebase.firestore();
-                        // Actualizamos en background, sin await, para evitar que se quede pegado por límite de cuotas
                         db.collection('config_inmu').doc('sistema').set({ modo_backend: modoSeleccionado }, { merge: true })
-                            .catch(e => console.warn('Error backend cuota al guardar modo', e));
-                        mostrarNotificacion('Modo actualizado GLOBALMENTE', 'success');
+                            .then(() => mostrarNotificacion('✅ Modo "' + nombreModo + '" aplicado GLOBALMENTE a todos los docentes.', 'success', 5000))
+                            .catch(e => {
+                                console.warn('Error al guardar modo global:', e);
+                                mostrarNotificacion('⚠️ Guardado solo localmente (Firebase no respondió).', 'warning', 4000);
+                            });
                     } catch (e) {
-                        alert('Error interno: ' + e.message);
+                        mostrarNotificacion('✅ Modo "' + nombreModo + '" aplicado localmente (Firebase no disponible).', 'info', 4000);
                     }
                 } else {
-                    alert('Firebase no está disponible para hacer el cambio global, pero se aplicó localmente.');
+                    mostrarNotificacion('✅ Modo "' + nombreModo + '" guardado localmente.', 'info', 4000);
                 }
             }
-            cerrarModal('modal-modo-conexion');
         };
 
         function _textoAlumnoSeguro(valor) {
@@ -23696,22 +23713,31 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
                 String(ahora.getMonth() + 1).padStart(2, '0') + '-' + ahora.getFullYear() +
                 (gradoFiltro ? '_' + gradoFiltro.replace(/\s+/g, '_') : '') + '.pdf';
 
+            // Crear elemento DOM temporal (evita hoja en blanco al pasar string directo)
+            var contenedor = document.createElement('div');
+            contenedor.style.cssText = 'position:fixed;left:-9999px;top:0;width:750px;background:white;';
+            contenedor.innerHTML = html;
+            document.body.appendChild(contenedor);
+
             try {
                 html2pdf().set({
                     margin: 10, filename: nombreArchivo,
-                    image: { type: 'jpeg', quality: 0.9 },
-                    html2canvas: { scale: 1.4, useCORS: true, logging: false },
+                    image: { type: 'jpeg', quality: 0.92 },
+                    html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
                     jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
-                }).from(html).save().then(function () {
+                }).from(contenedor).save().then(function () {
                     mostrarNotificacion('✅ PDF generado correctamente.', 'success', 3000);
                     if (btn) { btn.disabled = false; btn.textContent = '📥 Exportar PDF'; }
+                    document.body.removeChild(contenedor);
                 }).catch(function (e) {
                     alert('Error al generar PDF: ' + (e.message || e));
                     if (btn) { btn.disabled = false; btn.textContent = '📥 Exportar PDF'; }
+                    if (contenedor.parentNode) document.body.removeChild(contenedor);
                 });
             } catch (e) {
                 alert('Error al generar PDF: ' + e.message);
                 if (btn) { btn.disabled = false; btn.textContent = '📥 Exportar PDF'; }
+                if (contenedor.parentNode) document.body.removeChild(contenedor);
             }
         }
 
@@ -24094,7 +24120,7 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
                 <div>
                     <label
                         style="font-size:11px;font-weight:700;color:#7c3aed;display:block;margin-bottom:3px;">Sexo</label>
-                    <select id="portal-hoy-sexo" onchange="_renderPortalHoy()"
+                    <select id="portal-hoy-sexo" onchange="(window._portalHoyRegistrosTodos&&window._portalHoyRegistrosTodos.length)?_renderPortalHoy():cargarPortalAlumnosHoy()"
                         style="width:100%;padding:8px;border-radius:7px;border:1px solid #e9d5ff;">
                         <option value="">— Todos —</option>
                         <option value="M">Masculino (M)</option>
@@ -24104,7 +24130,7 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
                 <div>
                     <label
                         style="font-size:11px;font-weight:700;color:#7c3aed;display:block;margin-bottom:3px;">Estado</label>
-                    <select id="portal-hoy-estado" onchange="_renderPortalHoy()"
+                    <select id="portal-hoy-estado" onchange="(window._portalHoyRegistrosTodos&&window._portalHoyRegistrosTodos.length)?_renderPortalHoy():cargarPortalAlumnosHoy()"
                         style="width:100%;padding:8px;border-radius:7px;border:1px solid #e9d5ff;">
                         <option value="">— Todos —</option>
                         <option value="presente">✅ Solo presentes</option>
@@ -24804,7 +24830,7 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
     <!-- ══ BOTÓN TICKET FLOTANTE ══ -->
     <button id="btn-ticket-reportar" onclick="abrirModalReportarTicket()" title="Reportar Error / Ticket"
         aria-label="Reportar Ticket"
-        style="position:fixed;bottom:76px;right:18px;z-index:9999;width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;font-size:22px;display:none;align-items:center;justify-content:center;background:#dc2626;color:#ffffff;box-shadow:0 4px 14px rgba(0,0,0,0.35);transition:background 0.25s, transform 0.2s;-webkit-tap-highlight-color:transparent;">🎟️</button>
+        style="position:fixed;bottom:76px;right:18px;z-index:999999;width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;font-size:22px;display:flex;align-items:center;justify-content:center;background:#dc2626;color:#ffffff;box-shadow:0 4px 14px rgba(0,0,0,0.35);transition:background 0.25s, transform 0.2s;-webkit-tap-highlight-color:transparent;">🎟️</button>
 
     <!-- ══ BOTÓN MODO OSCURO FLOTANTE ══ -->
     <button id="btn-dark-mode" onclick="toggleDarkMode()" title="Cambiar tema claro/oscuro"
@@ -25099,7 +25125,27 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
         }
 
         window.quitarMarcaPortal = async function (nieStr, fechaKey) {
-            if (!confirm('¿Deseas desmarcar a este alumno del portal? Se eliminará su registro de asistencia del portal.')) return;
+            // ── DOBLE CLIC elimina de Firestore; SIMPLE CLIC solo quita visualmente ──
+            const ahora = Date.now();
+            const ultimoClick = window._quitarPortalUltimoClick || 0;
+            const esDobleClick = (ahora - ultimoClick) < 500;
+            window._quitarPortalUltimoClick = ahora;
+
+            if (!esDobleClick) {
+                // ── SIMPLE CLIC: solo limpiar la UI en este dispositivo ──
+                const el = document.getElementById('asist-portal-' + nieStr);
+                if (el) {
+                    el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#991b1b;background:#fee2e2;';
+                    el.textContent = '🔴 No marcó';
+                    el.onclick = null;
+                    el.title = '';
+                }
+                mostrarNotificacion('Marca ocultada en este dispositivo. Doble clic para eliminar de la base de datos.', 'info', 3500);
+                return;
+            }
+
+            // ── DOBLE CLIC: eliminar de Firestore ──
+            if (!confirm('¿Deseas eliminar PERMANENTEMENTE el registro de este alumno del portal?\nEsto lo eliminará de la base de datos para todos los dispositivos.')) return;
             try {
                 if (!window.firebase || !firebase.firestore) return;
                 const db = firebase.firestore();
@@ -25112,7 +25158,7 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
                     const batch = db.batch();
                     snap.forEach(doc => batch.delete(doc.ref));
                     await batch.commit();
-                    mostrarNotificacion('Marca de portal eliminada correctamente.', 'success');
+                    mostrarNotificacion('✅ Registro eliminado permanentemente de la base de datos.', 'success');
                 }
 
                 const el = document.getElementById('asist-portal-' + nieStr);
@@ -25120,7 +25166,7 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
                     el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#991b1b;background:#fee2e2;';
                     el.textContent = '🔴 No marcó';
                     el.onclick = null;
-                    el.title = "";
+                    el.title = '';
                 }
             } catch (e) {
                 alert('Error al desmarcar: ' + e.message);
@@ -26126,6 +26172,16 @@ ${tablas}
     </div>
 
     <script>
+        // ── ID de dispositivo persistente (sobrevive logout, funciona en cualquier dispositivo) ──
+        function _getDeviceId() {
+            let did = localStorage.getItem('_sica_device_id');
+            if (!did) {
+                did = 'dev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+                localStorage.setItem('_sica_device_id', did);
+            }
+            return did;
+        }
+
         function abrirModalReportarTicket() {
             document.getElementById('ticket-descripcion').value = '';
             document.getElementById('modal-reportar-ticket').classList.add('open');
@@ -26136,12 +26192,22 @@ ${tablas}
             const container = document.getElementById('mis-tickets-container');
             container.innerHTML = '<div style="text-align:center; padding:10px; color:var(--gray-600); font-size:13px;">Cargando...</div>';
 
-            if (!window.usuarioActual || !window.firebase || !firebase.firestore) return;
+            if (!window.firebase || !firebase.firestore) return;
+            const docenteId = window.usuarioActual || '';
+            const deviceId  = _getDeviceId();
 
             try {
-                const snapshot = await firebase.firestore().collection('tickets_inmu')
-                    .where('docente', '==', window.usuarioActual)
-                    .get();
+                // Buscar por docente Y por device_id para que funcione en cualquier dispositivo
+                const [snapDocente, snapDevice] = await Promise.all([
+                    docenteId
+                        ? firebase.firestore().collection('tickets_inmu').where('docente', '==', docenteId).get()
+                        : Promise.resolve({ empty: true, forEach: () => {} }),
+                    firebase.firestore().collection('tickets_inmu').where('device_id', '==', deviceId).get()
+                ]);
+                // Combinar sin duplicados (por doc.id)
+                const mapaTickets = {};
+                [snapDocente, snapDevice].forEach(snap => snap.forEach(doc => { mapaTickets[doc.id] = doc.data(); }));
+                const snapshot = { empty: Object.keys(mapaTickets).length === 0, forEach: (fn) => Object.values(mapaTickets).forEach(fn) };
 
                 if (snapshot.empty) {
                     container.innerHTML = '<div style="text-align:center; padding:10px; color:var(--gray-600); font-size:13px;">No has reportado ningún ticket.</div>';
@@ -26185,16 +26251,18 @@ ${tablas}
         function enviarTicket() {
             const desc = document.getElementById('ticket-descripcion').value.trim();
             if (!desc) return alert('Por favor escriba una descripción.');
-            if (!window.usuarioActual) return alert('No hay sesión de docente activa.');
+            // Permitir enviar ticket aunque no haya sesión activa (modo mantenimiento personal)
+            const docenteLabel = window.usuarioActual || '(sin sesión)';
 
             const btn = document.querySelector('#modal-reportar-ticket .btn-primary');
             btn.disabled = true;
             btn.textContent = 'Enviando...';
 
             if (window.firebase && firebase.firestore) {
-                // Enviar a Firebase sin bloquear la UI con await
+                // Guardar device_id para que el ticket sea visible en cualquier dispositivo del mismo docente
                 firebase.firestore().collection('tickets_inmu').add({
-                    docente: window.usuarioActual,
+                    docente: docenteLabel,
+                    device_id: _getDeviceId(),
                     descripcion: desc,
                     fecha_ts: firebase.firestore.FieldValue.serverTimestamp(),
                     fecha_str: new Date().toLocaleString('es-ES'),
