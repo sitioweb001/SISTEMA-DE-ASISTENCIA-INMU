@@ -201,6 +201,8 @@ function _desactivarPantallaMantenimiento(cfg) {
         if (cfgCached) {
           console.log('[FB-Config] Config desde caché ✓ login_habilitado=' + cfgCached.login_habilitado);
           if (cfgCached.mantenimiento === true) {
+            // ── SIEMPRE verificar con Firebase antes de mostrar la pantalla de mantenimiento ──
+            // Si Firebase no responde (cuota excedida / offline), NO bloquear — usar login normal.
             try {
               var snap = await _cfgConTimeout(
                 _cfgDb.collection('config_inmu').doc('sistema').get(), FB_CONFIG_TIMEOUT
@@ -210,6 +212,8 @@ function _desactivarPantallaMantenimiento(cfg) {
                 localStorage.setItem(FB_CONFIG_CACHE_KEY, JSON.stringify(cfgCached));
               }
             } catch (e) {
+              // Firebase no respondió → limpiar mantenimiento de caché y continuar con login
+              console.warn('[FB-Config] Firebase no respondió para verificar mantenimiento. Ignorando caché y mostrando login.', e.message);
               cfgCached = Object.assign({}, cfgCached, { mantenimiento: false });
               localStorage.setItem(FB_CONFIG_CACHE_KEY, JSON.stringify(cfgCached));
             }
