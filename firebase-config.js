@@ -68,6 +68,15 @@ function _escucharConfigEnTiempoReal() {
       }
       // Sin sesión → flujo completo (incluye modales)
       _aplicarConfigEnUI(cfg);
+
+      // Si no hay mantenimiento y docentes aún no cargaron, disparar carga
+      if (cfg.mantenimiento !== true && typeof inicializarBaseDatos === 'function') {
+        var selDoc = document.getElementById('select-docente-inicio');
+        var yaCargoDocentes = selDoc && selDoc.options.length > 1 &&
+            !selDoc.options[0].text.includes('Cargando') &&
+            !selDoc.options[0].text.includes('Descargando');
+        if (!yaCargoDocentes) inicializarBaseDatos();
+      }
     }, e => console.warn('[FB-Config] Error listener:', e));
 }
 
@@ -166,6 +175,17 @@ function _desactivarPantallaMantenimiento(cfg) {
   // Sincronizar loginRequerido con el valor de Firebase
   if (cfg && typeof cfg.login_habilitado === 'boolean') {
     window.loginRequerido = cfg.login_habilitado;
+  }
+
+  // Cargar datos si aún no están cargados
+  if (typeof inicializarBaseDatos === 'function') {
+    var selDoc = document.getElementById('select-docente-inicio');
+    var yaCargoDocentes = selDoc && selDoc.options.length > 1 &&
+        !selDoc.options[0].text.includes('Cargando') &&
+        !selDoc.options[0].text.includes('Descargando');
+    if (!yaCargoDocentes) {
+      inicializarBaseDatos();
+    }
   }
 
   // Usar mostrarModalLogin() del INDEX — tiene el guard de usuarioActual
