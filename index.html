@@ -912,7 +912,7 @@
             position: fixed;
             inset: 0;
             background: rgba(0, 0, 0, 0.6);
-            z-index: 1000;
+            z-index: 10000;
             align-items: center;
             justify-content: center;
             overflow-y: auto;
@@ -26518,7 +26518,13 @@ ${tablas}
                     return;
                 }
                 const nuevoEstado = !estaBloqueado;
-                await docRef.update({ bloqueado_reparacion: nuevoEstado });
+
+                // Timeout de 8 segundos para que no se quede colgado si Firebase tiene CORS/red lenta
+                const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000));
+                await Promise.race([
+                    docRef.update({ bloqueado_reparacion: nuevoEstado }),
+                    timeoutPromise
+                ]);
 
                 // Actualizar array local
                 const idx = (window.baseDatosDocentes || []).findIndex(d =>
@@ -26538,9 +26544,13 @@ ${tablas}
                     5000
                 );
             } catch (e) {
-                alert('Error al cambiar bloqueo: ' + e.message);
                 btnElement.disabled = false;
                 btnElement.textContent = 'Bloquear Sistema';
+                if (e.message === 'timeout') {
+                    mostrarNotificacion('⚠️ Firebase tardó demasiado. El cambio puede haberse guardado. Recarga para verificar.', 'warning', 6000);
+                } else {
+                    alert('Error al cambiar bloqueo: ' + e.message);
+                }
             }
         }
     </script>
