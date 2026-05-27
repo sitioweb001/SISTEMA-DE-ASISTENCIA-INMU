@@ -26214,33 +26214,72 @@ ${tablas}
             cargarMisTickets();
         }
 
+        // Caché local de tickets por docente (para funcionar aunque Firebase tenga CORS)
+        function _guardarTicketsCache(docenteId, deviceId, tickets) {
+            try {
+                const cacheKey = 'sica_tickets_cache_' + (docenteId || deviceId || 'anon');
+                localStorage.setItem(cacheKey, JSON.stringify(tickets));
+            } catch(e) {}
+        }
+        function _leerTicketsCache(docenteId, deviceId) {
+            try {
+                const cacheKey = 'sica_tickets_cache_' + (docenteId || deviceId || 'anon');
+                return JSON.parse(localStorage.getItem(cacheKey) || 'null');
+            } catch(e) { return null; }
+        }
+
         async function cargarMisTickets() {
             const container = document.getElementById('mis-tickets-container');
             container.innerHTML = '<div style="text-align:center; padding:10px; color:var(--gray-600); font-size:13px;">Cargando...</div>';
 
-            if (!window.firebase || !firebase.firestore) return;
             const docenteId = window.usuarioActual || '';
             const deviceId  = _getDeviceId();
 
+            // Mostrar caché mientras carga Firebase (respuesta inmediata)
+            const cacheLocal = _leerTicketsCache(docenteId, deviceId);
+            if (cacheLocal && cacheLocal.length) {
+                _renderTickets(container, cacheLocal);
+            }
+
+            if (!window.firebase || !firebase.firestore) {
+                if (!cacheLocal || !cacheLocal.length) {
+                    container.innerHTML = '<div style="text-align:center; padding:10px; color:var(--gray-600); font-size:13px;">Sin conexión. No hay tickets en caché.</div>';
+                }
+                return;
+            }
+
             try {
-                // Buscar por docente Y por device_id para que funcione en cualquier dispositivo
-                const [snapDocente, snapDevice] = await Promise.all([
-                    docenteId
-                        ? firebase.firestore().collection('tickets_inmu').where('docente', '==', docenteId).get()
-                        : Promise.resolve({ empty: true, forEach: () => {} }),
-                    firebase.firestore().collection('tickets_inmu').where('device_id', '==', deviceId).get()
-                ]);
-                // Combinar sin duplicados (por doc.id) → guardar datos planos directamente
+                // Buscar por docente Y por device_id — cada uno por separado para tolerar fallos parciales
                 const mapaTickets = {};
-                [snapDocente, snapDevice].forEach(snap => snap.forEach(doc => { mapaTickets[doc.id] = doc.data(); }));
-                const ticketsDatos = Object.values(mapaTickets); // array de objetos planos
+
+                const tryQuery = async (promise) => {
+                    try {
+                        const snap = await promise;
+                        snap.forEach(doc => { mapaTickets[doc.id] = doc.data(); });
+                    } catch(e) { console.warn('[Tickets] Query parcial falló:', e.message); }
+                };
+
+                await Promise.all([
+                    docenteId
+                        ? tryQuery(firebase.firestore().collection('tickets_inmu').where('docente', '==', docenteId).get())
+                        : Promise.resolve(),
+                    tryQuery(firebase.firestore().collection('tickets_inmu').where('device_id', '==', deviceId).get())
+                ]);
+
+                const ticketsDatos = Object.values(mapaTickets);
 
                 if (!ticketsDatos.length) {
-                    container.innerHTML = '<div style="text-align:center; padding:10px; color:var(--gray-600); font-size:13px;">No has reportado ningún ticket.</div>';
+                    // Si Firebase no devolvió nada pero hay caché, mantener caché
+                    if (!cacheLocal || !cacheLocal.length) {
+                        container.innerHTML = '<div style="text-align:center; padding:10px; color:var(--gray-600); font-size:13px;">No has reportado ningún ticket.</div>';
+                    }
                     return;
                 }
 
-                // Ordenar localmente para evitar requerir un índice compuesto en Firestore
+                // Guardar en caché para próximas veces (incluso offline)
+                _guardarTicketsCache(docenteId, deviceId, ticketsDatos);
+
+                // Ordenar por fecha
                 const tickets = ticketsDatos;
                 tickets.sort((a, b) => {
                     const tsA = a.fecha_ts && typeof a.fecha_ts.toMillis === 'function' ? a.fecha_ts.toMillis() : 0;
@@ -26248,29 +26287,39 @@ ${tablas}
                     return tsB - tsA;
                 });
 
-                let html = '';
-                tickets.forEach(data => {
-                    const estado = data.estado || 'En proceso';
-
-                    let colorEstado = '#f59e0b'; // En proceso
-                    if (estado === 'Reparado' || estado === 'Finalizado') colorEstado = '#10b981';
-                    else if (estado === 'Rechazado') colorEstado = '#ef4444';
-                    else if (estado === 'Leído') colorEstado = '#3b82f6';
-
-                    html += `
-                        <div style="border:1px solid var(--border-color, #e5e7eb); border-radius:6px; padding:10px; background:var(--bg-panel, #ffffff);">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                                <div style="font-size:11px; color:var(--gray-600);">${data.fecha_str || ''}</div>
-                                <div style="font-size:11px; font-weight:bold; color:${colorEstado}; padding:2px 6px; border:1px solid ${colorEstado}; border-radius:4px;">${estado}</div>
-                            </div>
-                            <div style="font-size:13px; color:var(--gray-900); white-space:pre-wrap;">${data.descripcion || ''}</div>
-                        </div>
-                    `;
-                });
-                container.innerHTML = html;
+                _renderTickets(container, tickets);
             } catch (e) {
-                container.innerHTML = '<div style="text-align:center; color:red; font-size:12px;">Error al cargar: ' + e.message + '</div>';
+                console.warn('[Tickets] Error Firebase:', e.message);
+                // Si Firebase falla pero ya mostramos caché, no pisar con error
+                if (!cacheLocal || !cacheLocal.length) {
+                    container.innerHTML = '<div style="text-align:center; color:var(--gray-500); font-size:12px; padding:10px;">Sin conexión con el servidor. Intenta de nuevo.</div>';
+                }
             }
+        }
+
+        function _renderTickets(container, tickets) {
+            if (!tickets || !tickets.length) {
+                container.innerHTML = '<div style="text-align:center; padding:10px; color:var(--gray-600); font-size:13px;">No has reportado ningún ticket.</div>';
+                return;
+            }
+            let html = '';
+            tickets.forEach(data => {
+                const estado = data.estado || 'En proceso';
+                let colorEstado = '#f59e0b';
+                if (estado === 'Reparado' || estado === 'Finalizado') colorEstado = '#10b981';
+                else if (estado === 'Rechazado') colorEstado = '#ef4444';
+                else if (estado === 'Leído') colorEstado = '#3b82f6';
+                html += `
+                    <div style="border:1px solid var(--border-color, #e5e7eb); border-radius:6px; padding:10px; background:var(--bg-panel, #ffffff); margin-bottom:6px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                            <div style="font-size:11px; color:var(--gray-600);">${data.fecha_str || ''}</div>
+                            <div style="font-size:11px; font-weight:bold; color:${colorEstado}; padding:2px 6px; border:1px solid ${colorEstado}; border-radius:4px;">${estado}</div>
+                        </div>
+                        <div style="font-size:13px; color:var(--gray-900); white-space:pre-wrap;">${data.descripcion || ''}</div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
         }
 
         function enviarTicket() {
@@ -26283,16 +26332,26 @@ ${tablas}
             btn.disabled = true;
             btn.textContent = 'Enviando...';
 
+            const nuevoTicket = {
+                docente: docenteLabel,
+                device_id: _getDeviceId(),
+                descripcion: desc,
+                fecha_str: new Date().toLocaleString('es-ES'),
+                estado: 'En proceso'
+            };
+            // Guardar en caché local PRIMERO — funciona aunque Firebase falle
+            try {
+                const cacheKey = 'sica_tickets_cache_' + (docenteLabel !== '(sin sesión)' ? docenteLabel : _getDeviceId());
+                const cacheActual = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+                cacheActual.unshift(nuevoTicket);
+                localStorage.setItem(cacheKey, JSON.stringify(cacheActual));
+            } catch(e) {}
+
             if (window.firebase && firebase.firestore) {
                 // Guardar device_id para que el ticket sea visible en cualquier dispositivo del mismo docente
-                firebase.firestore().collection('tickets_inmu').add({
-                    docente: docenteLabel,
-                    device_id: _getDeviceId(),
-                    descripcion: desc,
-                    fecha_ts: firebase.firestore.FieldValue.serverTimestamp(),
-                    fecha_str: new Date().toLocaleString('es-ES'),
-                    estado: 'En proceso'
-                }).catch(e => console.warn('Error al guardar ticket:', e));
+                firebase.firestore().collection('tickets_inmu').add(
+                    Object.assign({ fecha_ts: firebase.firestore.FieldValue.serverTimestamp() }, nuevoTicket)
+                ).catch(e => console.warn('Error al guardar ticket en Firebase:', e));
 
                 // Animación de éxito
                 setTimeout(() => {
