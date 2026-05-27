@@ -59,6 +59,25 @@
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  // ── Caché localStorage para docentes (sobrevive CORS/GAS vacío) ──────────
+  const CACHE_KEY_DOC = 'fb_cache_docentes_v3';
+  const CACHE_KEY_CAT = 'fb_cache_catalogo_v3';
+
+  function _guardarCacheDocentes(docentes, catalogo) {
+    try {
+      localStorage.setItem(CACHE_KEY_DOC, JSON.stringify(docentes));
+      if (catalogo && catalogo.length) localStorage.setItem(CACHE_KEY_CAT, JSON.stringify(catalogo));
+    } catch(e) {}
+  }
+
+  function _leerCacheDocentes() {
+    try {
+      const d = JSON.parse(localStorage.getItem(CACHE_KEY_DOC) || 'null');
+      const c = JSON.parse(localStorage.getItem(CACHE_KEY_CAT) || 'null');
+      return { docentes: Array.isArray(d) ? d : null, catalogo: Array.isArray(c) ? c : null };
+    } catch(e) { return { docentes: null, catalogo: null }; }
+  }
+
   // ── Fetch GAS con timeout ──────────────────────────────────────────────────
   async function _fetchGAS(tipo) {
     const ctrl = new AbortController();
@@ -201,6 +220,7 @@
 
         if (docentes.length > 0 && alumnos.length > 0) {
           _aplicar(docentes, alumnos, catalogo);
+          _guardarCacheDocentes(docentes, catalogo);   // guardar en caché local
           console.log('[FB-Docentes] ✅ Cargado desde Firebase');
 
           // Corregir secciones en Firebase en segundo plano si hay datos sucios
@@ -258,12 +278,32 @@
       ]);
 
       console.log('[FB-Docentes] GAS → docentes:', docentes.length, '| alumnos:', alumnos.length);
-      _aplicar(docentes, alumnos, catalogo);
+
+      // Si GAS devuelve 0 docentes, usar caché localStorage como respaldo
+      let docentesFinales = docentes;
+      let catalogoFinal   = catalogo;
+      if (!docentes.length) {
+        const cache = _leerCacheDocentes();
+        if (cache.docentes && cache.docentes.length) {
+          console.warn('[FB-Docentes] GAS devolvió 0 docentes → usando caché local (' + cache.docentes.length + ')');
+          docentesFinales = cache.docentes;
+          if (!catalogoFinal.length && cache.catalogo) catalogoFinal = cache.catalogo;
+        } else {
+          // Último recurso: usar baseDatosDocentes que ya tenga el INDEX en memoria
+          const memDoc = (window.baseDatosDocentes || []).filter(d => d.nombre);
+          if (memDoc.length) {
+            console.warn('[FB-Docentes] GAS sin docentes → usando memoria (' + memDoc.length + ')');
+            docentesFinales = memDoc;
+          }
+        }
+      }
+      _aplicar(docentesFinales, alumnos, catalogoFinal);
+      if (docentesFinales.length) _guardarCacheDocentes(docentesFinales, catalogoFinal);
 
       // Subir a Firebase en segundo plano
       setTimeout(async () => {
         try {
-          await _subirDocentes(docentes);
+          await _subirDocentes(docentesFinales);
           await _subirAlumnos(alumnos);
           if (_listo && _db && catalogo.length) {
             await _db.collection('config_inmu').doc('catalogo_materias')
