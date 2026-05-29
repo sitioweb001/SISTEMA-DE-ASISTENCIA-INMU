@@ -275,7 +275,13 @@ function activarListenerNotas(grado, seccion, materiaClave) {
   }
   _ultimaClaveEscucha = `${grado}|${seccion}|${materiaClave}`;
 
-  if (!_firebaseListo || _modoOffline) return;
+  if (_modoOffline) return;
+
+  if (!_firebaseListo) {
+    console.warn('[Firebase-Notas] Firebase no listo, reintentando listener en 1 segundo...');
+    setTimeout(() => activarListenerNotas(grado, seccion, materiaClave), 1000);
+    return;
+  }
 
   const ref = _fbDocRef(grado, seccion, materiaClave);
   if (!ref) return;
