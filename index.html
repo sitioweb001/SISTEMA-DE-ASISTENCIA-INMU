@@ -26277,11 +26277,18 @@ ${tablas}
                                         <option value="Finalizado" ${estado === 'Finalizado' ? 'selected' : ''}>Finalizado</option>
                                         <option value="Rechazado" ${estado === 'Rechazado' ? 'selected' : ''}>Rechazado</option>
                                     </select>
-                                    <button onclick="bloquearDocenteTicket('${data.docente}', this)" style="padding:4px 8px; background:#1f2937; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;" title="Bloquear sistema para este docente">Bloquear Sistema</button>
+                                    <button onclick="bloquearDocenteTicket('${data.docente}', this)" style="padding:4px 8px; background:${baseDatosDocentes.find(d => d.nombre === data.docente)?.bloqueado_reparacion ? '#10b981' : '#1f2937'}; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;" title="Bloquear sistema para este docente">${baseDatosDocentes.find(d => d.nombre === data.docente)?.bloqueado_reparacion ? '✅ Desbloquear' : '🚫 Bloquear Sistema'}</button>
                                     <button onclick="eliminarTicket('${id}')" style="padding:4px 8px; background:#ef4444; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;" title="Eliminar ticket">🗑️</button>
                                 </div>
                             </div>
-                            <div style="font-size:13px; color:var(--gray-900); white-space:pre-wrap;">${data.descripcion || ''}</div>
+                            <div style="margin-top: 10px;">
+                                <button onclick="document.getElementById('desc-${id}').style.display = document.getElementById('desc-${id}').style.display === 'none' ? 'block' : 'none';" style="width: 100%; padding: 6px; background: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db; border-radius: 4px; font-size: 12px; cursor: pointer;">
+                                    👀 Ver problema
+                                </button>
+                                <div id="desc-${id}" style="display: none; margin-top: 8px; font-size: 13px; color: var(--gray-900); white-space: pre-wrap; background: #f9fafb; padding: 10px; border-radius: 6px; border-left: 3px solid #f59e0b; max-height: 200px; overflow-y: auto;">${data.descripcion || ''}</div>
+                            </div>
+                        </div>
+                    `;
                         </div>
                     `;
                 });
