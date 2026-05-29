@@ -912,7 +912,7 @@
             position: fixed;
             inset: 0;
             background: rgba(0, 0, 0, 0.6);
-            z-index: 10000;
+            z-index: 1000;
             align-items: center;
             justify-content: center;
             overflow-y: auto;
@@ -1807,17 +1807,18 @@
         @media (max-width: 768px) {
             .btn-hamburger {
                 display: block !important;
-                position: absolute;
+                position: fixed;
                 left: 0px;
                 top: 0px;
                 padding: 10px;
                 margin: 0;
-                background: none;
+                background: var(--blue-800);
                 border: none;
                 color: white;
                 font-size: 24px;
                 cursor: pointer;
                 z-index: 1000;
+                border-bottom-right-radius: 8px;
             }
 
             .desktop-only {
@@ -2708,7 +2709,7 @@
                         style="background: var(--gray-50); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--gray-100);">
                         <label style="color: var(--blue-800); margin-bottom: 10px; font-size: 14px;">📅 Filtrar
                             Asistencia por Fecha</label>
-                        <div style="display: flex; gap: 10px;">
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                             <input type="date" id="filtro-fecha-sub"
                                 style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--gray-100); outline: none;">
                             <button onclick="filtrarReportesSub()"
@@ -3850,6 +3851,7 @@
 
         function restaurarSesionGuardada() {
             try {
+                // Restaurar tema (también en contexto de sesión guardada)
                 restaurarTema();
 
                 if (typeof AndroidStorage === 'undefined') return;
@@ -3871,21 +3873,7 @@
                 if (docente) document.getElementById('docente-nombre').value = docente;
                 if (grado && seccion) cargarAlumnos();
 
-                // Verificar si el docente está bloqueado en Firebase ANTES de entrar
-                if (usuario && usuario !== 'invitado' && window.firebase && firebase.firestore) {
-                    firebase.firestore().collection('docentes_inmu')
-                        .where('nombre', '==', usuario).get()
-                        .then(snap => {
-                            const bloqueado = !snap.empty && !!snap.docs[0].data().bloqueado_reparacion;
-                            // Actualizar en array local también
-                            const idx = (window.baseDatosDocentes || []).findIndex(d => d.nombre === usuario);
-                            if (idx !== -1) window.baseDatosDocentes[idx].bloqueado_reparacion = bloqueado;
-                            desbloquearInterfazMain(usuario, bloqueado);
-                        })
-                        .catch(() => desbloquearInterfazMain(usuario));
-                } else {
-                    desbloquearInterfazMain(usuario);
-                }
+                desbloquearInterfazMain(usuario);
             } catch (e) { }
         }
 
@@ -5101,7 +5089,10 @@
                 } catch (_) { }
 
                 // 3. POST al GAS (para mantener Sheets sincronizado)
-                await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "toggle_login", password: password }) });
+                const modo = window.getModoBackend ? window.getModoBackend() : 'firebase-apps_script';
+                if (modo !== 'firebase-firebase') {
+                    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ tipo_post: "toggle_login", password: password }) }).catch(() => console.warn('No se pudo enviar estado de login a GAS.'));
+                }
 
                 // 4. Aplicar cambio en UI sin recargar
                 loginRequerido = nuevoLogin;
@@ -5119,9 +5110,11 @@
                 );
 
             } catch (e) {
-                alert("❌ Error de red.");
-                btn.disabled = false;
-                btn.innerText = loginRequerido ? "Desactivar Login" : "Activar Login";
+                // En modo híbrido o GAS si falla la red, no bloqueamos la UI con un error invasivo
+                console.warn("Fallo de red al cambiar estado de login:", e);
+                // Restauramos el botón ya que pudo haber fallado
+                // btn.disabled = false;
+                // btn.innerText = loginRequerido ? "Desactivar Login" : "Activar Login";
             }
         }
 
@@ -7815,7 +7808,7 @@
         </div>`;
             document.body.appendChild(modal);
             modal.tabIndex = -1;
-            modal.focus({ preventScroll: true });
+            modal.focus();
             setAsistioPersonal(index, asistioActual);
             setJustificantePersonal(index, tieneJustificante);
         }
@@ -8450,51 +8443,34 @@
             const modoSeleccionado = checkedOption.value;
             const scope = document.getElementById('modo_backend_scope').value;
 
-            const etiquetas = {
-                'firebase-apps_script': 'Firebase + Apps Script (Híbrido)',
-                'firebase-firebase':    '100% Firebase',
-                'apps_script':          '100% Apps Script (GAS)'
-            };
-            const nombreModo = etiquetas[modoSeleccionado] || modoSeleccionado;
-
             if (scope === 'local') {
                 localStorage.setItem('modo_backend_local', modoSeleccionado);
-                // Actualizar caché global también para que getModoBackend() lo vea inmediatamente
-                try {
-                    let cfg = JSON.parse(localStorage.getItem('fb_config_sistema') || '{}');
-                    cfg.modo_backend = modoSeleccionado;
-                    localStorage.setItem('fb_config_sistema', JSON.stringify(cfg));
-                } catch (e) {}
-                cerrarModal('modal-modo-conexion');
-                mostrarNotificacion('✅ Modo "' + nombreModo + '" aplicado en ESTE dispositivo.', 'success', 4000);
+                mostrarNotificacion('Modo actualizado SOLO para este dispositivo', 'info');
             } else {
                 // Global
                 localStorage.removeItem('modo_backend_local');
-                // Guardar localmente como respaldo inmediato
+                // IMPORTANTE: Guardar localmente como respaldo por si falla la nube (Quota Exceeded)
                 try {
                     let cfg = JSON.parse(localStorage.getItem('fb_config_sistema') || '{}');
                     cfg.modo_backend = modoSeleccionado;
                     localStorage.setItem('fb_config_sistema', JSON.stringify(cfg));
-                } catch (e) {}
-
-                cerrarModal('modal-modo-conexion');
+                } catch (e) { }
 
                 if (window.firebase && firebase.firestore) {
                     try {
                         const db = firebase.firestore();
+                        // Actualizamos en background, sin await, para evitar que se quede pegado por límite de cuotas
                         db.collection('config_inmu').doc('sistema').set({ modo_backend: modoSeleccionado }, { merge: true })
-                            .then(() => mostrarNotificacion('✅ Modo "' + nombreModo + '" aplicado GLOBALMENTE a todos los docentes.', 'success', 5000))
-                            .catch(e => {
-                                console.warn('Error al guardar modo global:', e);
-                                mostrarNotificacion('⚠️ Guardado solo localmente (Firebase no respondió).', 'warning', 4000);
-                            });
+                            .catch(e => console.warn('Error backend cuota al guardar modo', e));
+                        mostrarNotificacion('Modo actualizado GLOBALMENTE', 'success');
                     } catch (e) {
-                        mostrarNotificacion('✅ Modo "' + nombreModo + '" aplicado localmente (Firebase no disponible).', 'info', 4000);
+                        alert('Error interno: ' + e.message);
                     }
                 } else {
-                    mostrarNotificacion('✅ Modo "' + nombreModo + '" guardado localmente.', 'info', 4000);
+                    alert('Firebase no está disponible para hacer el cambio global, pero se aplicó localmente.');
                 }
             }
+            cerrarModal('modal-modo-conexion');
         };
 
         function _textoAlumnoSeguro(valor) {
@@ -23726,40 +23702,23 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
                 String(ahora.getMonth() + 1).padStart(2, '0') + '-' + ahora.getFullYear() +
                 (gradoFiltro ? '_' + gradoFiltro.replace(/\s+/g, '_') : '') + '.pdf';
 
-            // Crear elemento DOM temporal visible pero transparente (html2canvas necesita que sea visible en viewport)
-            var wrapper = document.createElement('div');
-            wrapper.style.cssText = 'position:fixed;top:0;left:0;width:800px;opacity:0;pointer-events:none;z-index:-1;background:white;overflow:hidden;';
-            var contenedor = document.createElement('div');
-            contenedor.style.cssText = 'width:780px;padding:10px;background:white;color:#111;font-family:Arial,sans-serif;';
-            contenedor.innerHTML = html;
-            wrapper.appendChild(contenedor);
-            document.body.appendChild(wrapper);
-
-            // Dar un tick para que el DOM renderice antes de capturar
-            setTimeout(function() {
-                try {
-                    html2pdf().set({
-                        margin: [8, 10, 8, 10],
-                        filename: nombreArchivo,
-                        image: { type: 'jpeg', quality: 0.95 },
-                        html2canvas: { scale: 2, useCORS: true, allowTaint: true, logging: false,
-                                       backgroundColor: '#ffffff', scrollX: 0, scrollY: 0 },
-                        jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
-                    }).from(contenedor).save().then(function () {
-                        mostrarNotificacion('✅ PDF generado correctamente.', 'success', 3000);
-                        if (btn) { btn.disabled = false; btn.textContent = '📥 Exportar PDF'; }
-                        if (wrapper.parentNode) document.body.removeChild(wrapper);
-                    }).catch(function (e) {
-                        alert('Error al generar PDF: ' + (e.message || e));
-                        if (btn) { btn.disabled = false; btn.textContent = '📥 Exportar PDF'; }
-                        if (wrapper.parentNode) document.body.removeChild(wrapper);
-                    });
-                } catch (e) {
-                    alert('Error al generar PDF: ' + e.message);
+            try {
+                html2pdf().set({
+                    margin: 10, filename: nombreArchivo,
+                    image: { type: 'jpeg', quality: 0.9 },
+                    html2canvas: { scale: 1.4, useCORS: true, logging: false },
+                    jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+                }).from(html).save().then(function () {
+                    mostrarNotificacion('✅ PDF generado correctamente.', 'success', 3000);
                     if (btn) { btn.disabled = false; btn.textContent = '📥 Exportar PDF'; }
-                    if (wrapper.parentNode) document.body.removeChild(wrapper);
-                }
-            }, 150);
+                }).catch(function (e) {
+                    alert('Error al generar PDF: ' + (e.message || e));
+                    if (btn) { btn.disabled = false; btn.textContent = '📥 Exportar PDF'; }
+                });
+            } catch (e) {
+                alert('Error al generar PDF: ' + e.message);
+                if (btn) { btn.disabled = false; btn.textContent = '📥 Exportar PDF'; }
+            }
         }
 
         /* =====================================================================
@@ -24141,7 +24100,7 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
                 <div>
                     <label
                         style="font-size:11px;font-weight:700;color:#7c3aed;display:block;margin-bottom:3px;">Sexo</label>
-                    <select id="portal-hoy-sexo" onchange="(window._portalHoyRegistrosTodos&&window._portalHoyRegistrosTodos.length)?_renderPortalHoy():cargarPortalAlumnosHoy()"
+                    <select id="portal-hoy-sexo" onchange="_renderPortalHoy()"
                         style="width:100%;padding:8px;border-radius:7px;border:1px solid #e9d5ff;">
                         <option value="">— Todos —</option>
                         <option value="M">Masculino (M)</option>
@@ -24151,7 +24110,7 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
                 <div>
                     <label
                         style="font-size:11px;font-weight:700;color:#7c3aed;display:block;margin-bottom:3px;">Estado</label>
-                    <select id="portal-hoy-estado" onchange="(window._portalHoyRegistrosTodos&&window._portalHoyRegistrosTodos.length)?_renderPortalHoy():cargarPortalAlumnosHoy()"
+                    <select id="portal-hoy-estado" onchange="_renderPortalHoy()"
                         style="width:100%;padding:8px;border-radius:7px;border:1px solid #e9d5ff;">
                         <option value="">— Todos —</option>
                         <option value="presente">✅ Solo presentes</option>
@@ -25031,6 +24990,7 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
     <script src="firebase-docentes.js"></script>
     <script src="firebase-asistencia.js"></script>
     <script src="firebase-reportes.js"></script>
+    <script src="firebase-notas.js"></script>
 
     <script>
         /* ══════════════════════════════════════════════════════════════════════════════
@@ -25145,31 +25105,8 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
             return String(n.getDate()).padStart(2, '0') + '_' + String(n.getMonth() + 1).padStart(2, '0') + '_' + n.getFullYear();
         }
 
-        // NIEs ocultados manualmente — el polling no los restaura
-        window._portalOcultadosLocal = window._portalOcultadosLocal || new Set();
-
         window.quitarMarcaPortal = async function (nieStr, fechaKey) {
-            const ahora = Date.now();
-            const ultimoClick = window._quitarPortalUltimoClick || 0;
-            const esDobleClick = (ahora - ultimoClick) < 500;
-            window._quitarPortalUltimoClick = ahora;
-
-            if (!esDobleClick) {
-                // ── SIMPLE CLIC: ocultar permanentemente en este dispositivo ──
-                window._portalOcultadosLocal.add(String(nieStr));
-                const el = document.getElementById('asist-portal-' + nieStr);
-                if (el) {
-                    el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#991b1b;background:#fee2e2;cursor:default;';
-                    el.textContent = '🔴 No marcó';
-                    el.onclick = null;
-                    el.title = 'Doble clic rápido para eliminar de la base de datos';
-                }
-                mostrarNotificacion('Marca ocultada localmente. Doble clic rápido sobre esa celda para eliminar de la base de datos.', 'info', 3500);
-                return;
-            }
-
-            // ── DOBLE CLIC: eliminar de Firestore ──
-            if (!confirm('¿Deseas eliminar PERMANENTEMENTE el registro de este alumno del portal?\nEsto lo eliminará de la base de datos para todos los dispositivos.')) return;
+            if (!confirm('¿Deseas desmarcar a este alumno del portal? Se eliminará su registro de asistencia del portal.')) return;
             try {
                 if (!window.firebase || !firebase.firestore) return;
                 const db = firebase.firestore();
@@ -25182,15 +25119,15 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
                     const batch = db.batch();
                     snap.forEach(doc => batch.delete(doc.ref));
                     await batch.commit();
-                    mostrarNotificacion('✅ Registro eliminado permanentemente de la base de datos.', 'success');
+                    mostrarNotificacion('Marca de portal eliminada correctamente.', 'success');
                 }
-                window._portalOcultadosLocal.add(String(nieStr));
+
                 const el = document.getElementById('asist-portal-' + nieStr);
                 if (el) {
-                    el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#991b1b;background:#fee2e2;cursor:default;';
+                    el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#991b1b;background:#fee2e2;';
                     el.textContent = '🔴 No marcó';
                     el.onclick = null;
-                    el.title = '';
+                    el.title = "";
                 }
             } catch (e) {
                 alert('Error al desmarcar: ' + e.message);
@@ -25202,8 +25139,6 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
                 const nieStr = String(alumno.nie || '').trim();
                 const el = document.getElementById('asist-portal-' + nieStr);
                 if (!el) return;
-                // Respetar ocultados manualmente con 1 clic
-                if (window._portalOcultadosLocal && window._portalOcultadosLocal.has(nieStr)) return;
                 const reg = mapa[nieStr];
                 if (reg) {
                     const hora = reg.hora || '';
@@ -26198,160 +26133,80 @@ ${tablas}
     </div>
 
     <script>
-        // ── ID de dispositivo persistente (sobrevive logout, funciona en cualquier dispositivo) ──
-        function _getDeviceId() {
-            let did = localStorage.getItem('_sica_device_id');
-            if (!did) {
-                did = 'dev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-                localStorage.setItem('_sica_device_id', did);
-            }
-            return did;
-        }
-
         function abrirModalReportarTicket() {
             document.getElementById('ticket-descripcion').value = '';
             document.getElementById('modal-reportar-ticket').classList.add('open');
             cargarMisTickets();
         }
 
-        // Caché local de tickets por docente (para funcionar aunque Firebase tenga CORS)
-        function _guardarTicketsCache(docenteId, deviceId, tickets) {
-            try {
-                const cacheKey = 'sica_tickets_cache_' + (docenteId || deviceId || 'anon');
-                localStorage.setItem(cacheKey, JSON.stringify(tickets));
-            } catch(e) {}
-        }
-        function _leerTicketsCache(docenteId, deviceId) {
-            try {
-                const cacheKey = 'sica_tickets_cache_' + (docenteId || deviceId || 'anon');
-                return JSON.parse(localStorage.getItem(cacheKey) || 'null');
-            } catch(e) { return null; }
-        }
-
         async function cargarMisTickets() {
             const container = document.getElementById('mis-tickets-container');
             container.innerHTML = '<div style="text-align:center; padding:10px; color:var(--gray-600); font-size:13px;">Cargando...</div>';
 
-            const docenteId = window.usuarioActual || '';
-            const deviceId  = _getDeviceId();
-
-            // Mostrar caché mientras carga Firebase (respuesta inmediata)
-            const cacheLocal = _leerTicketsCache(docenteId, deviceId);
-            if (cacheLocal && cacheLocal.length) {
-                _renderTickets(container, cacheLocal);
-            }
-
-            if (!window.firebase || !firebase.firestore) {
-                if (!cacheLocal || !cacheLocal.length) {
-                    container.innerHTML = '<div style="text-align:center; padding:10px; color:var(--gray-600); font-size:13px;">Sin conexión. No hay tickets en caché.</div>';
-                }
-                return;
-            }
+            if (!window.usuarioActual || !window.firebase || !firebase.firestore) return;
 
             try {
-                // Buscar por docente Y por device_id — cada uno por separado para tolerar fallos parciales
-                const mapaTickets = {};
+                const snapshot = await firebase.firestore().collection('tickets_inmu')
+                    .where('docente', '==', window.usuarioActual)
+                    .get();
 
-                const tryQuery = async (promise) => {
-                    try {
-                        const snap = await promise;
-                        snap.forEach(doc => { mapaTickets[doc.id] = doc.data(); });
-                    } catch(e) { console.warn('[Tickets] Query parcial falló:', e.message); }
-                };
-
-                await Promise.all([
-                    docenteId
-                        ? tryQuery(firebase.firestore().collection('tickets_inmu').where('docente', '==', docenteId).get())
-                        : Promise.resolve(),
-                    tryQuery(firebase.firestore().collection('tickets_inmu').where('device_id', '==', deviceId).get())
-                ]);
-
-                const ticketsDatos = Object.values(mapaTickets);
-
-                if (!ticketsDatos.length) {
-                    // Si Firebase no devolvió nada pero hay caché, mantener caché
-                    if (!cacheLocal || !cacheLocal.length) {
-                        container.innerHTML = '<div style="text-align:center; padding:10px; color:var(--gray-600); font-size:13px;">No has reportado ningún ticket.</div>';
-                    }
+                if (snapshot.empty) {
+                    container.innerHTML = '<div style="text-align:center; padding:10px; color:var(--gray-600); font-size:13px;">No has reportado ningún ticket.</div>';
                     return;
                 }
 
-                // Guardar en caché para próximas veces (incluso offline)
-                _guardarTicketsCache(docenteId, deviceId, ticketsDatos);
-
-                // Ordenar por fecha
-                const tickets = ticketsDatos;
+                // Ordenar localmente para evitar requerir un índice compuesto en Firestore
+                const tickets = [];
+                snapshot.forEach(doc => tickets.push(doc.data()));
                 tickets.sort((a, b) => {
                     const tsA = a.fecha_ts && typeof a.fecha_ts.toMillis === 'function' ? a.fecha_ts.toMillis() : 0;
                     const tsB = b.fecha_ts && typeof b.fecha_ts.toMillis === 'function' ? b.fecha_ts.toMillis() : 0;
                     return tsB - tsA;
                 });
 
-                _renderTickets(container, tickets);
-            } catch (e) {
-                console.warn('[Tickets] Error Firebase:', e.message);
-                // Si Firebase falla pero ya mostramos caché, no pisar con error
-                if (!cacheLocal || !cacheLocal.length) {
-                    container.innerHTML = '<div style="text-align:center; color:var(--gray-500); font-size:12px; padding:10px;">Sin conexión con el servidor. Intenta de nuevo.</div>';
-                }
-            }
-        }
+                let html = '';
+                tickets.forEach(data => {
+                    const estado = data.estado || 'En proceso';
 
-        function _renderTickets(container, tickets) {
-            if (!tickets || !tickets.length) {
-                container.innerHTML = '<div style="text-align:center; padding:10px; color:var(--gray-600); font-size:13px;">No has reportado ningún ticket.</div>';
-                return;
-            }
-            let html = '';
-            tickets.forEach(data => {
-                const estado = data.estado || 'En proceso';
-                let colorEstado = '#f59e0b';
-                if (estado === 'Reparado' || estado === 'Finalizado') colorEstado = '#10b981';
-                else if (estado === 'Rechazado') colorEstado = '#ef4444';
-                else if (estado === 'Leído') colorEstado = '#3b82f6';
-                html += `
-                    <div style="border:1px solid var(--border-color, #e5e7eb); border-radius:6px; padding:10px; background:var(--bg-panel, #ffffff); margin-bottom:6px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                            <div style="font-size:11px; color:var(--gray-600);">${data.fecha_str || ''}</div>
-                            <div style="font-size:11px; font-weight:bold; color:${colorEstado}; padding:2px 6px; border:1px solid ${colorEstado}; border-radius:4px;">${estado}</div>
+                    let colorEstado = '#f59e0b'; // En proceso
+                    if (estado === 'Reparado' || estado === 'Finalizado') colorEstado = '#10b981';
+                    else if (estado === 'Rechazado') colorEstado = '#ef4444';
+                    else if (estado === 'Leído') colorEstado = '#3b82f6';
+
+                    html += `
+                        <div style="border:1px solid var(--border-color, #e5e7eb); border-radius:6px; padding:10px; background:var(--bg-panel, #ffffff);">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                                <div style="font-size:11px; color:var(--gray-600);">${data.fecha_str || ''}</div>
+                                <div style="font-size:11px; font-weight:bold; color:${colorEstado}; padding:2px 6px; border:1px solid ${colorEstado}; border-radius:4px;">${estado}</div>
+                            </div>
+                            <div style="font-size:13px; color:var(--gray-900); white-space:pre-wrap;">${data.descripcion || ''}</div>
                         </div>
-                        <div style="font-size:13px; color:var(--gray-900); white-space:pre-wrap;">${data.descripcion || ''}</div>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (e) {
+                container.innerHTML = '<div style="text-align:center; color:red; font-size:12px;">Error al cargar: ' + e.message + '</div>';
+            }
         }
 
         function enviarTicket() {
             const desc = document.getElementById('ticket-descripcion').value.trim();
             if (!desc) return alert('Por favor escriba una descripción.');
-            // Permitir enviar ticket aunque no haya sesión activa (modo mantenimiento personal)
-            const docenteLabel = window.usuarioActual || '(sin sesión)';
+            if (!window.usuarioActual) return alert('No hay sesión de docente activa.');
 
             const btn = document.querySelector('#modal-reportar-ticket .btn-primary');
             btn.disabled = true;
             btn.textContent = 'Enviando...';
 
-            const nuevoTicket = {
-                docente: docenteLabel,
-                device_id: _getDeviceId(),
-                descripcion: desc,
-                fecha_str: new Date().toLocaleString('es-ES'),
-                estado: 'En proceso'
-            };
-            // Guardar en caché local PRIMERO — funciona aunque Firebase falle
-            try {
-                const cacheKey = 'sica_tickets_cache_' + (docenteLabel !== '(sin sesión)' ? docenteLabel : _getDeviceId());
-                const cacheActual = JSON.parse(localStorage.getItem(cacheKey) || '[]');
-                cacheActual.unshift(nuevoTicket);
-                localStorage.setItem(cacheKey, JSON.stringify(cacheActual));
-            } catch(e) {}
-
             if (window.firebase && firebase.firestore) {
-                // Guardar device_id para que el ticket sea visible en cualquier dispositivo del mismo docente
-                firebase.firestore().collection('tickets_inmu').add(
-                    Object.assign({ fecha_ts: firebase.firestore.FieldValue.serverTimestamp() }, nuevoTicket)
-                ).catch(e => console.warn('Error al guardar ticket en Firebase:', e));
+                // Enviar a Firebase sin bloquear la UI con await
+                firebase.firestore().collection('tickets_inmu').add({
+                    docente: window.usuarioActual,
+                    descripcion: desc,
+                    fecha_ts: firebase.firestore.FieldValue.serverTimestamp(),
+                    fecha_str: new Date().toLocaleString('es-ES'),
+                    estado: 'En proceso'
+                }).catch(e => console.warn('Error al guardar ticket:', e));
 
                 // Animación de éxito
                 setTimeout(() => {
@@ -26458,99 +26313,34 @@ ${tablas}
         }
 
         async function bloquearDocenteTicket(docenteNombre, btnElement) {
-            if (!docenteNombre || docenteNombre === '(sin sesión)') return alert('Este ticket no tiene docente identificado.');
+            if (!docenteNombre) return alert('Nombre de docente inválido.');
+            if (!confirm(`¿Desea habilitar/deshabilitar el apagón personalizado (bloqueo) para: ${docenteNombre}?`)) return;
 
             try {
-                // Resetear botón a estado neutro antes de consultar Firebase (evita estado residual del ticket anterior)
                 btnElement.disabled = true;
-                btnElement.textContent = '⏳...';
-                btnElement.style.background = '#1f2937';
                 const db = firebase.firestore();
-
-                // Buscar por nombre exacto primero, luego por nombre parcial (robusto)
-                let docRef = null;
-                let estaBloqueado = false;
-
-                // Intento 1: nombre exacto
-                let snapshot = await db.collection('docentes_inmu').where('nombre', '==', docenteNombre).get();
-
-                // Intento 2: buscar en array local si falla la búsqueda exacta
+                const snapshot = await db.collection('docentes_inmu').where('nombre', '==', docenteNombre).get();
                 if (snapshot.empty) {
-                    const nombreNorm = docenteNombre.trim().toLowerCase();
-                    const localDoc = (window.baseDatosDocentes || []).find(d =>
-                        (d.nombre || '').trim().toLowerCase() === nombreNorm
-                    );
-                    if (localDoc) {
-                        snapshot = await db.collection('docentes_inmu').where('nombre', '==', localDoc.nombre).get();
-                    }
-                }
-
-                if (snapshot.empty) {
-                    // Intento 3: leer todos y buscar manualmente (fallback)
-                    const todos = await db.collection('docentes_inmu').get();
-                    const nombreNorm = docenteNombre.trim().toLowerCase();
-                    todos.forEach(doc => {
-                        if (!docRef && (doc.data().nombre || '').trim().toLowerCase() === nombreNorm) {
-                            docRef = doc.ref;
-                            estaBloqueado = !!doc.data().bloqueado_reparacion;
-                        }
-                    });
-                    if (!docRef) {
-                        alert(`❌ No se encontró el docente "${docenteNombre}" en Firebase.\nVerifica que esté registrado en el sistema.`);
-                        btnElement.disabled = false;
-                        btnElement.textContent = 'Bloquear Sistema';
-                        return;
-                    }
-                } else {
-                    docRef = snapshot.docs[0].ref;
-                    estaBloqueado = !!snapshot.docs[0].data().bloqueado_reparacion;
-                }
-
-                // Confirmar mostrando el estado REAL leído desde Firebase (no estado visual anterior)
-                const accion = estaBloqueado ? '🔓 DESBLOQUEAR' : '🔒 BLOQUEAR';
-                const detalle = estaBloqueado
-                    ? 'Actualmente está BLOQUEADO → al confirmar podrá entrar normalmente.'
-                    : 'Actualmente está LIBRE → al confirmar verá pantalla de mantenimiento al entrar.';
-                if (!confirm(`${accion} a: "${docenteNombre}"\n\n${detalle}`)) {
+                    alert('No se encontró el registro del docente en Firebase.');
                     btnElement.disabled = false;
-                    btnElement.textContent = estaBloqueado ? '🔒 Bloqueado' : 'Bloquear Sistema';
-                    btnElement.style.background = estaBloqueado ? '#dc2626' : '#1f2937';
                     return;
                 }
-                const nuevoEstado = !estaBloqueado;
 
-                // Timeout de 8 segundos para que no se quede colgado si Firebase tiene CORS/red lenta
-                const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000));
-                await Promise.race([
-                    docRef.update({ bloqueado_reparacion: nuevoEstado }),
-                    timeoutPromise
-                ]);
+                const docRef = snapshot.docs[0].ref;
+                const data = snapshot.docs[0].data();
+                const estaBloqueado = !!data.bloqueado_reparacion;
 
-                // Actualizar array local
-                const idx = (window.baseDatosDocentes || []).findIndex(d =>
-                    (d.nombre || '').trim().toLowerCase() === docenteNombre.trim().toLowerCase()
-                );
-                if (idx !== -1) window.baseDatosDocentes[idx].bloqueado_reparacion = nuevoEstado;
+                await docRef.update({ bloqueado_reparacion: !estaBloqueado });
 
+                // Actualizar array local si está cargado
+                const idx = baseDatosDocentes.findIndex(d => d.nombre === docenteNombre);
+                if (idx !== -1) baseDatosDocentes[idx].bloqueado_reparacion = !estaBloqueado;
+
+                alert(`El estado de bloqueo para ${docenteNombre} se cambió a: ${!estaBloqueado ? 'BLOQUEADO' : 'NORMAL'}`);
                 btnElement.disabled = false;
-                btnElement.textContent = nuevoEstado ? '🔒 Bloqueado' : 'Bloquear Sistema';
-                btnElement.style.background = nuevoEstado ? '#dc2626' : '#1f2937';
-
-                mostrarNotificacion(
-                    nuevoEstado
-                        ? `🔒 "${docenteNombre}" BLOQUEADO — al entrar verá pantalla de mantenimiento.`
-                        : `🔓 "${docenteNombre}" DESBLOQUEADO — puede entrar normalmente.`,
-                    nuevoEstado ? 'warning' : 'success',
-                    5000
-                );
             } catch (e) {
+                alert('Error al bloquear: ' + e.message);
                 btnElement.disabled = false;
-                btnElement.textContent = 'Bloquear Sistema';
-                if (e.message === 'timeout') {
-                    mostrarNotificacion('⚠️ Firebase tardó demasiado. El cambio puede haberse guardado. Recarga para verificar.', 'warning', 6000);
-                } else {
-                    alert('Error al cambiar bloqueo: ' + e.message);
-                }
             }
         }
     </script>
