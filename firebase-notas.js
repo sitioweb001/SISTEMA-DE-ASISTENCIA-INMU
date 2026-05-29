@@ -92,7 +92,8 @@ function _notasDataAFirestore(notasData, alumnosFiltrados, materiaActiva, grado,
   const alumnos = {};
   (alumnosFiltrados || []).forEach(alumno => {
     const nie = String(alumno.nie);
-    const nd = notasData[nie] || {};
+    if (!notasData[nie]) return; // Solo subir alumnos que tengan notas en memoria
+    const nd = notasData[nie];
     alumnos[nie] = {
       nombre: alumno.nombre || '',
       sexo: alumno.sexo || '',
