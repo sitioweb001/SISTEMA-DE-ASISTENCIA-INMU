@@ -286,12 +286,8 @@ function activarListenerNotas(grado, seccion, materiaClave) {
       if (!snap.exists) return;
       const data = snap.data();
 
-      // No aplicar si el cambio vino de este mismo dispositivo (para evitar
-      // sobreescribir mientras el usuario está escribiendo una nota)
-      if (typeof notasCambiadas !== 'undefined' && notasCambiadas) {
-        console.log('[Firebase-Notas] Cambio remoto detectado pero hay cambios locales pendientes — ignorado.');
-        return;
-      }
+      // Se eliminó el bloqueo de `notasCambiadas` para permitir actualización en tiempo real instantánea,
+      // la lógica celda por celda evitará sobreescribir lo que el usuario esté tecleando.
 
       const nuevaData = _firestoreANotasData(data);
       const quienActualizó = data.actualizado_por || 'otro dispositivo';
@@ -323,11 +319,37 @@ function activarListenerNotas(grado, seccion, materiaClave) {
 function _aplicarNotasRemotas(nuevaData) {
   if (typeof alumnosFiltrados === 'undefined' || !Array.isArray(alumnosFiltrados)) return;
 
+  const p = 'p' + (typeof notasPeriodoActual !== 'undefined' ? notasPeriodoActual : '1');
+
   alumnosFiltrados.forEach(alumno => {
     const nie = String(alumno.nie);
     if (nuevaData[nie]) {
       if (typeof notasData !== 'undefined') {
         notasData[nie] = nuevaData[nie];
+      }
+
+      // Actualizar DOM instantáneamente celda por celda sin robar foco
+      if (document.getElementById('modal-notas-periodo')?.style.display === 'block') {
+        const nd = nuevaData[nie][p] || { a1: '', a2: '', a3: '', prom: '' };
+
+        ['a1', 'a2', 'a3'].forEach(act => {
+          const input = document.getElementById(`nota-${nie}-${act}`);
+          if (input && document.activeElement !== input) {
+            input.value = nd[act];
+          }
+        });
+
+        const promEl = document.getElementById(`prom-${nie}-${p}`);
+        const estadoEl = document.getElementById(`estado-${nie}-${p}`);
+        if (promEl) {
+          const promVal = nd.prom !== '' ? Number(nd.prom) : null;
+          promEl.innerText = promVal !== null ? promVal.toFixed(2) : '—';
+          if (typeof getEstadoNotaHtml === 'function') {
+            const estadoNota = getEstadoNotaHtml(promVal);
+            promEl.style.cssText = estadoNota.style;
+            if (estadoEl) estadoEl.innerHTML = estadoNota.html;
+          }
+        }
       }
     }
   });
@@ -340,13 +362,11 @@ function _aplicarNotasRemotas(nuevaData) {
     try {
       const key = _getLocalKey(grado, seccion, tipoMateria);
       localStorage.setItem(key, JSON.stringify(notasData));
-    } catch (e) {}
+    } catch (e) { }
   }
 
-  // Re-renderizar tabla si está visible
-  if (document.getElementById('modal-notas-periodo')?.style.display === 'block') {
-    if (typeof renderTablaNotas === 'function') renderTablaNotas();
-  }
+  // Actualizar barra de resumen
+  if (typeof _actualizarResumenNotas === 'function') _actualizarResumenNotas();
 
   if (typeof setEstadoGuardado === 'function') setEstadoGuardado('guardado');
 }
