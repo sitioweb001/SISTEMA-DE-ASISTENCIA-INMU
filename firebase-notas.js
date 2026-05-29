@@ -70,10 +70,10 @@ let _ultimaClaveEscucha = '';      // clave de la sesión que se está escuchand
  * Cada documento contiene las notas de TODO el grupo en esa materia.
  */
 function _fbDocKey(grado, seccion, materiaClave) {
-  const norm = v => (v || '').toString().trim().toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]/g, '_');
-  return `${norm(grado)}__${norm(seccion)}__${norm(materiaClave)}`;
+  return (grado + '_' + seccion + (materiaClave ? '_' + materiaClave : ''))
+    .trim().toLowerCase().normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '_')
+    .replace(/_+/g, '_').replace(/^_|_$/g, '');
 }
 
 /**
