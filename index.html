@@ -1943,9 +1943,13 @@
             title="Doble clic para desbloquear">⚠️</span>
         <h1 style="color: var(--red-600); font-size: 45px; margin-top: 20px; font-family: 'Arial Black', sans-serif;"
             id="mantenimiento-titulo">SITIO EN MANTENIMIENTO</h1>
-        <p style="color: #2C2C2A; font-size: 24px; font-weight: bold; margin-top: 10px;" id="mantenimiento-texto">Su cuenta está siendo reparada temporalmente.</p>
-        <p style="color: var(--gray-600); font-size: 16px; margin-top: 8px;">Puede consultar el estado de su caso presionando el botón:</p>
-        <button onclick="abrirVisorTickets()" style="margin-top: 20px; padding: 12px 24px; background: var(--blue-600); color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.15);" title="Ver estado de reparación">🎟️ Ver Tickets de Reparación</button>
+        <p style="color: #2C2C2A; font-size: 24px; font-weight: bold; margin-top: 10px;" id="mantenimiento-texto">Su
+            cuenta está siendo reparada temporalmente.</p>
+        <p style="color: var(--gray-600); font-size: 16px; margin-top: 8px;">Puede consultar el estado de su caso
+            presionando el botón:</p>
+        <button onclick="abrirVisorTickets()"
+            style="margin-top: 20px; padding: 12px 24px; background: var(--blue-600); color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.15);"
+            title="Ver estado de reparación">🎟️ Ver Tickets de Reparación</button>
     </div>
 
     <!-- ═══════════════════════════════════════════════════ -->
@@ -4930,7 +4934,8 @@
                     pantallaMantenimiento.innerHTML = `
                         <div style="font-size:60px;margin-bottom:20px;">🛠️</div>
                         <h1 style="color:var(--blue-800);margin-bottom:15px;">Sitio en Mantenimiento</h1>
-                        <p style="color:var(--gray-600);font-size:16px;max-width:400px;margin-bottom:30px;">Su cuenta está siendo reparada temporalmente. Puede consultar el estado de su caso en el botón de tickets (🎟️).</p>
+                        <p style="color:var(--gray-600);font-size:16px;max-width:400px;margin-bottom:30px;">Su cuenta está siendo reparada temporalmente. Puede consultar el estado de su caso presionando el botón:</p>
+                        <button onclick="abrirVisorTickets()" style="margin-top:20px;padding:12px 24px;background:var(--blue-600);color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer;font-weight:bold;box-shadow:0 2px 8px rgba(0,0,0,0.15);" title="Ver estado de reparación">🎟️ Ver Tickets de Reparación</button>
                     `;
                     document.body.appendChild(pantallaMantenimiento);
                 }
@@ -6291,28 +6296,28 @@
         // Variable global para debounce de sincronización de notas
         var debounceSync = null;
         var lastSyncTimestamp = 0;
-        
+
         function programarSincronizacionNotas() {
             if (debounceSync) clearTimeout(debounceSync);
             // Sincronizar después de 3 segundos de inactividad
-            debounceSync = setTimeout(function() {
+            debounceSync = setTimeout(function () {
                 sincronizarNotasAutomaticamente();
             }, 3000);
             // Indicar que hay cambios pendientes de sincronizar
             setEstadoGuardado('pendiente');
         }
-        
+
         async function sincronizarNotasAutomaticamente() {
             const grado = gradoActualNotas;
             const seccion = seccionActualNotas;
             if (!grado || !seccion) return;
-            
+
             try {
                 setEstadoGuardado('guardando');
                 // Guardar en localStorage primero
                 const key = getNotasStorageKey(grado, seccion, notasTipoActual);
                 localStorage.setItem(key, JSON.stringify(notasData));
-                
+
                 // Enviar a Apps Script
                 if (typeof SCRIPT_URL !== 'undefined' && SCRIPT_URL) {
                     const response = await sincronizarNotasGrupoAppsScript(grado, seccion, notasTipoActual);
@@ -26146,7 +26151,7 @@ ${tablas}
     </div>
 
     <!-- MODAL REPORTAR TICKET (DOCENTE) -->
-    <div class="modal-overlay" id="modal-reportar-ticket">
+    <div class="modal-overlay" id="modal-reportar-ticket" style="z-index: 100000;">
         <div class="modal" style="max-width: 500px; max-height: 90vh; overflow-y: auto;">
             <h2 style="color: var(--blue-800); margin-bottom: 15px;">🎟️ Reportar Error o Problema</h2>
             <p style="font-size:13px; color:var(--gray-600); margin-bottom:15px;">Describa el problema que está
@@ -26170,7 +26175,7 @@ ${tablas}
     </div>
 
     <!-- MODAL VISOR DE TICKETS (SUB-DIRECCIÓN) -->
-    <div class="modal-overlay" id="modal-visor-tickets">
+    <div class="modal-overlay" id="modal-visor-tickets" style="z-index: 100000;">
         <div class="modal" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
                 <h2 style="color: var(--blue-800); margin: 0;">🎟️ Visor de Tickets</h2>
@@ -26297,6 +26302,16 @@ ${tablas}
 
             try {
                 const snapshot = await firebase.firestore().collection('tickets_inmu').orderBy('fecha_ts', 'desc').get();
+
+                const docentesSnapshot = await firebase.firestore().collection('docentes_inmu').get();
+                const bloqueadoMap = {};
+                if (!docentesSnapshot.empty) {
+                    docentesSnapshot.forEach(d => {
+                        const data = d.data();
+                        if (data.nombre) bloqueadoMap[data.nombre] = !!data.bloqueado_reparacion;
+                    });
+                }
+
                 if (snapshot.empty) {
                     container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--gray-600);">No hay tickets registrados.</div>';
                     return;
@@ -26328,7 +26343,7 @@ ${tablas}
                                         <option value="Finalizado" ${estado === 'Finalizado' ? 'selected' : ''}>Finalizado</option>
                                         <option value="Rechazado" ${estado === 'Rechazado' ? 'selected' : ''}>Rechazado</option>
                                     </select>
-                                    <button onclick="bloquearDocenteTicket('${data.docente}', this)" style="padding:4px 8px; background:${baseDatosDocentes.find(d => d.nombre === data.docente)?.bloqueado_reparacion ? '#10b981' : '#1f2937'}; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;" title="Bloquear sistema para este docente">${baseDatosDocentes.find(d => d.nombre === data.docente)?.bloqueado_reparacion ? '✅ Desbloquear' : '🚫 Bloquear Sistema'}</button>
+                                    <button onclick="bloquearDocenteTicket('${data.docente}', this)" style="padding:4px 8px; background:${bloqueadoMap[data.docente] ? '#10b981' : '#1f2937'}; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;" title="Bloquear sistema para este docente">${bloqueadoMap[data.docente] ? '✅ Desbloquear' : '🚫 Bloquear Sistema'}</button>
                                     <button onclick="eliminarTicket('${id}')" style="padding:4px 8px; background:#ef4444; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;" title="Eliminar ticket">🗑️</button>
                                 </div>
                             </div>
