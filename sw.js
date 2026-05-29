@@ -1,4 +1,4 @@
-const CACHE_NAME = 'asistencia-inmu-pwa-v5';
+const CACHE_NAME = 'asistencia-inmu-pwa-v6';
 const URLS_TO_CACHE = [
   './index.html',
   './manifest.json',
