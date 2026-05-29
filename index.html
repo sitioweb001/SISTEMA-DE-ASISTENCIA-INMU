@@ -1943,8 +1943,9 @@
             title="Doble clic para desbloquear">⚠️</span>
         <h1 style="color: var(--red-600); font-size: 45px; margin-top: 20px; font-family: 'Arial Black', sans-serif;"
             id="mantenimiento-titulo">SITIO EN MANTENIMIENTO</h1>
-        <p style="color: #2C2C2A; font-size: 24px; font-weight: bold; margin-top: 10px;" id="mantenimiento-texto">POR
-            FAVOR NO UTILIZAR</p>
+        <p style="color: #2C2C2A; font-size: 24px; font-weight: bold; margin-top: 10px;" id="mantenimiento-texto">Su cuenta está siendo reparada temporalmente.</p>
+        <p style="color: var(--gray-600); font-size: 16px; margin-top: 8px;">Puede consultar el estado de su caso presionando el botón:</p>
+        <button onclick="abrirVisorTickets()" style="margin-top: 20px; padding: 12px 24px; background: var(--blue-600); color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.15);" title="Ver estado de reparación">🎟️ Ver Tickets de Reparación</button>
     </div>
 
     <!-- ═══════════════════════════════════════════════════ -->
@@ -6009,6 +6010,8 @@
         let notasData = {};          // { nie: { p1:{a1,a2,a3,prom}, p2:{...}, ... } }
         let notasCambiadas = false;  // flag para el parpadeo
         let notasTipoActual = '0-10';
+        let gradoActualNotas = '';   // Para sincronización automática
+        let seccionActualNotas = ''; // Para sincronización automática
         let _notasRemotasPrefetchPromise = null;
         let _notasRemotasPrefetchKey = '';
 
@@ -6131,6 +6134,10 @@
             const materiaClave = getMateriaDocenteActiva()?.clave || '';
             prefetchNotasRemotas(grado, seccion, materiaClave, tipoMateria);
 
+            // Guardar grado y sección para sincronización automática
+            gradoActualNotas = grado;
+            seccionActualNotas = seccion;
+
             // Inicializar notasData si no existe para estos alumnos
             alumnosFiltrados.forEach(a => {
                 const k = String(a.nie);
@@ -6172,10 +6179,14 @@
                 }
             }
             if (window._autoGuardadoInterval) { clearInterval(window._autoGuardadoInterval); window._autoGuardadoInterval = null; }
+            if (debounceSync) { clearTimeout(debounceSync); debounceSync = null; }
             detenerAutoRefrescoNotas();
             document.getElementById('modal-notas-periodo').style.display = 'none';
             notasCambiadas = false;
             actualizarBtnGuardar(false);
+            // Limpiar variables globales
+            gradoActualNotas = '';
+            seccionActualNotas = '';
         }
 
         function seleccionarPeriodo(p) {
@@ -6275,6 +6286,45 @@
             if (elA) elA.textContent = '✓ ' + aprobados + ' Aprobados';
             if (elR) elR.textContent = '✗ ' + reprobados + ' Reprobados';
             if (elP) elP.textContent = 'Prom: ' + prom;
+        }
+
+        // Variable global para debounce de sincronización de notas
+        var debounceSync = null;
+        var lastSyncTimestamp = 0;
+        
+        function programarSincronizacionNotas() {
+            if (debounceSync) clearTimeout(debounceSync);
+            // Sincronizar después de 3 segundos de inactividad
+            debounceSync = setTimeout(function() {
+                sincronizarNotasAutomaticamente();
+            }, 3000);
+            // Indicar que hay cambios pendientes de sincronizar
+            setEstadoGuardado('pendiente');
+        }
+        
+        async function sincronizarNotasAutomaticamente() {
+            const grado = gradoActualNotas;
+            const seccion = seccionActualNotas;
+            if (!grado || !seccion) return;
+            
+            try {
+                setEstadoGuardado('guardando');
+                // Guardar en localStorage primero
+                const key = getNotasStorageKey(grado, seccion, notasTipoActual);
+                localStorage.setItem(key, JSON.stringify(notasData));
+                
+                // Enviar a Apps Script
+                if (typeof SCRIPT_URL !== 'undefined' && SCRIPT_URL) {
+                    const response = await sincronizarNotasGrupoAppsScript(grado, seccion, notasTipoActual);
+                    setEstadoGuardado('guardado');
+                    lastSyncTimestamp = Date.now();
+                } else {
+                    setEstadoGuardado('guardado'); // Al menos guardado localmente
+                }
+            } catch (e) {
+                console.warn('Error en sincronización automática:', e);
+                setEstadoGuardado('pendiente'); // Volver a intentar después
+            }
         }
 
         function onNotaChange(nie, periodo, actividad, valor) {
@@ -26324,29 +26374,39 @@ ${tablas}
 
             try {
                 btnElement.disabled = true;
+                btnElement.textContent = '⏳...'; // Mostrar que está procesando
                 const db = firebase.firestore();
                 const snapshot = await db.collection('docentes_inmu').where('nombre', '==', docenteNombre).get();
                 if (snapshot.empty) {
                     alert('No se encontró el registro del docente en Firebase.');
                     btnElement.disabled = false;
+                    btnElement.textContent = '🚫 Bloquear Sistema'; // Restaurar botón
                     return;
                 }
 
                 const docRef = snapshot.docs[0].ref;
                 const data = snapshot.docs[0].data();
                 const estaBloqueado = !!data.bloqueado_reparacion;
+                const nuevoEstado = !estaBloqueado;
 
-                await docRef.update({ bloqueado_reparacion: !estaBloqueado });
+                await docRef.update({ bloqueado_reparacion: nuevoEstado });
 
                 // Actualizar array local si está cargado
                 const idx = baseDatosDocentes.findIndex(d => d.nombre === docenteNombre);
-                if (idx !== -1) baseDatosDocentes[idx].bloqueado_reparacion = !estaBloqueado;
+                if (idx !== -1) baseDatosDocentes[idx].bloqueado_reparacion = nuevoEstado;
 
-                alert(`El estado de bloqueo para ${docenteNombre} se cambió a: ${!estaBloqueado ? 'BLOQUEADO' : 'NORMAL'}`);
+                // Actualizar el botón dinámicamente sin recargar
+                const nuevoTexto = nuevoEstado ? '✅ Desbloquear' : '🚫 Bloquear Sistema';
+                const nuevoColor = nuevoEstado ? '#10b981' : '#1f2937';
+                btnElement.textContent = nuevoTexto;
+                btnElement.style.background = nuevoColor;
                 btnElement.disabled = false;
+
+                mostrarNotificacion(`Estado de bloqueo para ${docenteNombre} actualizado a: ${nuevoEstado ? 'BLOQUEADO' : 'NORMAL'}`, 'success');
             } catch (e) {
                 alert('Error al bloquear: ' + e.message);
                 btnElement.disabled = false;
+                btnElement.textContent = '🚫 Bloquear Sistema'; // Restaurar botón en caso de error
             }
         }
     </script>
