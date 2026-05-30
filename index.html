@@ -6172,8 +6172,7 @@
                 if (notasCambiadas) guardarCambiosNotas();
             }, 2002);
             iniciarAutoRefrescoNotas();
-            // CORRECCION: esperar 500ms para que el prefetch de Firebase termine antes de aplicar
-            setTimeout(() => actualizarNotasDesdeRemoto({ force: true, usePrefetch: true }), 500);
+            actualizarNotasDesdeRemoto({ force: true, usePrefetch: true });
         }
 
         function cerrarPanelNotas() {
@@ -6458,10 +6457,12 @@
         }
 
         function iniciarAutoRefrescoNotas() {
-            // MODO AHORRO: sin polling automatico — solo manual con boton Refrescar
-            // El setInterval anterior consumia lecturas de Firebase cada 4.5s por docente
             if (_autoRefrescarNotasTimer) clearInterval(_autoRefrescarNotasTimer);
-            _autoRefrescarNotasTimer = null;
+            _autoRefrescarNotasTimer = setInterval(() => {
+                if (document.getElementById('modal-notas-periodo')?.style.display === 'block') {
+                    actualizarNotasDesdeRemoto();
+                }
+            }, 4500);
         }
 
         function detenerAutoRefrescoNotas() {
@@ -6505,13 +6506,13 @@
         async function obtenerNotasRemotas(grado, seccion, materiaClave, escala) {
             if (!grado || !seccion) return [];
 
-            // 1. Intentar Firebase primero (< 1 seg)
+            // 1. Intentar Firebase primero
             try {
                 if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
                     const db = firebase.firestore();
                     const docId = (grado + '_' + seccion + (materiaClave ? '_' + materiaClave : ''))
                         .trim().toLowerCase().normalize('NFD')
-                        .replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '_')
+                        .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '_')
                         .replace(/_+/g, '_').replace(/^_|_$/g, '');
                     const snap = await Promise.race([
                         db.collection('notas_inmu').doc(docId).get(),
@@ -6520,18 +6521,16 @@
                     if (snap.exists) {
                         const data = snap.data();
                         const alumnos = data.alumnos || {};
-                        // Convertir formato Firestore → formato GAS [{nie, p1:{a1,a2,a3}, ...}]
-                        const resultado = Object.entries(alumnos).map(([nie, notas]) => ({
-                            nie, ...notas
-                        }));
-                        if (resultado.length > 0) {
-                            console.log('[Notas] Cargadas desde Firebase:', resultado.length, 'alumnos');
-                            return resultado;
+                        if (Object.keys(alumnos).length > 0) {
+                            console.log('[Notas] Cargadas desde Firebase:', Object.keys(alumnos).length, 'alumnos');
+                            // Devolver con flag para que actualizarNotasDesdeRemoto
+                            // use los datos directamente sin convertir formato GAS
+                            return { _formatoFirebase: true, alumnos: alumnos };
                         }
                     }
                 }
             } catch (e) {
-                console.warn('[Notas] Firebase falló, usando GAS:', e.message);
+                console.warn('[Notas] Firebase fallo, usando GAS:', e.message);
             }
 
             // 2. Fallback: GAS
@@ -6589,7 +6588,10 @@
                 if (usePrefetch && !prefetched) {
                     prefetchNotasRemotas(grado, seccion, materiaActiva.clave || '', getTipoMateriaNotas());
                 }
-                var nuevaData = construirNotasDataDesdeRemoto(filas);
+                // Si viene de Firebase ya tiene formato correcto, no convertir
+                var nuevaData = (filas && filas._formatoFirebase)
+                    ? filas.alumnos
+                    : construirNotasDataDesdeRemoto(Array.isArray(filas) ? filas : []);
                 var mergedData = {};
                 alumnosFiltrados.forEach(function (alumno) {
                     var nie = String(alumno.nie);
@@ -25045,7 +25047,7 @@ body{font-family:Arial,sans-serif;padding:24px 32px;color:#1e293b;font-size:12.5
     <script src="firebase-docentes.js"></script>
     <script src="firebase-asistencia.js"></script>
     <script src="firebase-reportes.js"></script>
-    <script src="firebase-notas.js"></script>
+    <!-- firebase-notas.js deshabilitado: el index maneja notas directamente -->
 
     <script>
         /* ══════════════════════════════════════════════════════════════════════════════
