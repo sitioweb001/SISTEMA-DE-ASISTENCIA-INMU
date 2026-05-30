@@ -6172,7 +6172,8 @@
                 if (notasCambiadas) guardarCambiosNotas();
             }, 2002);
             iniciarAutoRefrescoNotas();
-            actualizarNotasDesdeRemoto({ force: true, usePrefetch: true });
+            // CORRECCION: esperar 500ms para que el prefetch de Firebase termine antes de aplicar
+            setTimeout(() => actualizarNotasDesdeRemoto({ force: true, usePrefetch: true }), 500);
         }
 
         function cerrarPanelNotas() {
@@ -6457,12 +6458,10 @@
         }
 
         function iniciarAutoRefrescoNotas() {
+            // MODO AHORRO: sin polling automatico — solo manual con boton Refrescar
+            // El setInterval anterior consumia lecturas de Firebase cada 4.5s por docente
             if (_autoRefrescarNotasTimer) clearInterval(_autoRefrescarNotasTimer);
-            _autoRefrescarNotasTimer = setInterval(() => {
-                if (document.getElementById('modal-notas-periodo')?.style.display === 'block') {
-                    actualizarNotasDesdeRemoto();
-                }
-            }, 4500);
+            _autoRefrescarNotasTimer = null;
         }
 
         function detenerAutoRefrescoNotas() {
@@ -6516,7 +6515,7 @@
                         .replace(/_+/g, '_').replace(/^_|_$/g, '');
                     const snap = await Promise.race([
                         db.collection('notas_inmu').doc(docId).get(),
-                        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3000))
+                        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))
                     ]);
                     if (snap.exists) {
                         const data = snap.data();
