@@ -1,53 +1,40 @@
 /**
  * ══════════════════════════════════════════════════════════════════════════════
- * SICA-INMU — Módulo de Notas con Firebase Firestore (Tiempo Real)
- * Versión: 2.0 — 2026
- * 
- * REEMPLAZA las funciones de notas del INDEX_DOCENTE.html original:
- *   - obtenerNotasRemotas()
- *   - guardarCambiosNotas()
- *   - sincronizarNotasGrupoAppsScript()
- *   - prefetchNotasRemotas()
- *   - actualizarNotasDesdeRemoto()
+ * SICA-INMU — Módulo de Notas con Firebase Firestore (MODO AHORRO)
+ * Versión: 3.0 — 2026
  *
- * CÓMO FUNCIONA:
- *   - Firebase Firestore gratis (hasta 50k lecturas/día, 20k escrituras/día).
- *   - onSnapshot() escucha cambios en tiempo real: cuando otro teléfono guarda
- *     una nota, TODOS los demás la ven al instante sin recargar.
- *   - Las escrituras usan transacciones atómicas por alumno, sin conflictos.
- *   - Si Firebase falla, cae al localStorage (modo offline).
+ * CAMBIOS v3.0 (modo ahorro de cuota):
+ *   ❌ ELIMINADO: onSnapshot() en tiempo real  → consumía lecturas continuamente
+ *   ✅ NUEVO: get() solo cuando:
+ *       1. Se abre el panel de notas
+ *       2. El docente presiona ↻ Refrescar
+ *       3. Se guarda una nota nueva (para confirmar que se guardó)
+ *
+ * RESULTADO: de ~miles de lecturas/día → a <200 lecturas/día por docente
  * ══════════════════════════════════════════════════════════════════════════════
  */
 
-// ── CONFIGURACIÓN FIREBASE ────────────────────────────────────────────────────
-// Utilizando la configuración global de firebase-config.js y el SDK compat
-// ─────────────────────────────────────────────────────────────────────────────
-
 // ── Estado interno del módulo ─────────────────────────────────────────────────
-let _db = null;                    // instancia Firestore
-let _unsubscribeListener = null;  // función para cancelar el listener activo
+let _db = null;
 let _firebaseListo = false;
-let _modoOffline = false;          // true si Firebase no está disponible
-let _ultimaClaveEscucha = '';      // clave de la sesión que se está escuchando
+let _modoOffline = false;
+let _ultimaClaveEscucha = '';
+// Ya NO existe _unsubscribeListener — no hay listeners activos
 
 // ── Inicialización ────────────────────────────────────────────────────────────
 (function inicializarFirebase() {
   if (!window.firebase) {
-    console.warn('[Firebase-Notas] SDK no cargado todavía, reintentando en 1 seg...');
     setTimeout(inicializarFirebase, 1000);
     return;
   }
   try {
-    // Ya se inicializa en firebase-config.js, solo verificamos que esté
     if (!firebase.apps || firebase.apps.length === 0) {
       console.warn('[Firebase-Notas] Firebase no estaba inicializado.');
     }
     _db = firebase.firestore();
-    // Habilitar caché offline automática de Firestore
     _db.enablePersistence({ synchronizeTabs: true })
       .catch(err => {
         if (err.code === 'failed-precondition') {
-          // Varias pestañas abiertas — la persistencia solo funciona en una
           console.warn('[Firebase-Notas] Persistencia offline deshabilitada (múltiples pestañas).');
         } else if (err.code === 'unimplemented') {
           console.warn('[Firebase-Notas] Navegador no soporta persistencia offline.');
@@ -55,7 +42,7 @@ let _ultimaClaveEscucha = '';      // clave de la sesión que se está escuchand
       });
     _firebaseListo = true;
     _modoOffline = false;
-    console.log('[Firebase-Notas] Firebase inicializado correctamente ✓');
+    console.log('[Firebase-Notas] Firebase inicializado ✓ — modo AHORRO activo (sin onSnapshot)');
   } catch (err) {
     console.error('[Firebase-Notas] Error al inicializar Firebase:', err);
     _modoOffline = true;
@@ -64,11 +51,6 @@ let _ultimaClaveEscucha = '';      // clave de la sesión que se está escuchand
 
 // ── Helpers internos ──────────────────────────────────────────────────────────
 
-/**
- * Construye la clave del documento Firestore.
- * Formato: notas/{grado_normalizado}_{seccion_normalizada}_{materia_clave}
- * Cada documento contiene las notas de TODO el grupo en esa materia.
- */
 function _fbDocKey(grado, seccion, materiaClave) {
   return (grado + '_' + seccion + (materiaClave ? '_' + materiaClave : ''))
     .trim().toLowerCase().normalize('NFD')
@@ -76,23 +58,16 @@ function _fbDocKey(grado, seccion, materiaClave) {
     .replace(/_+/g, '_').replace(/^_|_$/g, '');
 }
 
-/**
- * Referencia al documento Firestore para el grupo+materia actual.
- */
 function _fbDocRef(grado, seccion, materiaClave) {
   if (!_db) return null;
   return _db.collection('notas_inmu').doc(_fbDocKey(grado, seccion, materiaClave));
 }
 
-/**
- * Convierte el objeto notasData (local) al formato Firestore.
- * Firestore: { alumnos: { [nie]: { p1:{a1,a2,a3,prom}, p2:..., ... }, ... } }
- */
 function _notasDataAFirestore(notasData, alumnosFiltrados, materiaActiva, grado, seccion) {
   const alumnos = {};
   (alumnosFiltrados || []).forEach(alumno => {
     const nie = String(alumno.nie);
-    if (!notasData[nie]) return; // Solo subir alumnos que tengan notas en memoria
+    if (!notasData[nie]) return;
     const nd = notasData[nie];
     alumnos[nie] = {
       nombre: alumno.nombre || '',
@@ -116,9 +91,6 @@ function _notasDataAFirestore(notasData, alumnosFiltrados, materiaActiva, grado,
   };
 }
 
-/**
- * Convierte el documento Firestore al formato notasData local.
- */
 function _firestoreANotasData(docData) {
   const notasData = {};
   const alumnos = docData?.alumnos || {};
@@ -134,33 +106,30 @@ function _firestoreANotasData(docData) {
   return notasData;
 }
 
-// ── API PÚBLICA — estas funciones REEMPLAZAN las del INDEX_DOCENTE.html ───────
+// ── API PÚBLICA ───────────────────────────────────────────────────────────────
 
 /**
- * REEMPLAZA: prefetchNotasRemotas()
- * Con Firebase ya no necesitamos prefetch: el listener hace el trabajo.
- * Esta función activa el listener en tiempo real para grado+seccion+materia.
+ * prefetchNotasRemotas() — antes activaba onSnapshot.
+ * Ahora simplemente lee UNA VEZ al cambiar grado/sección/materia.
  */
 window.prefetchNotasRemotas = function prefetchNotasRemotas(grado, seccion, materiaClave, escala) {
   if (!_firebaseListo || _modoOffline) return Promise.resolve();
   const claveNueva = `${grado}|${seccion}|${materiaClave}`;
-  if (claveNueva === _ultimaClaveEscucha) return Promise.resolve(); // ya escuchando
-  activarListenerNotas(grado, seccion, materiaClave);
-  return Promise.resolve();
+  if (claveNueva === _ultimaClaveEscucha) return Promise.resolve(); // ya cargado
+  _ultimaClaveEscucha = claveNueva;
+  // Una sola lectura, sin listener
+  return _leerNotasUnaVez(grado, seccion, materiaClave);
 };
 
 /**
- * REEMPLAZA: obtenerNotasRemotas()
- * Lee las notas UNA SOLA VEZ desde Firestore (para carga inicial).
- * El listener onSnapshot se encarga de las actualizaciones en tiempo real.
+ * obtenerNotasRemotas() — lee UNA SOLA VEZ desde Firestore.
  */
 window.obtenerNotasRemotas = async function obtenerNotasRemotas(grado, seccion, materiaClave, escala) {
   if (!_firebaseListo || _modoOffline) {
-    // Fallback: leer desde localStorage
     const key = _getLocalKey(grado, seccion, escala || '0-10');
     try {
       const local = localStorage.getItem(key);
-      return local ? _convertirLocalStorageAFirestoreRows(JSON.parse(local)) : [];
+      return local ? JSON.parse(local) : [];
     } catch (e) { return []; }
   }
   try {
@@ -177,20 +146,17 @@ window.obtenerNotasRemotas = async function obtenerNotasRemotas(grado, seccion, 
 };
 
 /**
- * REEMPLAZA: sincronizarNotasGrupoAppsScript()
- * Guarda las notas en Firestore con una sola escritura atómica.
- * Todos los dispositivos escuchando reciben la actualización inmediatamente.
+ * sincronizarNotasGrupoAppsScript() — guarda en Firestore con set() atómico.
+ * Después de guardar hace UNA lectura de confirmación para actualizar la UI.
  */
 window.sincronizarNotasGrupoAppsScript = async function sincronizarNotasGrupoAppsScript(grado, seccion, tipoMateria) {
   if (!grado || !seccion) throw new Error('Sin grado/sección');
 
-  // Obtener materia activa desde el contexto del HTML original
   const materiaActiva = (typeof getMateriaDocenteActiva === 'function') ? getMateriaDocenteActiva() : null;
   const alumnosActuales = (typeof alumnosFiltrados !== 'undefined') ? alumnosFiltrados : [];
   const notasActuales = (typeof notasData !== 'undefined') ? notasData : {};
   const materiaClave = materiaActiva?.clave || tipoMateria || '';
 
-  // 1. Guardar en Firebase
   if (_firebaseListo && !_modoOffline) {
     try {
       const ref = _fbDocRef(grado, seccion, materiaClave);
@@ -199,8 +165,7 @@ window.sincronizarNotasGrupoAppsScript = async function sincronizarNotasGrupoApp
       await ref.set(payload, { merge: true });
       console.log('[Firebase-Notas] Notas guardadas en Firestore ✓');
 
-      // 2. También guardar en Google Apps Script (GAS) como respaldo asíncrono
-      //    Esto mantiene compatibilidad con el sistema antiguo y permite exportar PDF/Excel
+      // Respaldo GAS en segundo plano
       _sincronizarConGASEnSegundoPlano(payload);
 
       return { ok: true, fuente: 'firebase' };
@@ -210,14 +175,12 @@ window.sincronizarNotasGrupoAppsScript = async function sincronizarNotasGrupoApp
     }
   }
 
-  // 3. Fallback: intentar GAS directo (comportamiento original)
   return _sincronizarConGAS(grado, seccion, tipoMateria, materiaActiva, alumnosActuales, notasActuales);
 };
 
 /**
- * REEMPLAZA: actualizarNotasDesdeRemoto()
- * Con Firestore el listener ya mantuvo notasData actualizado.
- * Solo re-renderizamos la tabla.
+ * actualizarNotasDesdeRemoto() — se llama al presionar ↻ Refrescar.
+ * Hace UNA lectura get() al servidor. Sin onSnapshot.
  */
 window.actualizarNotasDesdeRemoto = async function actualizarNotasDesdeRemoto(opts) {
   opts = opts || {};
@@ -237,15 +200,15 @@ window.actualizarNotasDesdeRemoto = async function actualizarNotasDesdeRemoto(op
 
   try {
     if (_firebaseListo && !_modoOffline) {
-      // Forzar lectura fresca desde Firestore
+      // get() con source:'server' = 1 lectura exacta, sin listener
       const ref = _fbDocRef(grado, seccion, materiaActiva.clave || '');
       const snap = await ref.get({ source: 'server' });
       if (snap.exists) {
         const nuevaData = _firestoreANotasData(snap.data());
         _aplicarNotasRemotas(nuevaData);
+        console.log('[Firebase-Notas] Notas refrescadas con get() ✓ — 1 lectura consumida');
       }
     } else {
-      // Fallback: leer desde GAS
       const filas = await (typeof window._obtenerNotasRemotasOriginal === 'function'
         ? window._obtenerNotasRemotasOriginal(grado, seccion, materiaActiva.clave || '', getTipoMateriaNotas())
         : []);
@@ -261,62 +224,25 @@ window.actualizarNotasDesdeRemoto = async function actualizarNotasDesdeRemoto(op
   }
 };
 
-// ── Listener en Tiempo Real ───────────────────────────────────────────────────
+// ── Lectura única (reemplaza onSnapshot) ─────────────────────────────────────
 
 /**
- * Activa onSnapshot para el documento de notas actual.
- * Cuando cualquier dispositivo guarda, TODOS reciben la actualización al instante.
+ * Lee las notas UNA VEZ y las aplica a la UI.
+ * Equivalente al antiguo activarListenerNotas() pero sin listener continuo.
  */
-function activarListenerNotas(grado, seccion, materiaClave) {
-  // Cancelar listener anterior si existe
-  if (_unsubscribeListener) {
-    _unsubscribeListener();
-    _unsubscribeListener = null;
+async function _leerNotasUnaVez(grado, seccion, materiaClave) {
+  if (!_firebaseListo || _modoOffline) return;
+  try {
+    const ref = _fbDocRef(grado, seccion, materiaClave);
+    if (!ref) return;
+    const snap = await ref.get();
+    if (!snap.exists) return;
+    const nuevaData = _firestoreANotasData(snap.data());
+    _aplicarNotasRemotas(nuevaData);
+    console.log('[Firebase-Notas] Notas cargadas con get() ✓ — 1 lectura');
+  } catch (err) {
+    console.warn('[Firebase-Notas] Error al leer notas:', err);
   }
-  _ultimaClaveEscucha = `${grado}|${seccion}|${materiaClave}`;
-
-  if (_modoOffline) return;
-
-  if (!_firebaseListo) {
-    console.warn('[Firebase-Notas] Firebase no listo, reintentando listener en 1 segundo...');
-    setTimeout(() => activarListenerNotas(grado, seccion, materiaClave), 1000);
-    return;
-  }
-
-  const ref = _fbDocRef(grado, seccion, materiaClave);
-  if (!ref) return;
-
-  _unsubscribeListener = ref.onSnapshot(
-    { includeMetadataChanges: false },
-    (snap) => {
-      if (!snap.exists) return;
-      const data = snap.data();
-
-      // Se eliminó el bloqueo de `notasCambiadas` para permitir actualización en tiempo real instantánea,
-      // la lógica celda por celda evitará sobreescribir lo que el usuario esté tecleando.
-
-      const nuevaData = _firestoreANotasData(data);
-      const quienActualizó = data.actualizado_por || 'otro dispositivo';
-      console.log(`[Firebase-Notas] Actualización en tiempo real recibida de: ${quienActualizó}`);
-
-      _aplicarNotasRemotas(nuevaData);
-
-      // Mostrar notificación discreta al docente
-      if (typeof mostrarNotificacion === 'function') {
-        mostrarNotificacion(`🔄 Notas actualizadas por ${quienActualizó}`, 'info', 2500);
-      }
-    },
-    (err) => {
-      console.warn('[Firebase-Notas] Error en listener:', err);
-      if (err.code === 'permission-denied') {
-        _modoOffline = true;
-        if (typeof mostrarNotificacion === 'function') {
-          mostrarNotificacion('⚠ Firebase: sin permiso. Usando modo offline.', 'warning');
-        }
-      }
-    }
-  );
-  console.log(`[Firebase-Notas] Listener activo para ${grado} ${seccion} - ${materiaClave}`);
 }
 
 /**
@@ -333,18 +259,14 @@ function _aplicarNotasRemotas(nuevaData) {
       if (typeof notasData !== 'undefined') {
         notasData[nie] = nuevaData[nie];
       }
-
-      // Actualizar DOM instantáneamente celda por celda sin robar foco
       if (document.getElementById('modal-notas-periodo')?.style.display === 'block') {
         const nd = nuevaData[nie][p] || { a1: '', a2: '', a3: '', prom: '' };
-
         ['a1', 'a2', 'a3'].forEach(act => {
           const input = document.getElementById(`nota-${nie}-${act}`);
           if (input && document.activeElement !== input) {
             input.value = nd[act];
           }
         });
-
         const promEl = document.getElementById(`prom-${nie}-${p}`);
         const estadoEl = document.getElementById(`estado-${nie}-${p}`);
         if (promEl) {
@@ -371,18 +293,12 @@ function _aplicarNotasRemotas(nuevaData) {
     } catch (e) { }
   }
 
-  // Actualizar barra de resumen
   if (typeof _actualizarResumenNotas === 'function') _actualizarResumenNotas();
-
   if (typeof setEstadoGuardado === 'function') setEstadoGuardado('guardado');
 }
 
-// ── Integración con abrirPanelNotas ──────────────────────────────────────────
+// ── Interceptar abrirPanelNotas para cargar notas al abrir ───────────────────
 
-/**
- * Intercepta abrirPanelNotas para activar el listener cuando se abre el panel.
- * Se llama automáticamente cuando el usuario abre el módulo de calificaciones.
- */
 (function interceptarAbrirPanelNotas() {
   const MAX_INTENTOS = 20;
   let intentos = 0;
@@ -391,20 +307,22 @@ function _aplicarNotasRemotas(nuevaData) {
     if (typeof window.abrirPanelNotas === 'function') {
       const _original = window.abrirPanelNotas;
       window.abrirPanelNotas = function abrirPanelNotas(...args) {
-        // Llamar función original
         const result = _original.apply(this, args);
-        // Activar listener Firebase
+        // Al abrir el panel → UNA lectura get() para cargar notas frescas
         setTimeout(() => {
           const grado = document.getElementById('grado-select')?.value || '';
           const seccion = document.getElementById('seccion-select')?.value || '';
           const materiaActiva = (typeof getMateriaDocenteActiva === 'function') ? getMateriaDocenteActiva() : null;
           if (grado && seccion && materiaActiva) {
-            activarListenerNotas(grado, seccion, materiaActiva.clave || '');
+            const clave = materiaActiva.clave || '';
+            const claveNueva = `${grado}|${seccion}|${clave}`;
+            _ultimaClaveEscucha = claveNueva;
+            _leerNotasUnaVez(grado, seccion, clave);
           }
         }, 300);
         return result;
       };
-      console.log('[Firebase-Notas] abrirPanelNotas interceptado ✓');
+      console.log('[Firebase-Notas] abrirPanelNotas interceptado ✓ — modo get()');
     } else if (intentos < MAX_INTENTOS) {
       intentos++;
       setTimeout(intentar, 500);
@@ -413,31 +331,29 @@ function _aplicarNotasRemotas(nuevaData) {
   intentar();
 })();
 
-/**
- * También activar el listener cuando cambia la selección de grado/sección/materia.
- */
+// Observar cambios en grado/sección/materia → leer notas frescas si el panel está abierto
 document.addEventListener('DOMContentLoaded', () => {
-  const activarSiAbierto = () => {
+  const recargarSiAbierto = () => {
     if (document.getElementById('modal-notas-periodo')?.style.display !== 'block') return;
     const grado = document.getElementById('grado-select')?.value || '';
     const seccion = document.getElementById('seccion-select')?.value || '';
     const materiaActiva = (typeof getMateriaDocenteActiva === 'function') ? getMateriaDocenteActiva() : null;
     if (grado && seccion && materiaActiva) {
-      activarListenerNotas(grado, seccion, materiaActiva.clave || '');
+      const clave = materiaActiva.clave || '';
+      const claveNueva = `${grado}|${seccion}|${clave}`;
+      if (claveNueva !== _ultimaClaveEscucha) {
+        _ultimaClaveEscucha = claveNueva;
+        _leerNotasUnaVez(grado, seccion, clave);
+      }
     }
   };
-
   ['grado-select', 'seccion-select', 'docente-materia'].forEach(id => {
-    document.getElementById(id)?.addEventListener('change', activarSiAbierto);
+    document.getElementById(id)?.addEventListener('change', recargarSiAbierto);
   });
 });
 
-// ── Sincronización con GAS (respaldo) ────────────────────────────────────────
+// ── Respaldo GAS ──────────────────────────────────────────────────────────────
 
-/**
- * Envía las notas a Google Apps Script en segundo plano como respaldo.
- * Esto mantiene la hoja de cálculo actualizada para exportar Excel/PDF.
- */
 function _sincronizarConGASEnSegundoPlano(firestorePayload) {
   if (typeof SCRIPT_URL === 'undefined') return;
   try {
@@ -457,7 +373,6 @@ function _sincronizarConGASEnSegundoPlano(firestorePayload) {
       materia: firestorePayload.asignatura, especialidad: firestorePayload.especialidad,
       materia_clave: firestorePayload.materia_clave, notas: alumnosGAS
     });
-    // Fire-and-forget en segundo plano (no bloqueamos al usuario)
     fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body })
       .then(() => console.log('[Firebase-Notas] Respaldo GAS enviado ✓'))
       .catch(e => console.warn('[Firebase-Notas] Respaldo GAS falló (no crítico):', e));
@@ -466,9 +381,6 @@ function _sincronizarConGASEnSegundoPlano(firestorePayload) {
   }
 }
 
-/**
- * Sincronización directa con GAS (usado como fallback completo).
- */
 async function _sincronizarConGAS(grado, seccion, tipoMateria, materiaActiva, alumnosActuales, notasActuales) {
   if (typeof SCRIPT_URL === 'undefined') throw new Error('Sin SCRIPT_URL');
   const payload = {
@@ -503,64 +415,4 @@ function _getLocalKey(grado, seccion, tipoMateria) {
   return `notas_${tipoMateria}_${grado}_${seccion}_${(typeof getClaveMateriaNotasActiva === 'function') ? getClaveMateriaNotasActiva() : 'default'}`;
 }
 
-function _convertirLocalStorageAFirestoreRows(localData) {
-  // localData es el formato notasData: { [nie]: { p1:{}, p2:{}, ... } }
-  return localData; // ya es el mismo formato que _firestoreANotasData devuelve
-}
-
-// ── Indicador visual de estado Firebase ──────────────────────────────────────
-(function agregarIndicadorFirebase() {
-  document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-      const contenedor = document.getElementById('modal-notas-periodo');
-      if (!contenedor) return;
-
-      const badge = document.createElement('div');
-      badge.id = 'firebase-status-badge';
-      badge.style.cssText = `
-        position: fixed; bottom: 16px; right: 80px; z-index: 9999;
-        padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
-        display: flex; align-items: center; gap: 6px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: all 0.3s ease-out;
-        background: #065f46; color: #d1fae5; border: 1px solid #34d399;
-      `;
-      badge.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:#34d399;display:inline-block;animation:pulse-firebase 2s infinite;"></span> Firebase • Tiempo Real`;
-
-      // CSS para la animación
-      const style = document.createElement('style');
-      style.textContent = `
-        @keyframes pulse-firebase {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
-        }
-      `;
-      document.head.appendChild(style);
-      document.body.appendChild(badge);
-
-      // Actualizar estado
-      const intervalId = setInterval(() => {
-        if (_modoOffline) {
-          badge.style.background = '#7c2d12';
-          badge.style.color = '#fed7aa';
-          badge.style.borderColor = '#f97316';
-          badge.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:#f97316;display:inline-block;"></span> Modo Offline`;
-        } else if (_firebaseListo) {
-          badge.style.background = '#065f46';
-          badge.style.color = '#d1fae5';
-          badge.style.borderColor = '#34d399';
-          badge.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:#34d399;display:inline-block;animation:pulse-firebase 2s infinite;"></span> Firebase • Tiempo Real`;
-        }
-      }, 500);
-
-      // Desaparecer después de 2 segundos
-      setTimeout(() => {
-        badge.style.opacity = '0';
-        badge.style.pointerEvents = 'none';
-        clearInterval(intervalId);
-        setTimeout(() => badge.remove(), 1000);
-      }, 2000);
-    }, 2000);
-  });
-})();
-
-console.log('[Firebase-Notas] Módulo cargado ✓ — esperando inicialización Firebase...');
+console.log('[Firebase-Notas] Módulo v3.0 cargado ✓ — MODO AHORRO (sin onSnapshot)');
