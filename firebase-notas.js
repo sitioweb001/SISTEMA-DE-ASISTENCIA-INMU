@@ -114,10 +114,9 @@ function _firestoreANotasData(docData) {
  */
 window.prefetchNotasRemotas = function prefetchNotasRemotas(grado, seccion, materiaClave, escala) {
   if (!_firebaseListo || _modoOffline) return Promise.resolve();
-  const claveNueva = `${grado}|${seccion}|${materiaClave}`;
-  if (claveNueva === _ultimaClaveEscucha) return Promise.resolve(); // ya cargado
-  _ultimaClaveEscucha = claveNueva;
-  // Una sola lectura, sin listener
+  // CORRECCIÓN: siempre leer al llamar prefetch — es llamado al abrir el panel
+  // No bloquear por clave duplicada aquí, solo actualizar la clave
+  _ultimaClaveEscucha = `${grado}|${seccion}|${materiaClave}`;
   return _leerNotasUnaVez(grado, seccion, materiaClave);
 };
 
@@ -249,28 +248,34 @@ async function _leerNotasUnaVez(grado, seccion, materiaClave) {
  * Aplica las notas remotas a notasData local y re-renderiza la tabla.
  */
 function _aplicarNotasRemotas(nuevaData) {
-  if (typeof alumnosFiltrados === 'undefined' || !Array.isArray(alumnosFiltrados)) return;
+  // PASO 1: actualizar notasData global con TODOS los datos remotos
+  const alumnos = (typeof alumnosFiltrados !== 'undefined' && Array.isArray(alumnosFiltrados))
+    ? alumnosFiltrados : [];
 
-  const p = 'p' + (typeof notasPeriodoActual !== 'undefined' ? notasPeriodoActual : '1');
+  Object.keys(nuevaData).forEach(nie => {
+    if (typeof notasData !== 'undefined') notasData[nie] = nuevaData[nie];
+  });
 
-  alumnosFiltrados.forEach(alumno => {
-    const nie = String(alumno.nie);
-    if (nuevaData[nie]) {
-      if (typeof notasData !== 'undefined') {
-        notasData[nie] = nuevaData[nie];
-      }
-      if (document.getElementById('modal-notas-periodo')?.style.display === 'block') {
+  // PASO 2: re-render completo si existe la funcion, si no actualizar inputs visibles
+  if (typeof window.renderizarTablaNotas === 'function') {
+    window.renderizarTablaNotas();
+    console.log('[Firebase-Notas] Re-render completo de tabla');
+  } else {
+    const modalAbierto = document.getElementById('modal-notas-periodo')?.style.display === 'block';
+    if (modalAbierto) {
+      const p = 'p' + (typeof notasPeriodoActual !== 'undefined' ? notasPeriodoActual : '1');
+      alumnos.forEach(alumno => {
+        const nie = String(alumno.nie);
+        if (!nuevaData[nie]) return;
         const nd = nuevaData[nie][p] || { a1: '', a2: '', a3: '', prom: '' };
         ['a1', 'a2', 'a3'].forEach(act => {
-          const input = document.getElementById(`nota-${nie}-${act}`);
-          if (input && document.activeElement !== input) {
-            input.value = nd[act];
-          }
+          const input = document.getElementById('nota-' + nie + '-' + act);
+          if (input && document.activeElement !== input) input.value = nd[act] !== undefined ? nd[act] : '';
         });
-        const promEl = document.getElementById(`prom-${nie}-${p}`);
-        const estadoEl = document.getElementById(`estado-${nie}-${p}`);
+        const promEl   = document.getElementById('prom-'   + nie + '-' + p);
+        const estadoEl = document.getElementById('estado-' + nie + '-' + p);
         if (promEl) {
-          const promVal = nd.prom !== '' ? Number(nd.prom) : null;
+          const promVal = (nd.prom !== '' && nd.prom !== undefined) ? Number(nd.prom) : null;
           promEl.innerText = promVal !== null ? promVal.toFixed(2) : '—';
           if (typeof getEstadoNotaHtml === 'function') {
             const estadoNota = getEstadoNotaHtml(promVal);
@@ -278,23 +283,21 @@ function _aplicarNotasRemotas(nuevaData) {
             if (estadoEl) estadoEl.innerHTML = estadoNota.html;
           }
         }
-      }
+      });
     }
-  });
+  }
 
-  // Persistir en localStorage como respaldo offline
-  const grado = document.getElementById('grado-select')?.value || '';
+  // PASO 3: persistir en localStorage como respaldo offline
+  const grado   = document.getElementById('grado-select')?.value   || '';
   const seccion = document.getElementById('seccion-select')?.value || '';
   const tipoMateria = (typeof getTipoMateriaNotas === 'function') ? getTipoMateriaNotas() : '0-10';
   if (grado && seccion && typeof notasData !== 'undefined') {
-    try {
-      const key = _getLocalKey(grado, seccion, tipoMateria);
-      localStorage.setItem(key, JSON.stringify(notasData));
-    } catch (e) { }
+    try { localStorage.setItem(_getLocalKey(grado, seccion, tipoMateria), JSON.stringify(notasData)); } catch (e) {}
   }
 
   if (typeof _actualizarResumenNotas === 'function') _actualizarResumenNotas();
   if (typeof setEstadoGuardado === 'function') setEstadoGuardado('guardado');
+  console.log('[Firebase-Notas] notasData actualizado con datos remotos');
 }
 
 // ── Interceptar abrirPanelNotas para cargar notas al abrir ───────────────────
@@ -308,18 +311,19 @@ function _aplicarNotasRemotas(nuevaData) {
       const _original = window.abrirPanelNotas;
       window.abrirPanelNotas = function abrirPanelNotas(...args) {
         const result = _original.apply(this, args);
-        // Al abrir el panel → UNA lectura get() para cargar notas frescas
+        // CORRECCIÓN: resetear clave para forzar lectura siempre al abrir
+        _ultimaClaveEscucha = '';
+        // CORRECCIÓN: 800ms para que el DOM del modal esté completamente renderizado
         setTimeout(() => {
           const grado = document.getElementById('grado-select')?.value || '';
           const seccion = document.getElementById('seccion-select')?.value || '';
           const materiaActiva = (typeof getMateriaDocenteActiva === 'function') ? getMateriaDocenteActiva() : null;
           if (grado && seccion && materiaActiva) {
             const clave = materiaActiva.clave || '';
-            const claveNueva = `${grado}|${seccion}|${clave}`;
-            _ultimaClaveEscucha = claveNueva;
+            _ultimaClaveEscucha = `${grado}|${seccion}|${clave}`;
             _leerNotasUnaVez(grado, seccion, clave);
           }
-        }, 300);
+        }, 800);
         return result;
       };
       console.log('[Firebase-Notas] abrirPanelNotas interceptado ✓ — modo get()');
