@@ -1,25 +1,16 @@
 /**
  * ══════════════════════════════════════════════════════════════════════════════
  * SICA-INMU — firebase-asistencia.js
- * Módulo: Asistencia Portal Tiempo Real + Status Docentes + Ausencias Peligro
- * Fase 2-B | 2026
+ * Versión: 3.0 — MODO AHORRO 2026
  *
- * REEMPLAZA:
- *   sincronizarAsistenciaAlumnos()  → onSnapshot tiempo real (era 3-5 seg)
- *   actualizarStatusDocente()       → Firestore (era GAS no-cors opaco)
- *   obtenerStatusDocentes()         → onSnapshot tiempo real (era polling 10 seg)
- *   ?tipo=estudiantes_peligro       → Firestore (era GAS 3-5 seg)
- *   ?tipo=asistencia_diaria_grado   → Firestore (era GAS 3-5 seg)
+ * CAMBIOS v3.0:
+ *   ❌ ELIMINADO: onSnapshot() en portal de asistencia    → era lectura continua
+ *   ❌ ELIMINADO: onSnapshot() en status docentes         → era lectura continua
+ *   ✅ NUEVO: get() solo al presionar botón "Portal 🟢/🔴"
+ *   ✅ NUEVO: Botón Portal con parpadeo rojo/verde en HTML puro (sin JS continuo)
+ *   ✅ NUEVO: Status docentes con get() al abrir la pantalla, no listener
  *
- * MANTIENE (sigue usando el GAS):
- *   POST tipo_post="asistencia"     → GAS sigue guardando en Sheets (reportes PDF)
- *   POST tipo_post="actualizar_asistencia" → GAS sigue guardando en Sheets
- *   POST tipo_post="observacion_general"   → GAS sigue guardando en Sheets
- *
- * COLECCIONES FIRESTORE REQUERIDAS:
- *   asistencia_alumnos_inmu/{nie}_{fecha_key}  ← escribe INDEX_ALUMNO (ya existe)
- *   presencia_docentes_inmu/{nombre_key}       ← este módulo crea y lee
- *   ausencias_inmu/{nie}                       ← este módulo actualiza al generar PDF
+ * RESULTADO: 0 lecturas pasivas → lecturas solo cuando el docente lo pide
  * ══════════════════════════════════════════════════════════════════════════════
  */
 
@@ -36,13 +27,12 @@
     appId:             "1:264940304462:web:643c263f1ad46139102b1f"
   };
 
-  /* ── Estado interno ───────────────────────────────────────────────────────── */
-  let _db             = null;
-  let _listo          = false;
-  let _unsubPortal    = null;   // listener asistencia portal (por grado/sección)
-  let _unsubStatus    = null;   // listener status docentes
-  let _gradoActual    = '';
-  let _seccionActual  = '';
+  /* ── Estado interno ──────────────────────────────────────────────────────── */
+  let _db            = null;
+  let _listo         = false;
+  let _portalActivo  = false;   // true = el docente tiene el panel portal abierto
+  let _gradoActual   = '';
+  let _seccionActual = '';
 
   /* ── Inicialización ──────────────────────────────────────────────────────── */
   (function _init() {
@@ -55,17 +45,182 @@
       _interceptarStatusDocentes();
       _interceptarEstudiantesPeligro();
       _interceptarActualizarAsistencia();
-      _iniciarListenerStatusDocentes();
-      console.log('[FB-Asistencia] Módulo listo ✓');
+      _inyectarBotonPortal();
+      console.log('[FB-Asistencia] Módulo v3.0 listo ✓ — MODO AHORRO (sin onSnapshot)');
     } catch (e) {
       console.warn('[FB-Asistencia] Error al inicializar:', e);
     }
   })();
 
   /* ═══════════════════════════════════════════════════════════════════════════
-   * SECCIÓN 1 — PORTAL EN TIEMPO REAL (onSnapshot)
-   * Reemplaza sincronizarAsistenciaAlumnos() — el botón "📡 Sincronizar"
-   * y también escucha en tiempo real sin tocar ningún botón
+   * SECCIÓN 1 — BOTÓN PORTAL CON PARPADEO ROJO / VERDE (HTML puro)
+   * Sin JS continuo, sin setInterval — solo CSS animation
+   * ═════════════════════════════════════════════════════════════════════════ */
+
+  /**
+   * Inyecta el CSS de parpadeo y el botón "Portal" en la UI.
+   * El botón alterna entre estado INACTIVO (rojo parpadeante) y
+   * ACTIVO (verde parpadeante) al presionarlo.
+   */
+  function _inyectarBotonPortal() {
+    // Esperar a que el DOM esté listo
+    const MAX = 30; let t = 0;
+    function buscar() {
+      // Buscar el contenedor donde va el botón (junto al botón de sincronizar)
+      const contenedor = document.getElementById('btn-sync-asist')?.parentElement
+                      || document.querySelector('.asistencia-toolbar')
+                      || document.querySelector('.toolbar-asistencia');
+      if (contenedor) {
+        _crearBotonPortal(contenedor);
+      } else if (t++ < MAX) {
+        setTimeout(buscar, 400);
+      }
+    }
+    document.readyState === 'loading'
+      ? document.addEventListener('DOMContentLoaded', buscar)
+      : buscar();
+  }
+
+  function _crearBotonPortal(contenedor) {
+    // Evitar duplicados
+    if (document.getElementById('btn-portal-asistencia')) return;
+
+    /* ── CSS de parpadeo ── */
+    if (!document.getElementById('portal-parpadeo-css')) {
+      const style = document.createElement('style');
+      style.id = 'portal-parpadeo-css';
+      style.textContent = `
+        /* Parpadeo rojo — portal INACTIVO */
+        @keyframes portal-blink-rojo {
+          0%, 100% { background-color: #dc2626; box-shadow: 0 0 0 0 rgba(220,38,38,0.7); }
+          50%       { background-color: #b91c1c; box-shadow: 0 0 0 6px rgba(220,38,38,0); }
+        }
+        /* Parpadeo verde — portal ACTIVO */
+        @keyframes portal-blink-verde {
+          0%, 100% { background-color: #16a34a; box-shadow: 0 0 0 0 rgba(22,163,74,0.7); }
+          50%       { background-color: #15803d; box-shadow: 0 0 0 6px rgba(22,163,74,0); }
+        }
+        #btn-portal-asistencia {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 7px 14px;
+          border: none;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 700;
+          color: #fff;
+          cursor: pointer;
+          transition: opacity 0.2s;
+          margin-left: 6px;
+        }
+        #btn-portal-asistencia.portal-inactivo {
+          animation: portal-blink-rojo 1.4s ease-in-out infinite;
+        }
+        #btn-portal-asistencia.portal-activo {
+          animation: portal-blink-verde 1.4s ease-in-out infinite;
+        }
+        #btn-portal-asistencia:disabled {
+          opacity: 0.55;
+          cursor: not-allowed;
+          animation: none;
+          background-color: #6b7280;
+        }
+        #btn-portal-asistencia .portal-dot {
+          width: 9px;
+          height: 9px;
+          border-radius: 50%;
+          background: rgba(255,255,255,0.85);
+          flex-shrink: 0;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    /* ── Botón ── */
+    const btn = document.createElement('button');
+    btn.id = 'btn-portal-asistencia';
+    btn.className = 'portal-inactivo';
+    btn.title = 'Ver quién marcó asistencia desde el portal hoy';
+    btn.innerHTML = `<span class="portal-dot"></span> Portal 🔴`;
+
+    btn.addEventListener('click', async () => {
+      const grado   = (document.getElementById('grado-select')?.value   || '').trim();
+      const seccion = (document.getElementById('seccion-select')?.value || '').trim();
+      if (!grado || !seccion) {
+        if (typeof mostrarNotificacion === 'function')
+          mostrarNotificacion('Selecciona un grado y sección primero.', 'warning');
+        return;
+      }
+      if (!_listo || !_db) {
+        if (typeof mostrarNotificacion === 'function')
+          mostrarNotificacion('Firebase no disponible.', 'error');
+        return;
+      }
+
+      // Deshabilitar mientras carga
+      btn.disabled = true;
+      btn.innerHTML = `<span class="portal-dot"></span> Cargando...`;
+
+      try {
+        const mapa = await _getAsistenciaPortalHoy(grado, seccion);
+        _pintarPortalEnUI(mapa);
+        window._mapaPortalActual = mapa;
+
+        const marcados = Object.keys(mapa).length;
+        const total    = (window.alumnosFiltrados || []).length;
+
+        // Activar estado verde
+        _portalActivo  = true;
+        _gradoActual   = grado;
+        _seccionActual = seccion;
+        btn.className  = 'portal-activo';
+        btn.innerHTML  = `<span class="portal-dot"></span> Portal 🟢`;
+
+        if (typeof mostrarNotificacion === 'function')
+          mostrarNotificacion(`📡 Portal: ${marcados} de ${total} marcaron asistencia hoy.`, 'success', 4000);
+
+        console.log(`[FB-Asistencia] Portal cargado con get() ✓ — ${marcados}/${total}`);
+      } catch (err) {
+        console.warn('[FB-Asistencia] Error al cargar portal:', err);
+        btn.className = 'portal-inactivo';
+        btn.innerHTML = `<span class="portal-dot"></span> Portal 🔴`;
+        if (typeof mostrarNotificacion === 'function')
+          mostrarNotificacion('Error al cargar portal. Intenta de nuevo.', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // Volver a rojo si cambia grado o sección
+    ['grado-select', 'seccion-select'].forEach(id => {
+      document.getElementById(id)?.addEventListener('change', () => {
+        _portalActivo = false;
+        btn.className = 'portal-inactivo';
+        btn.innerHTML = `<span class="portal-dot"></span> Portal 🔴`;
+        // Limpiar indicadores de la tabla
+        document.querySelectorAll('[id^="asist-portal-"]').forEach(el => {
+          el.style.cssText = 'text-align:center;font-size:11px;font-weight:700;padding:2px 5px;border-radius:6px;color:#6b7280;background:#f3f4f6;';
+          el.textContent = '—';
+        });
+      });
+    });
+
+    // Insertar después del botón de sincronizar si existe, o al final del contenedor
+    const btnSync = document.getElementById('btn-sync-asist');
+    if (btnSync && btnSync.parentElement === contenedor) {
+      btnSync.insertAdjacentElement('afterend', btn);
+    } else {
+      contenedor.appendChild(btn);
+    }
+
+    console.log('[FB-Asistencia] Botón Portal inyectado ✓');
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+   * SECCIÓN 2 — SINCRONIZAR ASISTENCIA (mantiene el botón original)
+   * Ahora el botón original "📡 Sincronizar" sigue funcionando igual,
+   * pero usa get() en vez de onSnapshot
    * ═════════════════════════════════════════════════════════════════════════ */
 
   function _interceptarSincronizar() {
@@ -93,8 +248,10 @@
           if (btn) { btn.textContent = '⏳ Sincronizando...'; btn.style.opacity = '0.6'; btn.disabled = true; }
 
           try {
+            // Una sola consulta get(), sin listener
             const mapa = await _getAsistenciaPortalHoy(grado, seccion);
             _pintarPortalEnUI(mapa);
+            window._mapaPortalActual = mapa;
             const marcados = Object.keys(mapa).length;
             const total    = (window.alumnosFiltrados || []).length;
             if (typeof mostrarNotificacion === 'function')
@@ -106,11 +263,7 @@
             if (btn) { btn.textContent = '📡 Sincronizar Asistencia'; btn.style.opacity = '1'; btn.disabled = false; }
           }
         };
-        console.log('[FB-Asistencia] sincronizarAsistenciaAlumnos() interceptada ✓');
-
-        // También activar listener automático cuando cambie grado/sección
-        _escucharCambioGradoSeccion();
-
+        console.log('[FB-Asistencia] sincronizarAsistenciaAlumnos() interceptada ✓ — usa get()');
       } else if (t++ < MAX) {
         setTimeout(intentar, 400);
       }
@@ -119,8 +272,7 @@
   }
 
   /**
-   * Lee la asistencia del portal de hoy para un grado/sección específicos.
-   * Consulta la colección asistencia_alumnos_inmu filtrada por fecha y grado.
+   * Consulta Firestore UNA SOLA VEZ (get, no onSnapshot).
    * @returns {Object} mapa { [nie]: { estado, hora } }
    */
   async function _getAsistenciaPortalHoy(grado, seccion) {
@@ -129,7 +281,7 @@
       .where('fecha_key', '==', hoy)
       .where('grado', '==', grado)
       .where('seccion', '==', seccion)
-      .get();
+      .get();   // ← get() no onSnapshot
 
     const mapa = {};
     snap.forEach(doc => {
@@ -139,9 +291,6 @@
     return mapa;
   }
 
-  /**
-   * Pinta los indicadores de portal en la UI para cada alumno.
-   */
   function _pintarPortalEnUI(mapa) {
     (window.alumnosFiltrados || []).forEach(alumno => {
       const nieStr = String(alumno.nie || '').trim();
@@ -165,67 +314,9 @@
     });
   }
 
-  /**
-   * Activa un listener en tiempo real para el grado/sección actuales.
-   * Cuando un alumno marca desde el portal, el docente lo ve SIN tocar botón.
-   */
-  function _activarListenerPortal(grado, seccion) {
-    if (_unsubPortal) { _unsubPortal(); _unsubPortal = null; }
-    if (!_listo || !_db || !grado || !seccion) return;
-
-    _gradoActual   = grado;
-    _seccionActual = seccion;
-    const hoy = _fechaKey();
-
-    _unsubPortal = _db.collection('asistencia_alumnos_inmu')
-      .where('fecha_key', '==', hoy)
-      .where('grado', '==', grado)
-      .where('seccion', '==', seccion)
-      .onSnapshot(snap => {
-        const mapa = {};
-        snap.forEach(doc => {
-          const d = doc.data();
-          if (d.nie) mapa[String(d.nie).trim()] = { estado: d.estado || 'presente', hora: d.hora || '' };
-        });
-        _pintarPortalEnUI(mapa);
-        // Guardar en window para que el botón de sync también pueda usarlo
-        window._mapaPortalActual = mapa;
-        console.log('[FB-Asistencia] Portal actualizado en tiempo real — marcados:', Object.keys(mapa).length);
-      }, e => console.warn('[FB-Asistencia] Error listener portal:', e));
-
-    console.log('[FB-Asistencia] Listener portal activado para:', grado, seccion);
-  }
-
-  /**
-   * Observa los selects de grado/sección para reactivar el listener
-   * cada vez que cambian.
-   */
-  function _escucharCambioGradoSeccion() {
-    const MAX = 20; let t = 0;
-    function buscar() {
-      const selGrado   = document.getElementById('grado-select');
-      const selSeccion = document.getElementById('seccion-select');
-      if (selGrado && selSeccion) {
-        function onChange() {
-          const g = (selGrado.value   || '').trim();
-          const s = (selSeccion.value || '').trim();
-          if (g && s && (g !== _gradoActual || s !== _seccionActual)) {
-            setTimeout(() => _activarListenerPortal(g, s), 300); // pequeño delay para que cargarAlumnos() termine
-          }
-        }
-        selGrado.addEventListener('change', onChange);
-        selSeccion.addEventListener('change', onChange);
-        console.log('[FB-Asistencia] Observando cambios de grado/sección ✓');
-      } else if (t++ < MAX) {
-        setTimeout(buscar, 500);
-      }
-    }
-    buscar();
-  }
-
   /* ═══════════════════════════════════════════════════════════════════════════
-   * SECCIÓN 2 — STATUS DOCENTES EN TIEMPO REAL
-   * Reemplaza actualizarStatusDocente() y obtenerStatusDocentes()
+   * SECCIÓN 3 — STATUS DOCENTES (get() en vez de onSnapshot)
+   * Se lee UNA VEZ al cargar la página. Sin listener continuo.
    * ═════════════════════════════════════════════════════════════════════════ */
 
   function _interceptarStatusDocentes() {
@@ -234,7 +325,7 @@
       if (typeof window.actualizarStatusDocente === 'function' &&
           typeof window.obtenerStatusDocentes   === 'function') {
 
-        // Reemplazar actualizarStatusDocente → escribe en Firestore
+        // Reemplazar actualizarStatusDocente → escribe en Firestore (igual que antes)
         window.actualizarStatusDocente = async function (docente, status) {
           if (!docente || !_listo || !_db) return;
           const key = _normalizar(docente);
@@ -250,14 +341,42 @@
           }
         };
 
-        // Reemplazar obtenerStatusDocentes → ya no hace nada (lo hace el listener)
+        // Reemplazar obtenerStatusDocentes → get() UNA VEZ, sin listener
         window.obtenerStatusDocentes = async function () {
-          // El listener onSnapshot ya actualiza docentesStatus en tiempo real.
-          // Esta función queda vacía para no duplicar.
-          if (typeof actualizarListaStatus === 'function') actualizarListaStatus();
+          if (!_listo || !_db) return;
+          try {
+            const INACTIVIDAD_MS = 5 * 60 * 1000;
+            const ahora = Date.now();
+            const snap = await _db.collection('presencia_docentes_inmu').get(); // get(), no onSnapshot
+            if (typeof window.docentesStatus !== 'object') window.docentesStatus = {};
+
+            snap.forEach(doc => {
+              const d = doc.data();
+              const nombre = d.docente || doc.id;
+              let status = d.status || 'offline';
+              if (status === 'online' && (ahora - (d.ultima_actividad || 0)) > INACTIVIDAD_MS) {
+                status = 'offline';
+                // Actualizar en Firestore silenciosamente (1 escritura, no lectura)
+                _db.collection('presencia_docentes_inmu').doc(doc.id)
+                  .set({ status: 'offline' }, { merge: true })
+                  .catch(() => {});
+              }
+              window.docentesStatus[nombre] = status;
+              if (!window.docentesIds) window.docentesIds = {};
+              window.docentesIds[nombre] = doc.id;
+            });
+
+            if (typeof actualizarListaStatus === 'function') actualizarListaStatus();
+            console.log('[FB-Asistencia] Status docentes cargado con get() ✓');
+          } catch (e) {
+            console.warn('[FB-Asistencia] Error al obtener status docentes:', e);
+          }
         };
 
-        console.log('[FB-Asistencia] actualizarStatusDocente y obtenerStatusDocentes reemplazados ✓');
+        // Cargar status una vez al inicio
+        window.obtenerStatusDocentes();
+
+        console.log('[FB-Asistencia] Status docentes → get() único al cargar ✓');
       } else if (t++ < MAX) {
         setTimeout(intentar, 500);
       }
@@ -265,61 +384,17 @@
     intentar();
   }
 
-  /**
-   * Listener onSnapshot para status de docentes.
-   * Detecta inactividad > 5 min y marca offline automáticamente.
-   */
-  function _iniciarListenerStatusDocentes() {
-    if (!_listo || !_db) { setTimeout(_iniciarListenerStatusDocentes, 800); return; }
-
-    const INACTIVIDAD_MS = 5 * 60 * 1000;
-
-    if (_unsubStatus) { _unsubStatus(); _unsubStatus = null; }
-
-    _unsubStatus = _db.collection('presencia_docentes_inmu')
-      .onSnapshot(snap => {
-        const ahora = Date.now();
-        if (typeof window.docentesStatus !== 'object') window.docentesStatus = {};
-
-        snap.forEach(doc => {
-          const d = doc.data();
-          const nombre = d.docente || doc.id;
-          let status = d.status || 'offline';
-          // Si lleva más de 5 min sin actividad → marcar offline
-          if (status === 'online' && (ahora - (d.ultima_actividad || 0)) > INACTIVIDAD_MS) {
-            status = 'offline';
-            // Actualizar en Firestore silenciosamente
-            _db.collection('presencia_docentes_inmu').doc(doc.id)
-              .set({ status: 'offline' }, { merge: true })
-              .catch(() => {});
-          }
-          window.docentesStatus[nombre] = status;
-          if (!window.docentesIds) window.docentesIds = {};
-          window.docentesIds[nombre] = doc.id;
-        });
-
-        if (typeof actualizarListaStatus === 'function') actualizarListaStatus();
-        console.log('[FB-Asistencia] Status docentes actualizado (tiempo real) ✓');
-      }, e => console.warn('[FB-Asistencia] Error listener status:', e));
-
-    console.log('[FB-Asistencia] Listener status docentes activado ✓');
-  }
-
   /* ═══════════════════════════════════════════════════════════════════════════
-   * SECCIÓN 3 — ESTUDIANTES EN PELIGRO (conteo de ausencias)
-   * Reemplaza ?tipo=estudiantes_peligro
+   * SECCIÓN 4 — ESTUDIANTES EN PELIGRO (get() igual que antes, sin cambio)
    * ═════════════════════════════════════════════════════════════════════════ */
 
   function _interceptarEstudiantesPeligro() {
-    // Parchamos el fetch global para interceptar las llamadas a ?tipo=estudiantes_peligro
     const _origFetch = window.fetch;
     window.fetch = function (url, opts) {
       if (typeof url === 'string' && url.includes('tipo=estudiantes_peligro') && _listo && _db) {
         const urlObj = new URL(url, location.href);
         const grado   = urlObj.searchParams.get('grado')   || '';
         const seccion = urlObj.searchParams.get('seccion') || '';
-
-        // Devolver Promise que lee de Firestore
         return _getEstudiantesPeligroFirestore(grado, seccion)
           .then(data => new Response(JSON.stringify(data), {
             status: 200,
@@ -332,7 +407,6 @@
       }
       return _origFetch.apply(this, arguments);
     };
-    console.log('[FB-Asistencia] fetch interceptado para estudiantes_peligro ✓');
   }
 
   async function _getEstudiantesPeligroFirestore(grado, seccion) {
@@ -352,24 +426,19 @@
   }
 
   /* ═══════════════════════════════════════════════════════════════════════════
-   * SECCIÓN 4 — ACTUALIZAR ASISTENCIA (POST actualizar_asistencia)
-   * Al actualizar asistencia docente también actualiza conteo en ausencias_inmu
+   * SECCIÓN 5 — ACTUALIZAR ASISTENCIA (igual que antes)
    * ═════════════════════════════════════════════════════════════════════════ */
 
   function _interceptarActualizarAsistencia() {
-    // Este interceptor solo lee el body y actualiza ausencias_inmu en Firestore.
-    // El GAS sigue recibiendo el POST para su propia lógica de Sheets.
     const _prev = window.fetch;
     window.fetch = function (url, opts) {
       if (opts && opts.body && _listo && _db) {
         try {
           const body = JSON.parse(opts.body);
-          // Cuando se genera el reporte de asistencia se manda tipo_post="asistencia"
           if (body.tipo_post === 'asistencia') {
             const ausentes = body.ausentes_lista || [];
             const grado    = body.grado   || '';
             const seccion  = body.seccion || '';
-            // Incrementar conteo en ausencias_inmu para cada ausente
             ausentes.forEach(nombre => {
               _incrementarAusenciaFirestore(nombre, grado, seccion);
             });
@@ -378,16 +447,11 @@
       }
       return _prev.apply(this, arguments);
     };
-    console.log('[FB-Asistencia] fetch interceptado para conteo de ausencias ✓');
   }
 
-  /**
-   * Incrementa o crea el conteo de ausencias de un estudiante en ausencias_inmu.
-   */
   async function _incrementarAusenciaFirestore(nombre, grado, seccion) {
     if (!nombre || !grado) return;
     try {
-      // Buscar NIE en alumnos_inmu por nombre
       let nie = '';
       const alumnoSnap = await _db.collection('alumnos_inmu')
         .where('grado', '==', grado)
@@ -396,7 +460,6 @@
       alumnoSnap.forEach(doc => {
         if (_normNombre(doc.data().nombre) === _normNombre(nombre)) nie = doc.data().nie || '';
       });
-
       const key = nie || _normalizar(nombre + '_' + grado + '_' + seccion);
       const ref = _db.collection('ausencias_inmu').doc(key);
       await _db.runTransaction(async tx => {
@@ -414,37 +477,32 @@
   }
 
   /* ═══════════════════════════════════════════════════════════════════════════
-   * SECCIÓN 5 — EXPOSICIÓN PÚBLICA
+   * SECCIÓN 6 — EXPOSICIÓN PÚBLICA
    * ═════════════════════════════════════════════════════════════════════════ */
 
-  /**
-   * Activa el listener de portal para el grado/sección indicados.
-   * Llamar si el listener no se activa automáticamente.
-   * USO: FB_activarPortal('1° General', 'A')
-   */
+  /** Fuerza una recarga manual del portal (equivalente a presionar el botón). */
   window.FB_activarPortal = function (grado, seccion) {
-    _activarListenerPortal(grado, seccion);
+    const btn = document.getElementById('btn-portal-asistencia');
+    if (btn) btn.click(); // simular clic al botón
+    else {
+      // Fallback directo si el botón no existe aún
+      const g = grado || (document.getElementById('grado-select')?.value   || '').trim();
+      const s = seccion || (document.getElementById('seccion-select')?.value || '').trim();
+      if (g && s && _listo && _db) {
+        _getAsistenciaPortalHoy(g, s).then(mapa => {
+          _pintarPortalEnUI(mapa);
+          window._mapaPortalActual = mapa;
+        });
+      }
+    }
   };
 
-  /**
-   * Reinicia todos los listeners.
-   * USO: FB_reiniciarListeners()
-   */
-  window.FB_reiniciarListeners = function () {
-    if (_unsubPortal)  { _unsubPortal();  _unsubPortal  = null; }
-    if (_unsubStatus)  { _unsubStatus();  _unsubStatus  = null; }
-    _iniciarListenerStatusDocentes();
-    const g = (document.getElementById('grado-select')?.value   || '').trim();
-    const s = (document.getElementById('seccion-select')?.value || '').trim();
-    if (g && s) _activarListenerPortal(g, s);
-    console.log('[FB-Asistencia] Listeners reiniciados ✓');
+  /** Recarga el status de docentes manualmente. */
+  window.FB_recargarStatusDocentes = function () {
+    if (typeof window.obtenerStatusDocentes === 'function') window.obtenerStatusDocentes();
   };
 
-  /**
-   * Sube el conteo de ausencias desde el GAS a Firestore (ejecutar 1 sola vez en consola).
-   * Requiere que baseDatosAlumnos esté cargado.
-   * USO: await FB_subirAusencias([{ nombre, nie, grado, seccion, conteo }])
-   */
+  /** Sube ausencias en batch (igual que antes). */
   window.FB_subirAusencias = async function (lista) {
     if (!_listo || !_db) { console.error('[FB-Asistencia] Firebase no disponible'); return; }
     if (!Array.isArray(lista) || !lista.length) { console.error('[FB-Asistencia] Lista vacía'); return; }
@@ -472,8 +530,8 @@
   /* ── Helpers ──────────────────────────────────────────────────────────────── */
   function _fechaKey() {
     const ahora = new Date();
-    const dd = String(ahora.getDate()).padStart(2, '0');
-    const mm = String(ahora.getMonth() + 1).padStart(2, '0');
+    const dd   = String(ahora.getDate()).padStart(2, '0');
+    const mm   = String(ahora.getMonth() + 1).padStart(2, '0');
     const yyyy = ahora.getFullYear();
     return `${dd}_${mm}_${yyyy}`;
   }
@@ -489,5 +547,5 @@
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
 
-  console.log('[FB-Asistencia] Script cargado ✓');
+  console.log('[FB-Asistencia] Script v3.0 cargado ✓ — MODO AHORRO');
 })();
